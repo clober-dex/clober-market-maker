@@ -9,11 +9,11 @@ markets:
       quote: USDC
       base: ETH
     params:
-      defaultBaseBalance: 10000
-      deltaLimit: 3000
+      defaultBaseBalance: 10
+      deltaLimit: 3
       minSpread: 1
       maxSpread: 10
       orderGap: 1
       orderNum: 5
-      orderSize: 1000
-      minOrderSize: 500
+      orderSize: 1
+      minOrderSize: 0.5

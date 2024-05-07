@@ -8,8 +8,10 @@ import {
   getOpenOrders,
   approveERC20,
   setApprovalOfOpenOrdersForAll,
+  getTick,
   type OpenOrder,
   cancelOrders,
+  claimOrders,
 } from '@clober/v2-sdk'
 import type { PublicClient, WalletClient } from 'viem'
 import {
@@ -22,6 +24,7 @@ import {
 import chalk from 'chalk'
 import { privateKeyToAccount } from 'viem/accounts'
 import { eip712WalletActions } from 'viem/zksync'
+import BigNumber from 'bignumber.js'
 
 import { logger } from '../utils/logger.ts'
 import { CHAIN_MAP } from '../constants/chain.ts'
@@ -31,7 +34,10 @@ import { getGasPrice, waitTransaction } from '../utils/transaction.ts'
 
 import { Binance } from './binance.ts'
 import { Clober } from './clober.ts'
-import type { Config } from './config.ts'
+import type { Config, Params } from './config.ts'
+
+const BID = 0
+const ASK = 1
 
 export class CloberMarketMaker {
   private initialized = false
@@ -139,7 +145,11 @@ export class CloberMarketMaker {
     )
 
     // 3. cancel all orders
-    await this.cancelAll()
+    const openOrders = await getOpenOrders({
+      chainId: this.chainId,
+      userAddress: this.userAddress,
+    })
+    await this.cancelOrders(openOrders.map((order) => order.id))
 
     this.initialized = true
   }
@@ -223,24 +233,178 @@ export class CloberMarketMaker {
         console.error('Error in update', e)
       }
 
+      const marketMakerTasks: Promise<void>[] = []
+      for (const [market, { params }] of Object.entries(this.config.markets)) {
+        marketMakerTasks.push(this.marketMaking(market, params))
+      }
+      await Promise.all(marketMakerTasks)
+
       await this.sleep(this.config.fetchIntervalMilliSeconds)
     }
+  }
+
+  async marketMaking(market: string, params: Params) {
+    const [lowestAsk, highestBid, oraclePrice] = [
+      this.clober.lowestAsk(market),
+      this.clober.highestBid(market),
+      this.binance.price(market),
+    ]
+    // Skip when the oracle price is in the spread
+    if (
+      lowestAsk &&
+      highestBid &&
+      oraclePrice.isGreaterThan(highestBid) &&
+      oraclePrice.isLessThan(lowestAsk)
+      // highestBid < oraclePrice && oraclePrice < lowestAsk
+    ) {
+      logger(chalk.red, 'Skip making orders', {
+        market,
+        lowestAsk: lowestAsk.toString(),
+        highestBid: highestBid.toString(),
+        oraclePrice: oraclePrice.toString(),
+      })
+      return
+    }
+
+    const [base, quote] = market.split('/')
+    const openOrders = this.openOrders.filter(
+      (order) =>
+        (order.inputCurrency.symbol === base &&
+          order.outputCurrency.symbol === quote) ||
+        (order.inputCurrency.symbol === quote &&
+          order.outputCurrency.symbol === base),
+    )
+
+    // 1. calculate skew (sum of amount of open orders - defaultBaseBalance) / deltaLimit
+    let skew = openOrders
+      .reduce((acc, order) => acc.plus(order.amount.value), new BigNumber(0))
+      .minus(params.defaultBaseBalance)
+      .div(params.deltaLimit)
+      .toNumber()
+    if (skew > 1) {
+      skew = 1
+    } else if (skew < -1) {
+      skew = -1
+    }
+
+    /*
+    if base balance = default + deltaLimit (skew = 1) => ask spread = min, bid spread = max
+    if base balance = default - deltaLimit (skew = -1) => ask spread = max, bid spread = min
+    */
+    const askSpread = Math.round(
+      (params.maxSpread - params.minSpread) * 0.5 * (skew + 1) +
+        params.minSpread,
+    )
+    const bidSpread = Math.round(
+      params.maxSpread + params.minSpread - askSpread,
+    )
+
+    const askSize = params.orderSize * Math.min(skew + 1, 1)
+    const bidSize = params.orderSize * Math.min(1 - skew, 1)
+
+    // 2. sort current open orders from openOrders
+    const currentOpenOrders: [
+      {
+        [tick: number]: OpenOrder[]
+      },
+      { [tick: number]: OpenOrder[] },
+    ] = [{}, {}]
+    _.forEach(openOrders, (order) => {
+      const arr = order.isBid ? currentOpenOrders[BID] : currentOpenOrders[ASK]
+      if (!arr[order.tick]) {
+        arr[order.tick] = []
+      }
+      arr[order.tick].push(order)
+    })
+    for (const side of [BID, ASK]) {
+      for (const id of Object.keys(currentOpenOrders[side])) {
+        currentOpenOrders[side][+id].sort(
+          (a, b) => +a.orderIndex - +b.orderIndex,
+        )
+      }
+    }
+
+    // 3. calculate target orders
+    const targetOrders: [
+      { [tick: number]: number },
+      { [tick: number]: number },
+    ] = [{}, {}]
+    for (let i = 0; i < params.orderNum; i++) {
+      const oracleTick = getTick({
+        chainId: this.chainId,
+        inputCurrency: findCurrency(this.chainId, base),
+        outputCurrency: findCurrency(this.chainId, quote),
+        price: oraclePrice.toString(),
+      })
+      const priceIndex = oracleTick + BigInt(askSpread + params.orderGap * i)
+      targetOrders[ASK][Number(priceIndex)] = askSize
+    }
+    for (let i = 0; i < params.orderNum; i++) {
+      const oracleTick = getTick({
+        chainId: this.chainId,
+        inputCurrency: findCurrency(this.chainId, quote),
+        outputCurrency: findCurrency(this.chainId, base),
+        price: oraclePrice.toString(),
+      })
+      const priceIndex = oracleTick - BigInt(bidSpread - params.orderGap * i)
+      targetOrders[BID][Number(priceIndex)] = bidSize
+    }
+
+    // 4. calculate orders to cancel & claim
+    const orderIdsToClaim: string[] = []
+    const orderIdsToCancel: string[] = []
+    for (const side of [BID, ASK]) {
+      for (const id of Object.keys(currentOpenOrders[side])) {
+        let cancelIndex = 0
+        if (targetOrders[side][+id]) {
+          for (
+            ;
+            cancelIndex < currentOpenOrders[side][+id].length;
+            cancelIndex += 1
+          ) {
+            const order = currentOpenOrders[side][+id][cancelIndex]
+            const openAmount = Number(order.cancelable.value) // without rebate
+            if (order.amount.value === order.filled.value) {
+              // fully filled
+              orderIdsToClaim.push(order.id)
+            } else if (
+              Math.abs(openAmount) >=
+              Math.abs(targetOrders[side][+id]) + params.minOrderSize
+            ) {
+              // don't need to make new order
+              break
+            }
+            targetOrders[side][+id] -= openAmount
+          }
+          if (targetOrders[side][+id] < params.minOrderSize) {
+            // cutting off small orders
+            delete targetOrders[side][+id]
+          }
+        }
+        orderIdsToCancel.push(
+          ..._.map(
+            currentOpenOrders[side][+id].slice(cancelIndex),
+            (order) => order.id,
+          ),
+        )
+      }
+    }
+
+    // TODO: build 1 tx
+    console.log({ orderIdsToClaim, orderIdsToCancel })
+    console.log({ targetOrders })
   }
 
   async sleep(ms: number) {
     return new Promise((resolve) => setTimeout(resolve, ms))
   }
 
-  async cancelAll() {
-    const openOrders = await getOpenOrders({
-      chainId: this.chainId,
-      userAddress: this.userAddress,
-    })
-    if (openOrders.length > 0) {
+  async cancelOrders(ids: string[]) {
+    if (ids.length > 0) {
       const { transaction } = await cancelOrders({
         chainId: this.chainId,
         userAddress: this.userAddress,
-        ids: openOrders.map((order) => order.id),
+        ids,
       })
       const gasPrice = await getGasPrice(
         this.publicClient,
@@ -253,9 +417,37 @@ export class CloberMarketMaker {
         chain: CHAIN_MAP[this.chainId],
       })
       await waitTransaction(
-        'Cancel All Orders',
+        'Cancel Orders',
         {
-          ids: openOrders.map((order) => order.id),
+          ids,
+        },
+        this.publicClient,
+        hash,
+      )
+    }
+  }
+
+  async claimOrders(ids: string[]) {
+    if (ids.length > 0) {
+      const { transaction } = await claimOrders({
+        chainId: this.chainId,
+        userAddress: this.userAddress,
+        ids,
+      })
+      const gasPrice = await getGasPrice(
+        this.publicClient,
+        this.config.gasMultiplier,
+      )
+      const hash = await this.walletClient.sendTransaction({
+        ...transaction,
+        gasPrice,
+        account: this.userAddress,
+        chain: CHAIN_MAP[this.chainId],
+      })
+      await waitTransaction(
+        'Claim Orders',
+        {
+          ids,
         },
         this.publicClient,
         hash,
