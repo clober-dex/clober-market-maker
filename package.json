@@ -18,7 +18,7 @@
     "typescript": "^5.0.0"
   },
   "dependencies": {
-    "@clober/v2-sdk": "^0.0.26",
+    "@clober/v2-sdk": "^0.0.27",
     "ccxt": "^4.3.17",
     "chalk": "^5.3.0",
     "dotenv": "^16.4.5",

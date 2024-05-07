@@ -9,6 +9,7 @@ import {
   approveERC20,
   setApprovalOfOpenOrdersForAll,
   type OpenOrder,
+  cancelOrders,
 } from '@clober/v2-sdk'
 import type { PublicClient, WalletClient } from 'viem'
 import {
@@ -26,7 +27,7 @@ import { logger } from '../utils/logger.ts'
 import { CHAIN_MAP } from '../constants/chain.ts'
 import { ERC20_PERMIT_ABI } from '../abis/@openzeppelin/erc20-permit-abi.ts'
 import { findCurrency } from '../utils/currency.ts'
-import { waitTransaction } from '../utils/transaction.ts'
+import { getGasPrice, waitTransaction } from '../utils/transaction.ts'
 
 import { Binance } from './binance.ts'
 import { Clober } from './clober.ts'
@@ -113,9 +114,7 @@ export class CloberMarketMaker {
       const hash = await approveERC20({
         chainId: this.chainId,
         walletClient: this.walletClient,
-        token: '0xfb2c2196831deeb8311d2cb4b646b94ed5ecf684',
-        amount:
-          '115792089237316195423570985008687907853269984665640564039457.584007913129639935',
+        token: address,
       })
       await waitTransaction(
         'Approve',
