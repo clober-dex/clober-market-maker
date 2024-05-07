@@ -27,7 +27,7 @@ import { getGasPrice, waitTransaction } from '../utils/transaction.ts'
 
 import { type OrderBook } from './order-book.ts'
 import type { Config } from './config.ts'
-import { Exchange } from './exchange.ts'
+import type { Exchange } from './exchange.ts'
 
 type Market = {
   quote: `0x${string}`
@@ -45,6 +45,7 @@ export class Clober implements Exchange {
   openOrders: OpenOrder[] = []
   balances: { [address: `0x${string}`]: bigint } = {}
   config: Config
+  erc20Tokens: `0x${string}`[] = []
 
   constructor(chainId: CHAIN_IDS, walletClient: WalletClient, config: Config) {
     this.chainId = chainId
@@ -78,12 +79,7 @@ export class Clober implements Exchange {
         ],
       ),
     )
-    this.config = config
-  }
-
-  async init() {
-    // 1. approve all tokens
-    const addresses = Object.values(this.markets)
+    this.erc20Tokens = Object.values(this.markets)
       .map((market) => [market.quote, market.base])
       .flat()
       .filter(
@@ -91,7 +87,12 @@ export class Clober implements Exchange {
           self.findIndex((a) => isAddressEqual(a, address)) === index,
       )
       .filter((address) => !isAddressEqual(address, zeroAddress))
-    for (const address of addresses) {
+    this.config = config
+  }
+
+  async init() {
+    // 1. approve all tokens
+    for (const address of this.erc20Tokens) {
       const hash = await approveERC20({
         chainId: this.chainId,
         walletClient: this.walletClient,
@@ -156,19 +157,10 @@ export class Clober implements Exchange {
     )
 
     // 3. get balances
-    const addresses = Object.values(this.markets)
-      .map((market) => [market.quote, market.base])
-      .flat()
-      .filter(
-        (address, index, self) =>
-          self.findIndex((a) => isAddressEqual(a, address)) === index,
-      )
-      .filter((address) => !isAddressEqual(address, zeroAddress))
-
     fetchQueue.push(
       this.publicClient
         .multicall({
-          contracts: addresses.map((address) => ({
+          contracts: this.erc20Tokens.map((address) => ({
             address,
             abi: ERC20_PERMIT_ABI,
             functionName: 'balanceOf',
@@ -178,7 +170,7 @@ export class Clober implements Exchange {
         .then((results) => {
           this.balances = results.reduce(
             (acc: {}, { result }, index: number) => {
-              const address = addresses[index]
+              const address = this.erc20Tokens[index]
               return {
                 ...acc,
                 [getAddress(address)]: result ?? 0n,

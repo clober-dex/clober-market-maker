@@ -1,6 +1,5 @@
-import ccxt, { binance, pro as ccxt } from 'ccxt'
+import { binance, pro as ccxt } from 'ccxt'
 import chalk from 'chalk'
-import { id } from 'ccxt/js/src/static_dependencies/ethers/utils'
 
 import { logger } from '../utils/logger.ts'
 
