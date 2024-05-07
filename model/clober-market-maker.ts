@@ -4,22 +4,25 @@ import * as path from 'path'
 import _ from 'lodash'
 import * as yaml from 'yaml'
 import {
+  approveERC20,
   CHAIN_IDS,
   getOpenOrders,
-  approveERC20,
-  setApprovalOfOpenOrdersForAll,
   getTick,
+  baseToQuote,
   type OpenOrder,
-  cancelOrders,
-  claimOrders,
+  setApprovalOfOpenOrdersForAll,
 } from '@clober/v2-sdk'
 import type { PublicClient, WalletClient } from 'viem'
 import {
   createPublicClient,
   createWalletClient,
+  formatUnits,
   getAddress,
   http,
+  isAddressEqual,
+  parseUnits,
   zeroAddress,
+  zeroHash,
 } from 'viem'
 import chalk from 'chalk'
 import { privateKeyToAccount } from 'viem/accounts'
@@ -30,11 +33,12 @@ import { logger } from '../utils/logger.ts'
 import { CHAIN_MAP } from '../constants/chain.ts'
 import { ERC20_PERMIT_ABI } from '../abis/@openzeppelin/erc20-permit-abi.ts'
 import { findCurrency } from '../utils/currency.ts'
-import { getGasPrice, waitTransaction } from '../utils/transaction.ts'
+import { waitTransaction } from '../utils/transaction.ts'
 
 import { Binance } from './binance.ts'
 import { Clober } from './clober.ts'
 import type { Config, Params } from './config.ts'
+import type { MakeParam } from './make-param.ts'
 
 const BID = 0
 const ASK = 1
@@ -49,6 +53,7 @@ export class CloberMarketMaker {
   walletClient: WalletClient
   config: Config
   erc20Tokens: `0x${string}`[] = []
+  bookIds: { [market: string]: [string, string] } = {}
 
   // define exchanges
   binance: Binance
@@ -151,7 +156,12 @@ export class CloberMarketMaker {
       chainId: this.chainId,
       userAddress: this.userAddress,
     })
-    await this.cancelOrders(openOrders.map((order) => order.id))
+    await this.execute(
+      [],
+      openOrders.map((order) => order.id),
+      [],
+      [],
+    )
 
     this.initialized = true
   }
@@ -360,8 +370,8 @@ export class CloberMarketMaker {
         outputCurrency: findCurrency(this.chainId, quote),
         price: oraclePrice.toString(),
       })
-      const priceIndex = oracleTick + BigInt(askSpread + params.orderGap * i)
-      targetOrders[ASK][Number(priceIndex)] = askSize
+      const tick = oracleTick + BigInt(askSpread + params.orderGap * i)
+      targetOrders[ASK][Number(tick)] = askSize
     }
     for (let i = 0; i < params.orderNum; i++) {
       const oracleTick = getTick({
@@ -370,8 +380,8 @@ export class CloberMarketMaker {
         outputCurrency: findCurrency(this.chainId, base),
         price: oraclePrice.toString(),
       })
-      const priceIndex = oracleTick - BigInt(bidSpread - params.orderGap * i)
-      targetOrders[BID][Number(priceIndex)] = bidSize
+      const tick = oracleTick - BigInt(bidSpread - params.orderGap * i)
+      targetOrders[BID][Number(tick)] = bidSize
     }
 
     // 4. calculate orders to cancel & claim
@@ -414,68 +424,77 @@ export class CloberMarketMaker {
       }
     }
 
+    const bidMakeParams: MakeParam[] = Object.entries(targetOrders[BID]).map(
+      ([tick, size]) => ({
+        id: this.clober.bookIds[market][BID],
+        tick: Number(tick),
+        quoteAmount: baseToQuote(
+          BigInt(tick),
+          parseUnits(size.toString(), baseCurrency.decimals),
+          true,
+        ),
+        hookData: zeroHash,
+        isBid: true,
+        isETH: isAddressEqual(baseCurrency.address, zeroAddress),
+      }),
+    )
+    const askMakeParams: MakeParam[] = Object.entries(targetOrders[ASK]).map(
+      ([tick, size]) => ({
+        id: this.clober.bookIds[market][ASK],
+        tick: Number(tick),
+        quoteAmount: parseUnits(size.toString(), baseCurrency.decimals),
+        hookData: zeroHash,
+        isBid: false,
+        isETH: isAddressEqual(baseCurrency.address, zeroAddress),
+      }),
+    )
+
     // TODO: build 1 tx
     console.log({ orderIdsToClaim, orderIdsToCancel })
-    console.log({ targetOrders })
+    console.log({ bidMakeParams, askMakeParams })
+  }
+
+  async execute(
+    orderIdsToClaim: string[],
+    orderIdsToCancel: string[],
+    bidMakeParams: MakeParam[],
+    askMakeParams: MakeParam[],
+  ): Promise<void> {
+    // const { result } = await this.publicClient.simulateContract({
+    //   address: CONTROLLER_ADDRESS[this.chainId]!,
+    //   abi: CONTROLLER_ABI,
+    //   account: this.userAddress,
+    //   functionName: 'execute',
+    //   args: [
+    //     [
+    //       ...(orderIdsToClaim.length > 0 ? [Action.CLAIM] : []),
+    //       ...(orderIdsToCancel.length > 0 ? [Action.CANCEL] : []),
+    //       ...(targetOrders.length > 0 ? [Action.MAKE] : []),
+    //     ],
+    //     [
+    //       ...(orderIdsToClaim.length > 0 ? [Action.CLAIM] : []),
+    //       ...(orderIdsToCancel.length > 0 ? [Action.CANCEL] : []),
+    //       ...(targetOrders.length > 0
+    //         ? [
+    //             // encodeAbiParameters(MAKE_ORDER_PARAMS_ABI, [
+    //             //   {
+    //             //     ...makeParam,
+    //             //     quoteAmount: makeAmount,
+    //             //   },
+    //             // ]),
+    //           ]
+    //         : []),
+    //     ],
+    //     this.erc20Tokens,
+    //     [],
+    //     [],
+    //     getDeadlineTimestampInSeconds(),
+    //   ],
+    //   value: isETH ? quoteAmount : 0n,
+    // })
   }
 
   async sleep(ms: number) {
     return new Promise((resolve) => setTimeout(resolve, ms))
-  }
-
-  async cancelOrders(ids: string[]) {
-    if (ids.length > 0) {
-      const { transaction } = await cancelOrders({
-        chainId: this.chainId,
-        userAddress: this.userAddress,
-        ids,
-      })
-      const gasPrice = await getGasPrice(
-        this.publicClient,
-        this.config.gasMultiplier,
-      )
-      const hash = await this.walletClient.sendTransaction({
-        ...transaction,
-        gasPrice,
-        account: this.userAddress,
-        chain: CHAIN_MAP[this.chainId],
-      })
-      await waitTransaction(
-        'Cancel Orders',
-        {
-          ids,
-        },
-        this.publicClient,
-        hash,
-      )
-    }
-  }
-
-  async claimOrders(ids: string[]) {
-    if (ids.length > 0) {
-      const { transaction } = await claimOrders({
-        chainId: this.chainId,
-        userAddress: this.userAddress,
-        ids,
-      })
-      const gasPrice = await getGasPrice(
-        this.publicClient,
-        this.config.gasMultiplier,
-      )
-      const hash = await this.walletClient.sendTransaction({
-        ...transaction,
-        gasPrice,
-        account: this.userAddress,
-        chain: CHAIN_MAP[this.chainId],
-      })
-      await waitTransaction(
-        'Claim Orders',
-        {
-          ids,
-        },
-        this.publicClient,
-        hash,
-      )
-    }
   }
 }

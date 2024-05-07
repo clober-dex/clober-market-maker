@@ -15,6 +15,7 @@ import type { Market } from './market.ts'
 export class Clober implements Exchange {
   markets: { [id: string]: Market }
   orderBooks: { [id: string]: OrderBook } = {}
+  bookIds: { [id: string]: [string, string] } = {}
 
   chainId: CHAIN_IDS
   publicClient: PublicClient
@@ -40,7 +41,8 @@ export class Clober implements Exchange {
           chainId: this.chainId,
           token0: getAddress(findCurrency(this.chainId, quote).address),
           token1: getAddress(findCurrency(this.chainId, base).address),
-        }).then(({ bids, asks }) => {
+        }).then(({ bids, asks, bidBook, askBook }) => {
+          this.bookIds[id] = [bidBook.id, askBook.id]
           this.orderBooks[id] = <OrderBook>{
             bids: bids
               .sort((a, b) => +b.price - +a.price)
