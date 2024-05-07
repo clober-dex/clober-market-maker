@@ -11,11 +11,13 @@ import {
   baseToQuote,
   type OpenOrder,
   setApprovalOfOpenOrdersForAll,
+  getPrice,
 } from '@clober/v2-sdk'
 import type { PublicClient, WalletClient } from 'viem'
 import {
   createPublicClient,
   createWalletClient,
+  encodeAbiParameters,
   formatUnits,
   getAddress,
   http,
@@ -33,7 +35,16 @@ import { logger } from '../utils/logger.ts'
 import { CHAIN_MAP } from '../constants/chain.ts'
 import { ERC20_PERMIT_ABI } from '../abis/@openzeppelin/erc20-permit-abi.ts'
 import { findCurrency } from '../utils/currency.ts'
-import { waitTransaction } from '../utils/transaction.ts'
+import { getGasPrice, waitTransaction } from '../utils/transaction.ts'
+import { getDeadlineTimestampInSeconds } from '../utils/time.ts'
+import { Action } from '../constants/action.ts'
+import {
+  CANCEL_ORDER_PARAMS_ABI,
+  CLAIM_ORDER_PARAMS_ABI,
+  MAKE_ORDER_PARAMS_ABI,
+} from '../abis/core/params-abi.ts'
+import { CONTROLLER_ADDRESS } from '../constants/addresses.ts'
+import { CONTROLLER_ABI } from '../abis/core/controller-abi.ts'
 
 import { Binance } from './binance.ts'
 import { Clober } from './clober.ts'
@@ -245,11 +256,15 @@ export class CloberMarketMaker {
         console.error('Error in update', e)
       }
 
-      const marketMakerTasks: Promise<void>[] = []
-      for (const [market, { params }] of Object.entries(this.config.markets)) {
-        marketMakerTasks.push(this.marketMaking(market, params))
+      try {
+        await Promise.all(
+          Object.entries(this.config.markets).map(([market, { params }]) =>
+            this.marketMaking(market, params),
+          ),
+        )
+      } catch (e) {
+        console.error('Error in market making', e)
       }
-      await Promise.all(marketMakerTasks)
 
       await this.sleep(this.config.fetchIntervalMilliSeconds)
     }
@@ -279,13 +294,17 @@ export class CloberMarketMaker {
     }
 
     const [base, quote] = market.split('/')
+    const quoteCurrency = findCurrency(this.chainId, quote)
     const baseCurrency = findCurrency(this.chainId, base)
     const openOrders = this.openOrders.filter(
       (order) =>
-        (order.inputCurrency.symbol === base &&
-          order.outputCurrency.symbol === quote) ||
-        (order.inputCurrency.symbol === quote &&
-          order.outputCurrency.symbol === base),
+        (isAddressEqual(order.inputCurrency.address, baseCurrency.address) &&
+          isAddressEqual(
+            order.outputCurrency.address,
+            quoteCurrency.address,
+          )) ||
+        (isAddressEqual(order.inputCurrency.address, quoteCurrency.address) &&
+          isAddressEqual(order.outputCurrency.address, baseCurrency.address)),
     )
     const free = new BigNumber(
       formatUnits(
@@ -302,7 +321,7 @@ export class CloberMarketMaker {
       new BigNumber(0),
     )
     const total = free.plus(claimable).plus(cancelable)
-    logger(chalk.bgYellow, 'Market making', {
+    logger(chalk.bgYellow, 'Base Balance', {
       market,
       free: free.toString(),
       claimable: claimable.toString(),
@@ -423,10 +442,36 @@ export class CloberMarketMaker {
         )
       }
     }
+    console.log({
+      targetOrders: {
+        ask: Object.keys(targetOrders[ASK]).map((tick) => [
+          Number(
+            getPrice({
+              chainId: this.chainId,
+              inputCurrency: findCurrency(this.chainId, base),
+              outputCurrency: findCurrency(this.chainId, quote),
+              tick: BigInt(tick),
+            }),
+          ),
+          targetOrders[ASK][Number(tick)],
+        ]),
+        bid: Object.keys(targetOrders[BID]).map((tick) => [
+          Number(
+            getPrice({
+              chainId: this.chainId,
+              inputCurrency: findCurrency(this.chainId, quote),
+              outputCurrency: findCurrency(this.chainId, base),
+              tick: BigInt(tick),
+            }),
+          ),
+          targetOrders[BID][Number(tick)],
+        ]),
+      },
+    })
 
     const bidMakeParams: MakeParam[] = Object.entries(targetOrders[BID]).map(
       ([tick, size]) => ({
-        id: this.clober.bookIds[market][BID],
+        id: BigInt(this.clober.bookIds[market][BID]),
         tick: Number(tick),
         quoteAmount: baseToQuote(
           BigInt(tick),
@@ -440,7 +485,7 @@ export class CloberMarketMaker {
     )
     const askMakeParams: MakeParam[] = Object.entries(targetOrders[ASK]).map(
       ([tick, size]) => ({
-        id: this.clober.bookIds[market][ASK],
+        id: BigInt(this.clober.bookIds[market][ASK]),
         tick: Number(tick),
         quoteAmount: parseUnits(size.toString(), baseCurrency.decimals),
         hookData: zeroHash,
@@ -449,9 +494,19 @@ export class CloberMarketMaker {
       }),
     )
 
-    // TODO: build 1 tx
-    console.log({ orderIdsToClaim, orderIdsToCancel })
-    console.log({ bidMakeParams, askMakeParams })
+    logger(chalk.bgYellow, 'Market making', {
+      market,
+      orderIdsToClaim,
+      orderIdsToCancel,
+      targetOrders,
+    })
+
+    await this.execute(
+      orderIdsToClaim,
+      orderIdsToCancel,
+      bidMakeParams,
+      askMakeParams,
+    )
   }
 
   async execute(
@@ -460,38 +515,73 @@ export class CloberMarketMaker {
     bidMakeParams: MakeParam[],
     askMakeParams: MakeParam[],
   ): Promise<void> {
-    // const { result } = await this.publicClient.simulateContract({
-    //   address: CONTROLLER_ADDRESS[this.chainId]!,
-    //   abi: CONTROLLER_ABI,
-    //   account: this.userAddress,
-    //   functionName: 'execute',
-    //   args: [
-    //     [
-    //       ...(orderIdsToClaim.length > 0 ? [Action.CLAIM] : []),
-    //       ...(orderIdsToCancel.length > 0 ? [Action.CANCEL] : []),
-    //       ...(targetOrders.length > 0 ? [Action.MAKE] : []),
-    //     ],
-    //     [
-    //       ...(orderIdsToClaim.length > 0 ? [Action.CLAIM] : []),
-    //       ...(orderIdsToCancel.length > 0 ? [Action.CANCEL] : []),
-    //       ...(targetOrders.length > 0
-    //         ? [
-    //             // encodeAbiParameters(MAKE_ORDER_PARAMS_ABI, [
-    //             //   {
-    //             //     ...makeParam,
-    //             //     quoteAmount: makeAmount,
-    //             //   },
-    //             // ]),
-    //           ]
-    //         : []),
-    //     ],
-    //     this.erc20Tokens,
-    //     [],
-    //     [],
-    //     getDeadlineTimestampInSeconds(),
-    //   ],
-    //   value: isETH ? quoteAmount : 0n,
-    // })
+    if (
+      [
+        ...orderIdsToClaim,
+        ...orderIdsToCancel,
+        ...bidMakeParams,
+        ...askMakeParams,
+      ].length === 0
+    ) {
+      return
+    }
+
+    const gasPrice = await getGasPrice(
+      this.publicClient,
+      this.config.gasMultiplier,
+    )
+    const { request } = await this.publicClient.simulateContract({
+      chain: CHAIN_MAP[this.chainId],
+      address: CONTROLLER_ADDRESS[this.chainId]!,
+      abi: CONTROLLER_ABI,
+      account: this.walletClient.account,
+      functionName: 'execute',
+      args: [
+        [
+          ...orderIdsToClaim.map(() => Action.CLAIM),
+          ...orderIdsToCancel.map(() => Action.CANCEL),
+          ...[...bidMakeParams, ...askMakeParams].map(() => Action.MAKE),
+        ],
+        [
+          ...orderIdsToClaim.map((id) =>
+            encodeAbiParameters(CLAIM_ORDER_PARAMS_ABI, [
+              { id, hookData: zeroHash },
+            ]),
+          ),
+          ...orderIdsToCancel.map((id) =>
+            encodeAbiParameters(CANCEL_ORDER_PARAMS_ABI, [
+              { id, leftQuoteAmount: 0n, hookData: zeroHash },
+            ]),
+          ),
+          ...[...bidMakeParams, ...askMakeParams].map(
+            ({ id, hookData, tick, quoteAmount }) =>
+              encodeAbiParameters(MAKE_ORDER_PARAMS_ABI, [
+                { id, tick, hookData, quoteAmount },
+              ]),
+          ),
+        ],
+        this.erc20Tokens,
+        [],
+        [],
+        getDeadlineTimestampInSeconds(),
+      ],
+      value: [...bidMakeParams, ...askMakeParams]
+        .filter((p) => p.isETH)
+        .reduce((acc: bigint, { quoteAmount }) => acc + quoteAmount, 0n),
+      gasPrice,
+    })
+    const hash = await this.walletClient.writeContract(request)
+    await waitTransaction(
+      'Execute Orders',
+      {
+        claimed: orderIdsToClaim.length,
+        canceled: orderIdsToCancel.length,
+        bid: bidMakeParams.length,
+        ask: askMakeParams.length,
+      },
+      this.publicClient,
+      hash,
+    )
   }
 
   async sleep(ms: number) {
