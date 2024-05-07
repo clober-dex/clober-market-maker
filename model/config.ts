@@ -1,15 +1,12 @@
+import type { Market } from './market.ts'
+
 export type Config = {
   fetchIntervalMilliSeconds: number
   gasMultiplier: number
   markets: {
     [id: string]: {
-      binance: {
-        symbol: string
-      }
-      clober: {
-        quote: string
-        base: string
-      }
+      binance: Market
+      clober: Market
       params: {
         defaultBaseBalance: number
         deltaLimit: number

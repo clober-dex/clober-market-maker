@@ -3,7 +3,8 @@ gasMultiplier: 1.1
 markets:
   ETH/USDC:
     binance:
-      symbol: ETHUSDT
+      quote: USDT
+      base: ETH
     clober:
       quote: USDC
       base: ETH

@@ -1,10 +1,9 @@
 import { type OrderBook } from './order-book.ts'
+import type { Market } from './market.ts'
 
 export interface Exchange {
-  markets: { [id: string]: any }
+  markets: { [id: string]: Market }
   orderBooks: { [id: string]: OrderBook }
-
-  init(): Promise<void>
 
   update(): Promise<void>
 }

@@ -5,11 +5,7 @@ import { logger } from '../utils/logger.ts'
 
 import type { OrderBook } from './order-book.ts'
 import type { Exchange } from './exchange.ts'
-
-type Market = {
-  symbol: string
-  reversed: boolean
-}
+import type { Market } from './market.ts'
 
 export class Binance implements Exchange {
   markets: { [id: string]: Market }
@@ -17,31 +13,19 @@ export class Binance implements Exchange {
 
   public api: binance
 
-  constructor(markets: {
-    [id: string]: {
-      symbol: string
-    }
-  }) {
+  constructor(markets: { [id: string]: Market }) {
     this.api = new ccxt.binance({
       enableRateLimit: true,
     })
-    this.markets = Object.fromEntries(
-      Object.entries(markets).map(([id, market]) => [
-        id,
-        {
-          symbol: market.symbol,
-          reversed: false,
-        },
-      ]),
-    )
+    this.markets = markets
   }
 
   async update() {
     const fetchQueue: Promise<void>[] = []
     const start = performance.now()
-    for (const [id, market] of Object.entries(this.markets)) {
+    for (const [id, { quote, base }] of Object.entries(this.markets)) {
       fetchQueue.push(
-        this.api.watchOrderBook(market.symbol).then((data) => {
+        this.api.watchOrderBook(`${base}/${quote}`).then((data) => {
           this.orderBooks[id] = <OrderBook>data
         }),
       )
@@ -49,13 +33,9 @@ export class Binance implements Exchange {
     await Promise.all(fetchQueue)
     const end = performance.now()
 
-    logger(chalk.blue, 'Binance updated', {
+    logger(chalk.blue, 'Binance orderbook updated', {
       second: (end - start) / 1000,
       markets: Object.keys(this.markets),
     })
-  }
-
-  init(): Promise<void> {
-    return Promise.resolve(undefined)
   }
 }
