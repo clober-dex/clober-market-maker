@@ -1,5 +1,6 @@
 import { binance, pro as ccxt } from 'ccxt'
 import chalk from 'chalk'
+import BigNumber from 'bignumber.js'
 
 import { logger } from '../utils/logger.ts'
 
@@ -36,6 +37,25 @@ export class Binance implements Exchange {
     logger(chalk.blue, 'Binance orderbook updated', {
       second: (end - start) / 1000,
       markets: Object.keys(this.markets),
+      prices: Object.entries(this.markets).map(([id]) => ({
+        id,
+        highestBid: this.highestBid(id),
+        price: this.price(id).toString(),
+        lowestAsk: this.lowestAsk(id),
+      })),
     })
+  }
+
+  price(id: string): BigNumber {
+    const orderBook = this.orderBooks[id]
+    return new BigNumber(orderBook.bids[0][0]).plus(orderBook.asks[0][0]).div(2)
+  }
+
+  highestBid(id: string): number {
+    return this.orderBooks[id].bids[0][0]
+  }
+
+  lowestAsk(id: string): number {
+    return this.orderBooks[id].asks[0][0]
   }
 }

@@ -2,6 +2,7 @@ import { createPublicClient, getAddress, http, type PublicClient } from 'viem'
 import { CHAIN_IDS, getMarket } from '@clober/v2-sdk'
 import { eip712WalletActions } from 'viem/zksync'
 import chalk from 'chalk'
+import BigNumber from 'bignumber.js'
 
 import { CHAIN_MAP } from '../constants/chain.ts'
 import { logger } from '../utils/logger.ts'
@@ -41,8 +42,12 @@ export class Clober implements Exchange {
           token1: getAddress(findCurrency(this.chainId, base).address),
         }).then(({ bids, asks }) => {
           this.orderBooks[id] = <OrderBook>{
-            bids: bids.map((bid) => [+bid.price, +bid.baseAmount]),
-            asks: asks.map((ask) => [+ask.price, +ask.baseAmount]),
+            bids: bids
+              .sort((a, b) => +b.price - +a.price)
+              .map((bid) => [+bid.price, +bid.baseAmount]),
+            asks: asks
+              .sort((a, b) => +a.price - +b.price)
+              .map((ask) => [+ask.price, +ask.baseAmount]),
           }
         }),
       )
@@ -54,6 +59,39 @@ export class Clober implements Exchange {
     logger(chalk.yellow, 'Clober orderbook updated', {
       second: (end - start) / 1000,
       markets: Object.keys(this.markets),
+      prices: Object.entries(this.markets).map(([id]) => ({
+        id,
+        highestBid: this.highestBid(id),
+        price: this.price(id).toString(),
+        lowestAsk: this.lowestAsk(id),
+      })),
     })
+  }
+
+  price(id: string): BigNumber {
+    const orderBook = this.orderBooks[id]
+    if (this.highestBid(id) === 0 && this.lowestAsk(id) === 0) {
+      return new BigNumber(0)
+    } else if (this.highestBid(id) === 0) {
+      return new BigNumber(this.lowestAsk(id))
+    } else if (this.lowestAsk(id) === 0) {
+      return new BigNumber(this.highestBid(id))
+    } else {
+      return new BigNumber(orderBook.bids[0][0] || 0)
+        .plus(orderBook.asks[0][0] || 0)
+        .div(2)
+    }
+  }
+
+  highestBid(id: string): number {
+    return this.orderBooks[id].bids.length === 0
+      ? 0
+      : this.orderBooks[id].bids[0][0]
+  }
+
+  lowestAsk(id: string): number {
+    return this.orderBooks[id].asks.length === 0
+      ? 0
+      : this.orderBooks[id].asks[0][0]
   }
 }
