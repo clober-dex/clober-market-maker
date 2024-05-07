@@ -1,0 +1,18 @@
+fetchIntervalMilliSeconds: 1000
+gasMultiplier: 1.1
+markets:
+  ETH/USDC:
+    binance:
+      symbol: ETHUSDT
+    clober:
+      quote: USDC
+      base: ETH
+    params:
+      defaultBaseBalance: 10000
+      deltaLimit: 3000
+      minSpread: 1
+      maxSpread: 10
+      orderGap: 1
+      orderNum: 5
+      orderSize: 1000
+      minOrderSize: 500
