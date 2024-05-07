@@ -41,6 +41,8 @@ const ASK = 1
 
 export class CloberMarketMaker {
   private initialized = false
+
+  // immutable state
   chainId: CHAIN_IDS
   userAddress: `0x${string}`
   publicClient: PublicClient
@@ -52,7 +54,7 @@ export class CloberMarketMaker {
   binance: Binance
   clober: Clober
 
-  // variables state
+  // mutable state
   openOrders: OpenOrder[] = []
   balances: { [address: `0x${string}`]: bigint } = {}
 
@@ -188,7 +190,7 @@ export class CloberMarketMaker {
                 [getAddress(address)]: result ?? 0n,
               }
             },
-            {} as { [address: `0x${string}`]: bigint },
+            this.balances,
           )
         }),
     )
@@ -267,6 +269,7 @@ export class CloberMarketMaker {
     }
 
     const [base, quote] = market.split('/')
+    const baseCurrency = findCurrency(this.chainId, base)
     const openOrders = this.openOrders.filter(
       (order) =>
         (order.inputCurrency.symbol === base &&
@@ -274,10 +277,31 @@ export class CloberMarketMaker {
         (order.inputCurrency.symbol === quote &&
           order.outputCurrency.symbol === base),
     )
+    const free = new BigNumber(
+      formatUnits(
+        this.balances[getAddress(baseCurrency.address)],
+        baseCurrency.decimals,
+      ),
+    )
+    const claimable = openOrders.reduce(
+      (acc, order) => acc.plus(order.claimable.value),
+      new BigNumber(0),
+    )
+    const cancelable = openOrders.reduce(
+      (acc, order) => acc.plus(order.cancelable.value),
+      new BigNumber(0),
+    )
+    const total = free.plus(claimable).plus(cancelable)
+    logger(chalk.bgYellow, 'Market making', {
+      market,
+      free: free.toString(),
+      claimable: claimable.toString(),
+      cancelable: cancelable.toString(),
+      total: total.toString(),
+    })
 
     // 1. calculate skew (sum of amount of open orders - defaultBaseBalance) / deltaLimit
-    let skew = openOrders
-      .reduce((acc, order) => acc.plus(order.amount.value), new BigNumber(0))
+    let skew = total
       .minus(params.defaultBaseBalance)
       .div(params.deltaLimit)
       .toNumber()
