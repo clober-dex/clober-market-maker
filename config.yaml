@@ -11,8 +11,8 @@ markets:
     params:
       defaultBaseBalance: 10
       deltaLimit: 3
-      minTickSpread: 10
-      maxTickSpread: 100
+      minTickSpread: 3
+      maxTickSpread: 10
       orderGap: 1
       orderNum: 5
       orderSize: 1
