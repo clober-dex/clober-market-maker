@@ -5,9 +5,9 @@ import _ from 'lodash'
 import * as yaml from 'yaml'
 import {
   approveERC20,
+  baseToQuote,
   CHAIN_IDS,
   getOpenOrders,
-  baseToQuote,
   type OpenOrder,
   setApprovalOfOpenOrdersForAll,
 } from '@clober/v2-sdk'
@@ -57,8 +57,6 @@ const BID = 0
 const ASK = 1
 
 export class CloberMarketMaker {
-  private initialized = false
-
   // immutable state
   chainId: CHAIN_IDS
   userAddress: `0x${string}`
@@ -66,14 +64,13 @@ export class CloberMarketMaker {
   walletClient: WalletClient
   config: Config
   erc20Tokens: `0x${string}`[] = []
-
   // define exchanges
   binance: Binance
   clober: Clober
-
   // mutable state
   openOrders: OpenOrder[] = []
   balances: { [address: `0x${string}`]: bigint } = {}
+  private initialized = false
 
   constructor(configPath?: string) {
     configPath = configPath ?? path.join(__dirname, '../config.yaml')
@@ -297,22 +294,6 @@ export class CloberMarketMaker {
       this.clober.highestBid(market),
       this.binance.price(market),
     ]
-    // Skip when the oracle price is in the spread
-    if (
-      lowestAsk &&
-      highestBid &&
-      oraclePrice.isGreaterThan(highestBid) &&
-      oraclePrice.isLessThan(lowestAsk)
-      // highestBid < oraclePrice && oraclePrice < lowestAsk
-    ) {
-      await logger(chalk.red, 'Skip making orders', {
-        market,
-        lowestAsk: lowestAsk.toString(),
-        oraclePrice: oraclePrice.toString(),
-        highestBid: highestBid.toString(),
-      })
-      return
-    }
 
     const [base, quote] = market.split('/')
     const quoteCurrency = findCurrencyBySymbol(this.chainId, quote)
@@ -417,6 +398,37 @@ export class CloberMarketMaker {
     for (let i = 0; i < params.orderNum; i++) {
       const tick = bidBookTick - BigInt(bidSpread - params.orderGap * i)
       targetOrders[BID][Number(tick)] = bidSize
+    }
+
+    const { bidBookTick: lowestAskBidBookTick } = getBookTicks({
+      marketQuoteCurrency: findCurrencyBySymbol(this.chainId, quote),
+      marketBaseCurrency: findCurrencyBySymbol(this.chainId, base),
+      price: lowestAsk.toString(),
+    })
+    const { bidBookTick: highestBidBidBookTick } = getBookTicks({
+      marketQuoteCurrency: findCurrencyBySymbol(this.chainId, quote),
+      marketBaseCurrency: findCurrencyBySymbol(this.chainId, base),
+      price: highestBid.toString(),
+    })
+
+    // Skip when the oracle price is in the spread
+    if (
+      lowestAsk &&
+      highestBid &&
+      oraclePrice.isGreaterThan(highestBid) &&
+      oraclePrice.isLessThan(lowestAsk) &&
+      lowestAskBidBookTick - highestBidBidBookTick <=
+        params.maxTickSpread + params.minTickSpread
+      // highestBid < oraclePrice && oraclePrice < lowestAsk &&
+      // lowestAskBidBookTick - highestBidBidBookTick <= params.maxTickSpread + params.minTickSpread
+    ) {
+      await logger(chalk.red, 'Skip making orders', {
+        market,
+        lowestAsk: lowestAsk.toString(),
+        oraclePrice: oraclePrice.toString(),
+        highestBid: highestBid.toString(),
+      })
+      return
     }
 
     // 4. calculate orders to cancel & claim
