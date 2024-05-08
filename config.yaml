@@ -1,4 +1,4 @@
-fetchIntervalMilliSeconds: 1000
+fetchIntervalMilliSeconds: 10000
 gasMultiplier: 1.1
 markets:
   ETH/USDC:

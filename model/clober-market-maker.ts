@@ -313,11 +313,13 @@ export class CloberMarketMaker {
       ),
     )
     const claimable = openOrders.reduce(
-      (acc, order) => acc.plus(order.claimable.value),
+      (acc, order) =>
+        order.isBid ? acc.plus(0) : acc.plus(order.claimable.value),
       new BigNumber(0),
     )
     const cancelable = openOrders.reduce(
-      (acc, order) => acc.plus(order.cancelable.value),
+      (acc, order) =>
+        order.isBid ? acc.plus(0) : acc.plus(order.cancelable.value),
       new BigNumber(0),
     )
     const total = free.plus(claimable).plus(cancelable)
