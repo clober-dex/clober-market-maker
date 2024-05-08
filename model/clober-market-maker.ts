@@ -446,10 +446,7 @@ export class CloberMarketMaker {
           ) {
             const order = currentOpenOrders[side][+id][cancelIndex]
             const openAmount = Number(order.cancelable.value) // without rebate
-            if (order.amount.value === order.filled.value) {
-              // fully filled
-              orderIdsToClaim.push(order.id)
-            } else if (
+            if (
               Math.abs(openAmount) >=
               Math.abs(targetOrders[side][+id]) + params.minOrderSize
             ) {
@@ -463,9 +460,16 @@ export class CloberMarketMaker {
             delete targetOrders[side][+id]
           }
         }
+        orderIdsToClaim.push(
+          ...currentOpenOrders[side][+id]
+            .filter((order) => order.amount.value === order.filled.value)
+            .map((order) => order.id),
+        )
         orderIdsToCancel.push(
           ..._.map(
-            currentOpenOrders[side][+id].slice(cancelIndex),
+            currentOpenOrders[side][+id]
+              .slice(cancelIndex)
+              .filter((order) => orderIdsToClaim.indexOf(order.id) === -1),
             (order) => order.id,
           ),
         )
