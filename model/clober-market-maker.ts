@@ -31,10 +31,13 @@ import { privateKeyToAccount } from 'viem/accounts'
 import { eip712WalletActions } from 'viem/zksync'
 import BigNumber from 'bignumber.js'
 
-import { logger } from '../utils/logger.ts'
+import { logger, slackClient } from '../utils/logger.ts'
 import { CHAIN_MAP } from '../constants/chain.ts'
 import { ERC20_PERMIT_ABI } from '../abis/@openzeppelin/erc20-permit-abi.ts'
-import { findCurrencyBySymbol } from '../utils/currency.ts'
+import {
+  findCurrencyByAddress,
+  findCurrencyBySymbol,
+} from '../utils/currency.ts'
 import { getGasPrice, waitTransaction } from '../utils/transaction.ts'
 import { getDeadlineTimestampInSeconds } from '../utils/time.ts'
 import { Action } from '../constants/action.ts'
@@ -64,7 +67,6 @@ export class CloberMarketMaker {
   walletClient: WalletClient
   config: Config
   erc20Tokens: `0x${string}`[] = []
-  bookIds: { [market: string]: [string, string] } = {}
 
   // define exchanges
   binance: Binance
@@ -233,12 +235,15 @@ export class CloberMarketMaker {
     await Promise.all(fetchQueue)
     const end = performance.now()
 
-    logger(chalk.magenta, 'market maker updated', {
-      second: (end - start) / 1000,
+    await logger(chalk.magenta, 'market maker updated', {
+      second: ((end - start) / 1000).toFixed(2),
       openOrders: this.openOrders.length,
       balance: Object.entries(this.balances).map(([address, balance]) => ({
         address,
-        balance: balance.toString(),
+        balance: formatUnits(
+          balance,
+          findCurrencyByAddress(this.chainId, getAddress(address)).decimals,
+        ),
       })),
     })
   }
@@ -258,6 +263,11 @@ export class CloberMarketMaker {
         ])
       } catch (e) {
         console.error('Error in update', e)
+        if (slackClient) {
+          slackClient
+            .error({ message: 'Error in update', error: e })
+            .catch(() => {})
+        }
       }
 
       try {
@@ -268,6 +278,14 @@ export class CloberMarketMaker {
         )
       } catch (e) {
         console.error('Error in market making', e)
+        if (slackClient) {
+          slackClient
+            .error({
+              message: 'Error in market making',
+              error: e,
+            })
+            .catch(() => {})
+        }
       }
 
       await this.sleep(this.config.fetchIntervalMilliSeconds)
@@ -288,11 +306,11 @@ export class CloberMarketMaker {
       oraclePrice.isLessThan(lowestAsk)
       // highestBid < oraclePrice && oraclePrice < lowestAsk
     ) {
-      logger(chalk.red, 'Skip making orders', {
+      await logger(chalk.red, 'Skip making orders', {
         market,
         lowestAsk: lowestAsk.toString(),
-        highestBid: highestBid.toString(),
         oraclePrice: oraclePrice.toString(),
+        highestBid: highestBid.toString(),
       })
       return
     }
@@ -327,7 +345,7 @@ export class CloberMarketMaker {
       new BigNumber(0),
     )
     const total = free.plus(claimable).plus(cancelable)
-    logger(chalk.bgYellow, 'Base Balance', {
+    await logger(chalk.bgYellow, 'Base Balance', {
       market,
       free: free.toString(),
       claimable: claimable.toString(),
@@ -448,7 +466,7 @@ export class CloberMarketMaker {
         )
       }
     }
-    console.log({
+    await logger(chalk.bgYellow, 'Try to market making', {
       targetOrders: {
         ask: Object.keys(targetOrders[ASK])
           .map((tick) => [
@@ -504,7 +522,7 @@ export class CloberMarketMaker {
       }),
     )
 
-    logger(chalk.bgYellow, 'Market making', {
+    await logger(chalk.bgYellow, 'Market making', {
       market,
       orderIdsToClaim,
       orderIdsToCancel,

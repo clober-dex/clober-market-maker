@@ -58,8 +58,8 @@ export class Clober implements Exchange {
     await Promise.all(fetchQueue)
     const end = performance.now()
 
-    logger(chalk.yellow, 'Clober orderbook updated', {
-      second: (end - start) / 1000,
+    await logger(chalk.yellow, 'Clober orderbook updated', {
+      second: ((end - start) / 1000).toFixed(2),
       markets: Object.keys(this.markets),
       prices: Object.entries(this.markets).map(([id]) => ({
         id,

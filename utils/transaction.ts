@@ -14,12 +14,12 @@ export const waitTransaction = async (
     await publicClient.waitForTransactionReceipt({
       hash,
     })
-    logger(chalk.green, `Success ${message}`, {
+    await logger(chalk.green, `Success ${message}`, {
       ...value,
       hash,
     })
   } else {
-    logger(chalk.red, `Skip ${message}`, {
+    await logger(chalk.red, `Skip ${message}`, {
       ...value,
       hash,
     })

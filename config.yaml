@@ -14,6 +14,6 @@ markets:
       minTickSpread: 1
       maxTickSpread: 10
       orderGap: 1
-      orderNum: 5
+      orderNum: 1
       orderSize: 1
       minOrderSize: 0.5
