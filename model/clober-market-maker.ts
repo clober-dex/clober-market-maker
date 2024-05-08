@@ -351,11 +351,11 @@ export class CloberMarketMaker {
     if base balance = default - deltaLimit (skew = -1) => ask spread = max, bid spread = min
     */
     const askSpread = Math.round(
-      (params.maxSpread - params.minSpread) * 0.5 * (skew + 1) +
-        params.minSpread,
+      (params.maxTickSpread - params.minTickSpread) * 0.5 * (skew + 1) +
+        params.minTickSpread,
     )
     const bidSpread = Math.round(
-      params.maxSpread + params.minSpread - askSpread,
+      params.maxTickSpread + params.minTickSpread - askSpread,
     )
 
     const askSize = params.orderSize * Math.min(skew + 1, 1)
@@ -544,7 +544,7 @@ export class CloberMarketMaker {
       chain: CHAIN_MAP[this.chainId],
       address: CONTROLLER_ADDRESS[this.chainId]!,
       abi: CONTROLLER_ABI,
-      account: this.walletClient.account,
+      account: this.walletClient.account!,
       functionName: 'execute',
       args: [
         [
