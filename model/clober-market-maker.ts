@@ -325,7 +325,7 @@ export class CloberMarketMaker {
       new BigNumber(0),
     )
     const total = free.plus(claimable).plus(cancelable)
-    await logger(chalk.bgYellow, 'Base Balance', {
+    await logger(chalk.redBright, 'Base Balance', {
       market,
       free: free.toString(),
       claimable: claimable.toString(),
@@ -470,7 +470,7 @@ export class CloberMarketMaker {
         )
       }
     }
-    await logger(chalk.bgYellow, 'Try to market making', {
+    await logger(chalk.redBright, 'Try to market making', {
       targetOrders: {
         ask: Object.keys(targetOrders[ASK])
           .map((tick) => [
@@ -524,7 +524,7 @@ export class CloberMarketMaker {
       }),
     )
 
-    await logger(chalk.bgYellow, 'Market making', {
+    await logger(chalk.redBright, 'Market making', {
       market,
       orderIdsToClaim,
       orderIdsToCancel,
