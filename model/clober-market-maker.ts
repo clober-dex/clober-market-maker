@@ -515,7 +515,7 @@ export class CloberMarketMaker {
         ),
         hookData: zeroHash,
         isBid: true,
-        isETH: isAddressEqual(baseCurrency.address, zeroAddress),
+        isETH: isAddressEqual(quoteCurrency.address, zeroAddress),
       }),
     )
     const askMakeParams: MakeParam[] = Object.entries(targetOrders[ASK]).map(
