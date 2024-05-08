@@ -7,11 +7,9 @@ import {
   approveERC20,
   CHAIN_IDS,
   getOpenOrders,
-  getTick,
   baseToQuote,
   type OpenOrder,
   setApprovalOfOpenOrdersForAll,
-  getPrice,
 } from '@clober/v2-sdk'
 import type { PublicClient, WalletClient } from 'viem'
 import {
@@ -48,6 +46,7 @@ import {
 } from '../abis/core/params-abi.ts'
 import { CONTROLLER_ADDRESS } from '../constants/addresses.ts'
 import { CONTROLLER_ABI } from '../abis/core/controller-abi.ts'
+import { getBookTicks, getMarketPrice } from '../utils/tick.ts'
 
 import { Binance } from './binance.ts'
 import { Clober } from './clober.ts'
@@ -402,28 +401,21 @@ export class CloberMarketMaker {
     }
 
     // 3. calculate target orders
+    const { bidBookTick, askBookTick } = getBookTicks({
+      marketQuoteCurrency: findCurrencyBySymbol(this.chainId, quote),
+      marketBaseCurrency: findCurrencyBySymbol(this.chainId, base),
+      price: oraclePrice.toString(),
+    })
     const targetOrders: [
       { [tick: number]: number },
       { [tick: number]: number },
     ] = [{}, {}]
     for (let i = 0; i < params.orderNum; i++) {
-      const oracleTick = getTick({
-        chainId: this.chainId,
-        inputCurrency: findCurrencyBySymbol(this.chainId, base),
-        outputCurrency: findCurrencyBySymbol(this.chainId, quote),
-        price: oraclePrice.toString(),
-      })
-      const tick = oracleTick - BigInt(askSpread - params.orderGap * i)
+      const tick = askBookTick - BigInt(askSpread - params.orderGap * i)
       targetOrders[ASK][Number(tick)] = askSize
     }
     for (let i = 0; i < params.orderNum; i++) {
-      const oracleTick = getTick({
-        chainId: this.chainId,
-        inputCurrency: findCurrencyBySymbol(this.chainId, quote),
-        outputCurrency: findCurrencyBySymbol(this.chainId, base),
-        price: oraclePrice.toString(),
-      })
-      const tick = oracleTick - BigInt(bidSpread - params.orderGap * i)
+      const tick = bidBookTick - BigInt(bidSpread - params.orderGap * i)
       targetOrders[BID][Number(tick)] = bidSize
     }
 
@@ -471,11 +463,10 @@ export class CloberMarketMaker {
         ask: Object.keys(targetOrders[ASK])
           .map((tick) => [
             Number(
-              getPrice({
-                chainId: this.chainId,
-                inputCurrency: findCurrencyBySymbol(this.chainId, base),
-                outputCurrency: findCurrencyBySymbol(this.chainId, quote),
-                tick: BigInt(tick),
+              getMarketPrice({
+                marketQuoteCurrency: findCurrencyBySymbol(this.chainId, quote),
+                marketBaseCurrency: findCurrencyBySymbol(this.chainId, base),
+                askTick: BigInt(tick),
               }),
             ),
             targetOrders[ASK][Number(tick)],
@@ -484,11 +475,10 @@ export class CloberMarketMaker {
         bid: Object.keys(targetOrders[BID])
           .map((tick) => [
             Number(
-              getPrice({
-                chainId: this.chainId,
-                inputCurrency: findCurrencyBySymbol(this.chainId, quote),
-                outputCurrency: findCurrencyBySymbol(this.chainId, base),
-                tick: BigInt(tick),
+              getMarketPrice({
+                marketQuoteCurrency: findCurrencyBySymbol(this.chainId, quote),
+                marketBaseCurrency: findCurrencyBySymbol(this.chainId, base),
+                bidTick: BigInt(tick),
               }),
             ),
             targetOrders[BID][Number(tick)],
