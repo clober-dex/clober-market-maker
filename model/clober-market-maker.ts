@@ -34,7 +34,7 @@ import BigNumber from 'bignumber.js'
 import { logger } from '../utils/logger.ts'
 import { CHAIN_MAP } from '../constants/chain.ts'
 import { ERC20_PERMIT_ABI } from '../abis/@openzeppelin/erc20-permit-abi.ts'
-import { findCurrency } from '../utils/currency.ts'
+import { findCurrencyBySymbol } from '../utils/currency.ts'
 import { getGasPrice, waitTransaction } from '../utils/transaction.ts'
 import { getDeadlineTimestampInSeconds } from '../utils/time.ts'
 import { Action } from '../constants/action.ts'
@@ -115,8 +115,8 @@ export class CloberMarketMaker {
       _.mapValues(this.config.markets, (m) => m.clober),
     )
       .map((m) => [
-        getAddress(findCurrency(this.chainId, m.quote).address),
-        getAddress(findCurrency(this.chainId, m.base).address),
+        getAddress(findCurrencyBySymbol(this.chainId, m.quote).address),
+        getAddress(findCurrencyBySymbol(this.chainId, m.base).address),
       ])
       .flat()
       .filter(
@@ -298,8 +298,8 @@ export class CloberMarketMaker {
     }
 
     const [base, quote] = market.split('/')
-    const quoteCurrency = findCurrency(this.chainId, quote)
-    const baseCurrency = findCurrency(this.chainId, base)
+    const quoteCurrency = findCurrencyBySymbol(this.chainId, quote)
+    const baseCurrency = findCurrencyBySymbol(this.chainId, base)
     const openOrders = this.openOrders.filter(
       (order) =>
         (isAddressEqual(order.inputCurrency.address, baseCurrency.address) &&
@@ -391,8 +391,8 @@ export class CloberMarketMaker {
     for (let i = 0; i < params.orderNum; i++) {
       const oracleTick = getTick({
         chainId: this.chainId,
-        inputCurrency: findCurrency(this.chainId, base),
-        outputCurrency: findCurrency(this.chainId, quote),
+        inputCurrency: findCurrencyBySymbol(this.chainId, base),
+        outputCurrency: findCurrencyBySymbol(this.chainId, quote),
         price: oraclePrice.toString(),
       })
       const tick = oracleTick - BigInt(askSpread - params.orderGap * i)
@@ -401,8 +401,8 @@ export class CloberMarketMaker {
     for (let i = 0; i < params.orderNum; i++) {
       const oracleTick = getTick({
         chainId: this.chainId,
-        inputCurrency: findCurrency(this.chainId, quote),
-        outputCurrency: findCurrency(this.chainId, base),
+        inputCurrency: findCurrencyBySymbol(this.chainId, quote),
+        outputCurrency: findCurrencyBySymbol(this.chainId, base),
         price: oraclePrice.toString(),
       })
       const tick = oracleTick - BigInt(bidSpread - params.orderGap * i)
@@ -455,8 +455,8 @@ export class CloberMarketMaker {
             Number(
               getPrice({
                 chainId: this.chainId,
-                inputCurrency: findCurrency(this.chainId, base),
-                outputCurrency: findCurrency(this.chainId, quote),
+                inputCurrency: findCurrencyBySymbol(this.chainId, base),
+                outputCurrency: findCurrencyBySymbol(this.chainId, quote),
                 tick: BigInt(tick),
               }),
             ),
@@ -468,8 +468,8 @@ export class CloberMarketMaker {
             Number(
               getPrice({
                 chainId: this.chainId,
-                inputCurrency: findCurrency(this.chainId, quote),
-                outputCurrency: findCurrency(this.chainId, base),
+                inputCurrency: findCurrencyBySymbol(this.chainId, quote),
+                outputCurrency: findCurrencyBySymbol(this.chainId, base),
                 tick: BigInt(tick),
               }),
             ),

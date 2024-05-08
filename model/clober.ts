@@ -6,7 +6,7 @@ import BigNumber from 'bignumber.js'
 
 import { CHAIN_MAP } from '../constants/chain.ts'
 import { logger } from '../utils/logger.ts'
-import { findCurrency } from '../utils/currency.ts'
+import { findCurrencyBySymbol } from '../utils/currency.ts'
 
 import { type OrderBook } from './order-book.ts'
 import type { Exchange } from './exchange.ts'
@@ -39,8 +39,8 @@ export class Clober implements Exchange {
       fetchQueue.push(
         getMarket({
           chainId: this.chainId,
-          token0: getAddress(findCurrency(this.chainId, quote).address),
-          token1: getAddress(findCurrency(this.chainId, base).address),
+          token0: getAddress(findCurrencyBySymbol(this.chainId, quote).address),
+          token1: getAddress(findCurrencyBySymbol(this.chainId, base).address),
         }).then(({ bids, asks, bidBook, askBook }) => {
           this.bookIds[id] = [bidBook.id, askBook.id]
           this.orderBooks[id] = <OrderBook>{
