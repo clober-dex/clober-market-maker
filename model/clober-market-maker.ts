@@ -78,6 +78,9 @@ export class CloberMarketMaker {
     configPath = configPath ?? path.join(__dirname, '../config.yaml')
     this.config = yaml.parse(fs.readFileSync(configPath, 'utf8')) as Config
     this.chainId = Number(process.env.CHAIN_ID) as CHAIN_IDS
+    if (!process.env.CHAIN_ID) {
+      throw new Error('CHAIN_ID must be set')
+    }
 
     this.publicClient = createPublicClient({
       chain: CHAIN_MAP[this.chainId],
@@ -174,6 +177,7 @@ export class CloberMarketMaker {
       [],
     )
 
+    await this.sleep(5000)
     this.initialized = true
   }
 
@@ -391,7 +395,7 @@ export class CloberMarketMaker {
         outputCurrency: findCurrency(this.chainId, quote),
         price: oraclePrice.toString(),
       })
-      const tick = oracleTick + BigInt(askSpread + params.orderGap * i)
+      const tick = oracleTick - BigInt(askSpread - params.orderGap * i)
       targetOrders[ASK][Number(tick)] = askSize
     }
     for (let i = 0; i < params.orderNum; i++) {
@@ -446,28 +450,32 @@ export class CloberMarketMaker {
     }
     console.log({
       targetOrders: {
-        ask: Object.keys(targetOrders[ASK]).map((tick) => [
-          Number(
-            getPrice({
-              chainId: this.chainId,
-              inputCurrency: findCurrency(this.chainId, base),
-              outputCurrency: findCurrency(this.chainId, quote),
-              tick: BigInt(tick),
-            }),
-          ),
-          targetOrders[ASK][Number(tick)],
-        ]),
-        bid: Object.keys(targetOrders[BID]).map((tick) => [
-          Number(
-            getPrice({
-              chainId: this.chainId,
-              inputCurrency: findCurrency(this.chainId, quote),
-              outputCurrency: findCurrency(this.chainId, base),
-              tick: BigInt(tick),
-            }),
-          ),
-          targetOrders[BID][Number(tick)],
-        ]),
+        ask: Object.keys(targetOrders[ASK])
+          .map((tick) => [
+            Number(
+              getPrice({
+                chainId: this.chainId,
+                inputCurrency: findCurrency(this.chainId, base),
+                outputCurrency: findCurrency(this.chainId, quote),
+                tick: BigInt(tick),
+              }),
+            ),
+            targetOrders[ASK][Number(tick)],
+          ])
+          .sort((a, b) => b[0] - a[0]),
+        bid: Object.keys(targetOrders[BID])
+          .map((tick) => [
+            Number(
+              getPrice({
+                chainId: this.chainId,
+                inputCurrency: findCurrency(this.chainId, quote),
+                outputCurrency: findCurrency(this.chainId, base),
+                tick: BigInt(tick),
+              }),
+            ),
+            targetOrders[BID][Number(tick)],
+          ])
+          .sort((a, b) => b[0] - a[0]),
       },
     })
 
