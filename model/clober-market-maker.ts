@@ -598,7 +598,7 @@ export class CloberMarketMaker {
       value: [...bidMakeParams, ...askMakeParams]
         .filter((p) => p.isETH)
         .reduce((acc: bigint, { quoteAmount }) => acc + quoteAmount, 0n),
-      gas: 3_000_000n,
+      gas: 5_000_000n,
       gasPrice,
     })
     await waitTransaction(
