@@ -75,6 +75,7 @@ export class CloberMarketMaker {
   constructor(configPath?: string) {
     configPath = configPath ?? path.join(__dirname, '../config.yaml')
     this.config = yaml.parse(fs.readFileSync(configPath, 'utf8')) as Config
+    this.paramsValidator(this.config.params)
     this.chainId = Number(process.env.CHAIN_ID) as CHAIN_IDS
     if (!process.env.CHAIN_ID) {
       throw new Error('CHAIN_ID must be set')
@@ -131,6 +132,13 @@ export class CloberMarketMaker {
       rpcUrl: this.publicClient.transport.url,
       markets: Object.keys(this.config.markets),
     })
+  }
+
+  private paramsValidator(params: Params) {
+    // maxTickSpread > minTickSpread
+    if (params.maxTickSpread <= params.minTickSpread) {
+      throw new Error('maxTickSpread must be greater than minTickSpread')
+    }
   }
 
   async init() {
