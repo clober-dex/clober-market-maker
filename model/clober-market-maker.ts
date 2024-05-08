@@ -335,7 +335,7 @@ export class CloberMarketMaker {
       total: total.toString(),
     })
 
-    // 1. calculate skew (sum of amount of open orders - defaultBaseBalance) / deltaLimit
+    // 1. calculate skew (total - defaultBaseBalance) / deltaLimit
     let skew = total
       .minus(params.defaultBaseBalance)
       .div(params.deltaLimit)
