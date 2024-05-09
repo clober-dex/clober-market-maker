@@ -317,7 +317,7 @@ export class CloberMarketMaker {
     )
     const claimable = openOrders.reduce(
       (acc, order) =>
-        order.isBid ? acc.plus(0) : acc.plus(order.claimable.value),
+        order.isBid ? acc.plus(order.claimable.value) : acc.plus(0),
       new BigNumber(0),
     )
     const cancelable = openOrders.reduce(
@@ -462,14 +462,12 @@ export class CloberMarketMaker {
         }
         orderIdsToClaim.push(
           ...currentOpenOrders[side][+id]
-            .filter((order) => order.amount.value === order.filled.value)
+            .filter((order) => Number(order.claimable.value) > 0)
             .map((order) => order.id),
         )
         orderIdsToCancel.push(
           ..._.map(
-            currentOpenOrders[side][+id]
-              .slice(cancelIndex)
-              .filter((order) => orderIdsToClaim.indexOf(order.id) === -1),
+            currentOpenOrders[side][+id].slice(cancelIndex),
             (order) => order.id,
           ),
         )
