@@ -503,11 +503,11 @@ export class CloberMarketMaker {
             cancelIndex < currentOpenOrders[side][+id].length;
             cancelIndex += 1
           ) {
-            if (targetOrders[side][+id] < params.minOrderSize) {
-              break
-            }
             const order = currentOpenOrders[side][+id][cancelIndex]
             const openAmount = Number(order.cancelable.value) // without rebate
+            if (openAmount > targetOrders[side][+id]) {
+              break
+            }
             targetOrders[side][+id] -= openAmount
           }
           if (targetOrders[side][+id] < params.minOrderSize) {
