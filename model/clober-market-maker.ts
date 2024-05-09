@@ -317,7 +317,7 @@ export class CloberMarketMaker {
     )
     const claimable = openOrders.reduce(
       (acc, order) =>
-        order.isBid ? acc.plus(0) : acc.plus(order.claimable.value),
+        order.isBid ? acc.plus(order.claimable.value) : acc.plus(0),
       new BigNumber(0),
     )
     const cancelable = openOrders.reduce(
@@ -446,10 +446,7 @@ export class CloberMarketMaker {
           ) {
             const order = currentOpenOrders[side][+id][cancelIndex]
             const openAmount = Number(order.cancelable.value) // without rebate
-            if (order.amount.value === order.filled.value) {
-              // fully filled
-              orderIdsToClaim.push(order.id)
-            } else if (
+            if (
               Math.abs(openAmount) >=
               Math.abs(targetOrders[side][+id]) + params.minOrderSize
             ) {
@@ -463,6 +460,11 @@ export class CloberMarketMaker {
             delete targetOrders[side][+id]
           }
         }
+        orderIdsToClaim.push(
+          ...currentOpenOrders[side][+id]
+            .filter((order) => Number(order.claimable.value) > 0)
+            .map((order) => order.id),
+        )
         orderIdsToCancel.push(
           ..._.map(
             currentOpenOrders[side][+id].slice(cancelIndex),
@@ -511,9 +513,23 @@ export class CloberMarketMaker {
         ),
         hookData: zeroHash,
         isBid: true,
-        isETH: isAddressEqual(baseCurrency.address, zeroAddress),
+        isETH: isAddressEqual(quoteCurrency.address, zeroAddress),
       }),
     )
+    const totalQuoteAmount = bidMakeParams.reduce(
+      (acc: bigint, { quoteAmount }) => acc + quoteAmount,
+      0n,
+    )
+    if (totalQuoteAmount > this.balances[getAddress(quoteCurrency.address)]) {
+      await logger(chalk.redBright, 'Insufficient quote balance', {
+        market,
+        quoteCurrency: quoteCurrency.address,
+        totalQuoteAmount: totalQuoteAmount.toString(),
+        balance: this.balances[getAddress(quoteCurrency.address)].toString(),
+      })
+      return
+    }
+
     const askMakeParams: MakeParam[] = Object.entries(targetOrders[ASK]).map(
       ([tick, size]) => ({
         id: BigInt(this.clober.bookIds[market][ASK]),
@@ -524,6 +540,19 @@ export class CloberMarketMaker {
         isETH: isAddressEqual(baseCurrency.address, zeroAddress),
       }),
     )
+    const totalBaseAmount = askMakeParams.reduce(
+      (acc: bigint, { quoteAmount }) => acc + quoteAmount,
+      0n,
+    )
+    if (totalBaseAmount > this.balances[getAddress(baseCurrency.address)]) {
+      await logger(chalk.redBright, 'Insufficient base balance', {
+        market,
+        baseCurrency: baseCurrency.address,
+        totalBaseAmount: totalBaseAmount.toString(),
+        balance: this.balances[getAddress(baseCurrency.address)].toString(),
+      })
+      return
+    }
 
     await logger(chalk.redBright, 'Market making', {
       market,
