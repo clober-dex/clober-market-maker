@@ -14,6 +14,7 @@ import {
 import { arbitrumSepolia, base } from 'viem/chains'
 import { approveERC20, marketOrder, type Currency } from '@clober/v2-sdk'
 import { privateKeyToAccount } from 'viem/accounts'
+import * as YAML from 'yaml'
 
 import { WHITELISTED_CURRENCIES } from '../constants/currency.ts'
 import { waitTransaction } from '../utils/transaction.ts'
@@ -57,6 +58,21 @@ const testnetWalletClient = createWalletClient({
   chain: arbitrumSepolia,
   transport: process.env.RPC_URL ? http(process.env.RPC_URL) : http(),
 })
+
+const sendSlackMessage = async (message: {}) => {
+  if (!process.env.SLACK_TAKER_WEBHOOK) {
+    return
+  }
+  await fetch(process.env.SLACK_TAKER_WEBHOOK as string, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      text: '```\n' + YAML.stringify(message) + '```',
+    }),
+  })
+}
 
 const fetchHashesFromSwapEvent = async (fromBlock: bigint, toBlock: bigint) => {
   if (fromBlock > toBlock) {
@@ -118,6 +134,11 @@ const fetchTradeFromHashes = async (
 }
 
 ;(async () => {
+  await sendSlackMessage({
+    message: 'Taker bot started',
+    account: account.address,
+  })
+
   // 1. approve all tokens
   for (const { address } of WHITELISTED_CURRENCIES[arbitrumSepolia.id].filter(
     (currency) => !isAddressEqual(currency.address, zeroAddress),
@@ -200,6 +221,12 @@ const fetchTradeFromHashes = async (
             testnetPublicClient,
             hash,
           )
+          await sendSlackMessage({
+            message: `[Trade] ${trade.type} with ${amountIn}`,
+            actualAmountOut: `${formatUnits(actualAmountOut, taken.currency.decimals)} ${taken.currency.symbol}`,
+            expectedAmountOut: `${formatUnits(expectedAmountOut, taken.currency.decimals)} ${taken.currency.symbol}`,
+            hash,
+          })
         }
       }
     }

@@ -26,6 +26,7 @@ Setting taker private key in `.env`
 ```text
 BASE_RPC_URL=
 TAKER_PRIVATE_KEY=
+SLACK_TAKER_WEBHOOK=
 ```
 
 ```bash
