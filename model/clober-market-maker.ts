@@ -522,7 +522,9 @@ export class CloberMarketMaker {
         )
         orderIdsToCancel.push(
           ..._.map(
-            currentOpenOrders[side][+id].slice(cancelIndex),
+            currentOpenOrders[side][+id]
+              .slice(cancelIndex)
+              .filter((order) => order.amount.value !== order.filled.value),
             (order) => order.id,
           ),
         )
