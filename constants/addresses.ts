@@ -6,6 +6,6 @@ export const CONTROLLER_ADDRESS: {
   [chain in CHAIN_IDS]: `0x${string}`
 } = {
   [CHAIN_IDS.ARBITRUM_SEPOLIA]: getAddress(
-    '0x3e15fee68C06A0Cd3aF5430A665a9dd502C8544e',
+    '0x91101543D3Bd3e919dAd034Bf978ef9d87290993',
   ),
 }
