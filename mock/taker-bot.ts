@@ -8,6 +8,7 @@ import {
   parseAbi,
   parseAbiItem,
   parseEventLogs,
+  parseUnits,
   zeroAddress,
 } from 'viem'
 import { arbitrumSepolia, base } from 'viem/chains'
@@ -150,41 +151,60 @@ const fetchTradeFromHashes = async (
     if (trades.length > 0) {
       for (const trade of trades) {
         const isBid = trade.type === 'bid'
-        const { transaction } = await marketOrder({
+        const actualAmountOut = isBid ? trade.baseAmount : trade.quoteAmount
+        const amountIn = isBid
+          ? formatUnits(trade.quoteAmount, QUOTE_CURRENCY.decimals)
+          : formatUnits(trade.baseAmount, BASE_CURRENCY.decimals)
+        const {
+          transaction,
+          result: { taken },
+        } = await marketOrder({
           chainId: arbitrumSepolia.id,
           userAddress: account.address,
           inputToken: isBid ? QUOTE_CURRENCY.address : BASE_CURRENCY.address,
           outputToken: isBid ? BASE_CURRENCY.address : QUOTE_CURRENCY.address,
-          amountIn: isBid
-            ? formatUnits(trade.quoteAmount, QUOTE_CURRENCY.decimals)
-            : formatUnits(trade.baseAmount, BASE_CURRENCY.decimals),
+          amountIn,
           options: process.env.RPC_URL
             ? {
                 rpcUrl: process.env.RPC_URL,
               }
             : {},
         })
-        const hash = await testnetWalletClient.sendTransaction({
-          data: transaction.data,
-          to: transaction.to,
-          value: transaction.value,
-          gas: transaction.gas,
-        })
-        await waitTransaction(
-          'Trade',
-          {
-            type: isBid ? 'bid' : 'ask',
-            amount: isBid
-              ? `${formatUnits(trade.quoteAmount, QUOTE_CURRENCY.decimals)} ${QUOTE_CURRENCY.symbol}`
-              : `${formatUnits(trade.baseAmount, BASE_CURRENCY.decimals)} ${BASE_CURRENCY.symbol}`,
-          },
-          testnetPublicClient,
-          hash,
+        const expectedAmountOut = parseUnits(
+          taken.amount,
+          taken.currency.decimals,
         )
+
+        if (actualAmountOut < expectedAmountOut) {
+          console.log(`[Trade] ${trade.type} with ${amountIn}`)
+          console.log(
+            `  Actual amount out: ${formatUnits(actualAmountOut, taken.currency.decimals)} ${taken.currency.symbol}`,
+          )
+          console.log(
+            `  Expected amount out: ${formatUnits(expectedAmountOut, taken.currency.decimals)} ${taken.currency.symbol}`,
+          )
+          const hash = await testnetWalletClient.sendTransaction({
+            data: transaction.data,
+            to: transaction.to,
+            value: transaction.value,
+            gas: transaction.gas,
+          })
+          await waitTransaction(
+            'Trade',
+            {
+              type: isBid ? 'bid' : 'ask',
+              amount: isBid
+                ? `${formatUnits(trade.quoteAmount, QUOTE_CURRENCY.decimals)} ${QUOTE_CURRENCY.symbol}`
+                : `${formatUnits(trade.baseAmount, BASE_CURRENCY.decimals)} ${BASE_CURRENCY.symbol}`,
+            },
+            testnetPublicClient,
+            hash,
+          )
+        }
       }
     }
 
     startBlock = latestBlock + 1n
-    await new Promise((resolve) => setTimeout(resolve, 10 * 1000))
+    await new Promise((resolve) => setTimeout(resolve, 2 * 1000))
   }
 })()
