@@ -63,7 +63,7 @@ const fetchHashesFromSwapEvent = async (fromBlock: bigint, toBlock: bigint) => {
     return []
   }
   const logs = await mainnetPublicClient.getLogs({
-    address: '0x19cEeAd7105607Cd444F5ad10dd51356436095a1',
+    address: '0x19cEeAd7105607Cd444F5ad10dd51356436095a1', // odos router contract
     event: parseAbiItem(
       'event Swap(address sender, uint256 inputAmount, address inputToken, uint256 amountOut, address outputToken, int256 slippage, uint32 referralCode)',
     ),
