@@ -10,6 +10,7 @@ import {
   getOpenOrders,
   type OpenOrder,
   setApprovalOfOpenOrdersForAll,
+  getContractAddresses,
 } from '@clober/v2-sdk'
 import type { PublicClient, WalletClient } from 'viem'
 import {
@@ -44,7 +45,6 @@ import {
   CLAIM_ORDER_PARAMS_ABI,
   MAKE_ORDER_PARAMS_ABI,
 } from '../abis/core/params-abi.ts'
-import { CONTROLLER_ADDRESS } from '../constants/addresses.ts'
 import { CONTROLLER_ABI } from '../abis/core/controller-abi.ts'
 import { getBookTicks, getMarketPrice } from '../utils/tick.ts'
 
@@ -621,7 +621,7 @@ export class CloberMarketMaker {
     )
     const hash = await this.walletClient.writeContract({
       chain: CHAIN_MAP[this.chainId],
-      address: CONTROLLER_ADDRESS[this.chainId]!,
+      address: getContractAddresses({ chainId: this.chainId })!.Controller,
       abi: CONTROLLER_ABI,
       account: this.walletClient.account!,
       functionName: 'execute',
