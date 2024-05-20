@@ -12,6 +12,7 @@ export const WHITELISTED_CURRENCIES: {
   [chain in CHAIN_IDS]: Currency[]
 } = {
   [CHAIN_IDS.ARBITRUM_SEPOLIA]: [
+    ETH,
     {
       address: '0xF2e615A933825De4B39b497f6e6991418Fb31b78',
       name: 'Wrapped Ether',
