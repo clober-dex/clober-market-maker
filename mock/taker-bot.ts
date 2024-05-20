@@ -150,7 +150,7 @@ const fetchTradeFromHashes = async (
     if (trades.length > 0) {
       for (const trade of trades) {
         const isBid = trade.type === 'bid'
-        const hash = await marketOrder({
+        const { transaction } = await marketOrder({
           chainId: arbitrumSepolia.id,
           userAddress: account.address,
           inputToken: isBid ? QUOTE_CURRENCY.address : BASE_CURRENCY.address,
@@ -163,6 +163,12 @@ const fetchTradeFromHashes = async (
                 rpcUrl: process.env.RPC_URL,
               }
             : {},
+        })
+        const hash = await testnetWalletClient.sendTransaction({
+          data: transaction.data,
+          to: transaction.to,
+          value: transaction.value,
+          gas: transaction.gas,
         })
         await waitTransaction(
           'Trade',
