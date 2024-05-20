@@ -1,13 +1,13 @@
 fetchIntervalMilliSeconds: 10000
 gasMultiplier: 1.1
 markets:
-  ETH/USDC:
+  WETH/USDC:
     binance:
       quote: USDT
       base: ETH
     clober:
       quote: USDC
-      base: ETH
+      base: WETH
     params:
       defaultBaseBalance: 10
       deltaLimit: 3
