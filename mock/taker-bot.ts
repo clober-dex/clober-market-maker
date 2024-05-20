@@ -11,7 +11,7 @@ import {
   zeroAddress,
 } from 'viem'
 import { arbitrumSepolia, base } from 'viem/chains'
-import { approveERC20, marketOrder, Currency } from '@clober/v2-sdk'
+import { approveERC20, marketOrder, type Currency } from '@clober/v2-sdk'
 import { privateKeyToAccount } from 'viem/accounts'
 
 import { WHITELISTED_CURRENCIES } from '../constants/currency.ts'
