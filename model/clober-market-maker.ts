@@ -343,12 +343,19 @@ export class CloberMarketMaker {
     )
     const totalBase = freeBase.plus(claimableBase).plus(cancelableBase)
     const totalQuote = freeQuote.plus(claimableQuote).plus(cancelableQuote)
-    await logger(chalk.redBright, 'Base Balance', {
+    await logger(chalk.redBright, 'Balance Detail', {
       market,
-      free: freeBase.toString(),
-      claimable: claimableBase.toString(),
-      cancelable: cancelableBase.toString(),
-      total: totalBase.toString(),
+      freeBase: freeBase.toString(),
+      claimableBase: claimableBase.toString(),
+      cancelableBase: cancelableBase.toString(),
+      freeQuote: freeQuote.toString(),
+      claimableQuote: claimableQuote.toString(),
+      cancelableQuote: cancelableQuote.toString(),
+    })
+    await logger(chalk.redBright, 'Total Balance', {
+      market,
+      totalBase: totalBase.toString(),
+      totalQuote: totalQuote.toString(),
     })
 
     // 1. calculate skew (total - defaultBaseBalance) / deltaLimit
