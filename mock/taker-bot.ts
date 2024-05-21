@@ -167,11 +167,16 @@ const fetchTradeFromHashes = async (
     const latestBlock = await mainnetPublicClient.getBlockNumber()
     const hashes = await fetchHashesFromSwapEvent(startBlock, latestBlock)
     const trades = await fetchTradeFromHashes(hashes)
+    const uniswapVolume = trades.reduce(
+      (acc, trade) => acc + trade.baseAmount,
+      0n,
+    )
 
     console.log(
       `Fetched ${trades.length} trades from block ${startBlock} to ${latestBlock}`,
     )
     let numberOfMarketOrders = 0
+    let cloberVolume = 0n
     if (trades.length > 0) {
       for (const trade of trades) {
         const isBid = trade.type === 'bid'
@@ -201,6 +206,9 @@ const fetchTradeFromHashes = async (
 
         if (actualAmountOut < expectedAmountOut) {
           numberOfMarketOrders += 1
+          cloberVolume += isBid
+            ? expectedAmountOut
+            : parseUnits(amountIn, spent.currency.decimals)
           console.log(
             `[Trade] ${trade.type} ${amountIn} ${spent.currency.symbol}`,
           )
@@ -242,6 +250,8 @@ const fetchTradeFromHashes = async (
       latestBlock: Number(latestBlock),
       hashesLength: hashes.length,
       tradesLength: trades.length,
+      uniswapVolume: formatUnits(uniswapVolume, BASE_CURRENCY.decimals),
+      cloberVolume: formatUnits(cloberVolume, BASE_CURRENCY.decimals),
       askTradesLength: trades.filter((trade) => trade.type === 'ask').length,
       bidTradesLength: trades.filter((trade) => trade.type === 'bid').length,
       numberOfMarketOrders,
