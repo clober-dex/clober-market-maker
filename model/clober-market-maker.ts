@@ -343,19 +343,30 @@ export class CloberMarketMaker {
     )
     const totalBase = freeBase.plus(claimableBase).plus(cancelableBase)
     const totalQuote = freeQuote.plus(claimableQuote).plus(cancelableQuote)
-    await logger(chalk.redBright, 'Balance Detail', {
+    await logger(chalk.redBright, 'Balance', {
       market,
+      totalBase: totalBase.toString(),
       freeBase: freeBase.toString(),
       claimableBase: claimableBase.toString(),
       cancelableBase: cancelableBase.toString(),
+      totalQuote: totalQuote.toString(),
       freeQuote: freeQuote.toString(),
       claimableQuote: claimableQuote.toString(),
       cancelableQuote: cancelableQuote.toString(),
     })
-    await logger(chalk.redBright, 'Total Balance', {
+    await logger(chalk.grey, 'PnL', {
       market,
-      totalBase: totalBase.toString(),
-      totalQuote: totalQuote.toString(),
+      baseNet: totalBase.minus(params.startBaseAmount).toString(),
+      quoteNet: totalQuote.minus(params.startQuoteAmount).toString(),
+      basePnL: totalBase
+        .minus(params.startBaseAmount)
+        .plus(totalQuote.minus(params.startQuoteAmount).div(oraclePrice))
+        .toString(),
+      quotePnL: totalBase
+        .minus(params.startBaseAmount)
+        .times(oraclePrice)
+        .plus(totalQuote.minus(params.startQuoteAmount))
+        .toString(),
     })
 
     // 1. calculate skew (total - defaultBaseBalance) / deltaLimit
@@ -499,8 +510,8 @@ export class CloberMarketMaker {
     }
 
     // 4. calculate orders to cancel & claim
-    const orderIdsToClaim: string[] = []
-    const orderIdsToCancel: string[] = []
+    const orderIdsToClaim: { id: string; isBid: boolean }[] = []
+    const orderIdsToCancel: { id: string; isBid: boolean }[] = []
     for (const side of [BID, ASK]) {
       for (const id of Object.keys(currentOpenOrders[side])) {
         let cancelIndex = 0
@@ -525,46 +536,47 @@ export class CloberMarketMaker {
         orderIdsToClaim.push(
           ...currentOpenOrders[side][+id]
             .filter((order) => Number(order.claimable.value) > 0)
-            .map((order) => order.id),
+            .map((order) => ({ id: order.id, isBid: order.isBid })),
         )
         orderIdsToCancel.push(
           ..._.map(
             currentOpenOrders[side][+id]
               .slice(cancelIndex)
               .filter((order) => order.amount.value !== order.filled.value),
-            (order) => order.id,
+            (order) => ({ id: order.id, isBid: order.isBid }),
           ),
         )
       }
     }
-    await logger(chalk.redBright, 'Try to market making', {
-      targetOrders: {
-        ask: Object.keys(targetOrders[ASK])
-          .map((tick) => [
-            Number(
-              getMarketPrice({
-                marketQuoteCurrency: findCurrencyBySymbol(this.chainId, quote),
-                marketBaseCurrency: findCurrencyBySymbol(this.chainId, base),
-                askTick: BigInt(tick),
-              }),
-            ),
-            targetOrders[ASK][Number(tick)],
-          ])
-          .sort((a, b) => b[0] - a[0]),
-        bid: Object.keys(targetOrders[BID])
-          .map((tick) => [
-            Number(
-              getMarketPrice({
-                marketQuoteCurrency: findCurrencyBySymbol(this.chainId, quote),
-                marketBaseCurrency: findCurrencyBySymbol(this.chainId, base),
-                bidTick: BigInt(tick),
-              }),
-            ),
-            targetOrders[BID][Number(tick)],
-          ])
-          .sort((a, b) => b[0] - a[0]),
-      },
-    })
+
+    const humanReadableTargetOrders = {
+      ask: Object.keys(targetOrders[ASK])
+        .map((tick) => [
+          Number(
+            getMarketPrice({
+              marketQuoteCurrency: findCurrencyBySymbol(this.chainId, quote),
+              marketBaseCurrency: findCurrencyBySymbol(this.chainId, base),
+              askTick: BigInt(tick),
+            }),
+          ),
+          targetOrders[ASK][Number(tick)],
+        ])
+        .sort((a, b) => b[0] - a[0])
+        .filter((o) => o[1] > 0),
+      bid: Object.keys(targetOrders[BID])
+        .map((tick) => [
+          Number(
+            getMarketPrice({
+              marketQuoteCurrency: findCurrencyBySymbol(this.chainId, quote),
+              marketBaseCurrency: findCurrencyBySymbol(this.chainId, base),
+              bidTick: BigInt(tick),
+            }),
+          ),
+          targetOrders[BID][Number(tick)],
+        ])
+        .sort((a, b) => b[0] - a[0])
+        .filter((o) => o[1] > 0),
+    }
 
     const bidMakeParams: MakeParam[] = Object.entries(targetOrders[BID]).map(
       ([tick, size]) => ({
@@ -592,16 +604,34 @@ export class CloberMarketMaker {
       }),
     )
 
-    await logger(chalk.redBright, 'Market making', {
+    await logger(chalk.redBright, 'Execute Detail', {
       market,
+      skew,
       orderIdsToClaim,
+      claimBidOrderLength: orderIdsToClaim.filter((o) => o.isBid).length,
+      claimAskOrderLength: orderIdsToClaim.filter((o) => !o.isBid).length,
       orderIdsToCancel,
-      targetOrders,
+      cancelBidOrderLength: orderIdsToCancel.filter((o) => o.isBid).length,
+      cancelAskOrderLength: orderIdsToCancel.filter((o) => !o.isBid).length,
+      askSpread,
+      bidSpread,
+      askSize,
+      bidSize,
+      targetOrders: humanReadableTargetOrders,
+      targetBidOrderLength: humanReadableTargetOrders.bid.length,
+      targetAskOrderLength: humanReadableTargetOrders.ask.length,
+      lowestAsk:
+        humanReadableTargetOrders.ask.sort((a, b) => a[0] - b[0])[0]?.[0] ||
+        '-',
+      oraclePrice: oraclePrice.toString(),
+      highestBid:
+        humanReadableTargetOrders.bid.sort((a, b) => b[0] - a[0])[0]?.[0] ||
+        '-',
     })
 
     await this.execute(
-      orderIdsToClaim,
-      orderIdsToCancel,
+      orderIdsToClaim.map(({ id }) => id),
+      orderIdsToCancel.map(({ id }) => id),
       bidMakeParams,
       askMakeParams,
     )
