@@ -17,3 +17,5 @@ markets:
       orderNum: 5
       orderSize: 1
       minOrderSize: 0.5
+      startQuoteAmount: 31000
+      startBaseAmount: 10
