@@ -144,18 +144,6 @@
               {
                 "destinationType": "number",
                 "targetField": "Total"
-              },
-              {
-                "destinationType": "number",
-                "targetField": "Free"
-              },
-              {
-                "destinationType": "number",
-                "targetField": "Claimable"
-              },
-              {
-                "destinationType": "number",
-                "targetField": "Open"
               }
             ],
             "fields": {}
@@ -288,18 +276,6 @@
               {
                 "destinationType": "number",
                 "targetField": "Total"
-              },
-              {
-                "destinationType": "number",
-                "targetField": "Free"
-              },
-              {
-                "destinationType": "number",
-                "targetField": "Claimable"
-              },
-              {
-                "destinationType": "number",
-                "targetField": "Open"
               }
             ],
             "fields": {}
@@ -799,7 +775,32 @@
             ]
           }
         },
-        "overrides": []
+        "overrides": [
+          {
+            "__systemRef": "hideSeriesFrom",
+            "matcher": {
+              "id": "byNames",
+              "options": {
+                "mode": "exclude",
+                "names": [
+                  "Clober Swap"
+                ],
+                "prefix": "All except:",
+                "readOnly": true
+              }
+            },
+            "properties": [
+              {
+                "id": "custom.hideFrom",
+                "value": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": true
+                }
+              }
+            ]
+          }
+        ]
       },
       "gridPos": {
         "h": 8,
@@ -807,7 +808,7 @@
         "x": 12,
         "y": 8
       },
-      "id": 7,
+      "id": 8,
       "options": {
         "legend": {
           "calcs": [],
@@ -827,12 +828,23 @@
             "uid": "admc3w818idc0e"
           },
           "editorMode": "builder",
-          "expr": "{app=\"clober-mm-Arbitrum Sepolia\"} | json | message = `Execute Detail`",
+          "expr": "{app=\"clober-mm-Arbitrum Sepolia\"} | json | message = `Swap Event`",
           "queryType": "range",
           "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "admc3w818idc0e"
+          },
+          "editorMode": "builder",
+          "expr": "{app=\"clober-mm-Arbitrum Sepolia\"} | json | message = `Uniswap Swap Event`",
+          "hide": false,
+          "queryType": "range",
+          "refId": "B"
         }
       ],
-      "title": "Number of Order(Make, Cancel, Claim)",
+      "title": "Number of Swap Event",
       "transformations": [
         {
           "id": "extractFields",
@@ -840,33 +852,21 @@
             "format": "json",
             "jsonPaths": [
               {
-                "alias": "Limit Bid",
-                "path": "targetBidOrderLength"
+                "alias": "Odos Swap",
+                "path": "hashesLength"
               },
               {
-                "alias": "Limit Ask",
-                "path": "targetAskOrderLength"
+                "alias": "Uni Swap",
+                "path": "tradesLength"
               },
               {
-                "alias": "Claim Bid",
-                "path": "claimBidOrderLength"
-              },
-              {
-                "alias": "Claim Ask",
-                "path": "claimAskOrderLength"
-              },
-              {
-                "alias": "Cancel Bid",
-                "path": "cancelBidOrderLength"
-              },
-              {
-                "alias": "Cancel Ask",
-                "path": "cancelAskOrderLength"
+                "alias": "Clober Swap",
+                "path": "numberOfMarketOrders"
               }
             ],
             "keepTime": true,
             "replace": true,
-            "source": "Line"
+            "source": "labels"
           }
         },
         {
@@ -875,27 +875,15 @@
             "conversions": [
               {
                 "destinationType": "number",
-                "targetField": "Limit Bid"
+                "targetField": "Odos Swap"
               },
               {
                 "destinationType": "number",
-                "targetField": "Limit Ask"
+                "targetField": "Uni Swap"
               },
               {
                 "destinationType": "number",
-                "targetField": "Claim Bid"
-              },
-              {
-                "destinationType": "number",
-                "targetField": "Claim Ask"
-              },
-              {
-                "destinationType": "number",
-                "targetField": "Cancel Bid"
-              },
-              {
-                "destinationType": "number",
-                "targetField": "Cancel Ask"
+                "targetField": "Clober Swap"
               }
             ],
             "fields": {}
@@ -1091,7 +1079,7 @@
         "x": 12,
         "y": 16
       },
-      "id": 8,
+      "id": 7,
       "options": {
         "legend": {
           "calcs": [],
@@ -1111,23 +1099,12 @@
             "uid": "admc3w818idc0e"
           },
           "editorMode": "builder",
-          "expr": "{app=\"clober-mm-Arbitrum Sepolia\"} | json | message = `Swap Event`",
+          "expr": "{app=\"clober-mm-Arbitrum Sepolia\"} | json | message = `Execute Detail`",
           "queryType": "range",
           "refId": "A"
-        },
-        {
-          "datasource": {
-            "type": "loki",
-            "uid": "admc3w818idc0e"
-          },
-          "editorMode": "builder",
-          "expr": "{app=\"clober-mm-Arbitrum Sepolia\"} | json | message = `Uniswap Swap Event`",
-          "hide": false,
-          "queryType": "range",
-          "refId": "B"
         }
       ],
-      "title": "Number of Swap Event",
+      "title": "Number of Order(Make, Cancel, Claim)",
       "transformations": [
         {
           "id": "extractFields",
@@ -1135,21 +1112,33 @@
             "format": "json",
             "jsonPaths": [
               {
-                "alias": "Odos Swap",
-                "path": "hashesLength"
+                "alias": "Limit Bid",
+                "path": "targetBidOrderLength"
               },
               {
-                "alias": "Uni Swap",
-                "path": "tradesLength"
+                "alias": "Limit Ask",
+                "path": "targetAskOrderLength"
               },
               {
-                "alias": "Clober Swap",
-                "path": "numberOfMarketOrders"
+                "alias": "Claim Bid",
+                "path": "claimBidOrderLength"
+              },
+              {
+                "alias": "Claim Ask",
+                "path": "claimAskOrderLength"
+              },
+              {
+                "alias": "Cancel Bid",
+                "path": "cancelBidOrderLength"
+              },
+              {
+                "alias": "Cancel Ask",
+                "path": "cancelAskOrderLength"
               }
             ],
             "keepTime": true,
             "replace": true,
-            "source": "labels"
+            "source": "Line"
           }
         },
         {
@@ -1158,15 +1147,27 @@
             "conversions": [
               {
                 "destinationType": "number",
-                "targetField": "Odos Swap"
+                "targetField": "Limit Bid"
               },
               {
                 "destinationType": "number",
-                "targetField": "Uni Swap"
+                "targetField": "Limit Ask"
               },
               {
                 "destinationType": "number",
-                "targetField": "Clober Swap"
+                "targetField": "Claim Bid"
+              },
+              {
+                "destinationType": "number",
+                "targetField": "Claim Ask"
+              },
+              {
+                "destinationType": "number",
+                "targetField": "Cancel Bid"
+              },
+              {
+                "destinationType": "number",
+                "targetField": "Cancel Ask"
               }
             ],
             "fields": {}
@@ -1183,13 +1184,13 @@
     "list": []
   },
   "time": {
-    "from": "now-6h",
+    "from": "now-15m",
     "to": "now"
   },
   "timepicker": {},
   "timezone": "browser",
   "title": "Clober Market Maker",
   "uid": "admc7cz4wbri8a",
-  "version": 4,
+  "version": 8,
   "weekStart": ""
 }
