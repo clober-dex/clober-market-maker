@@ -18,7 +18,7 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": 1,
+  "id": 2,
   "links": [],
   "panels": [
     {
@@ -547,10 +547,6 @@
               {
                 "alias": "Base Net",
                 "path": "baseNet"
-              },
-              {
-                "alias": "PnL in Base",
-                "path": "basePnL"
               }
             ],
             "keepTime": true,
@@ -710,8 +706,12 @@
                 "path": "quoteNet"
               },
               {
-                "alias": "PnL in Quote",
-                "path": "quotePnL"
+                "alias": "onHold",
+                "path": "onHold"
+              },
+              {
+                "alias": "onCurrent",
+                "path": "onCurrent"
               }
             ],
             "keepTime": true,
@@ -729,7 +729,11 @@
               },
               {
                 "destinationType": "number",
-                "targetField": "PnL in Quote"
+                "targetField": "onHold"
+              },
+              {
+                "destinationType": "number",
+                "targetField": "onCurrent"
               }
             ],
             "fields": {}
@@ -1021,6 +1025,155 @@
         }
       ],
       "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "admc3w818idc0e"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 16
+      },
+      "id": 8,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "admc3w818idc0e"
+          },
+          "editorMode": "builder",
+          "expr": "{app=\"clober-mm-Arbitrum Sepolia\"} | json | message = `Swap Event`",
+          "queryType": "range",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "admc3w818idc0e"
+          },
+          "editorMode": "builder",
+          "expr": "{app=\"clober-mm-Arbitrum Sepolia\"} | json | message = `Uniswap Swap Event`",
+          "hide": false,
+          "queryType": "range",
+          "refId": "B"
+        }
+      ],
+      "title": "Number of Swap Event",
+      "transformations": [
+        {
+          "id": "extractFields",
+          "options": {
+            "format": "json",
+            "jsonPaths": [
+              {
+                "alias": "Odos Swap",
+                "path": "hashesLength"
+              },
+              {
+                "alias": "Uni Swap",
+                "path": "tradesLength"
+              },
+              {
+                "alias": "Clober Swap",
+                "path": "numberOfMarketOrders"
+              }
+            ],
+            "keepTime": true,
+            "replace": true,
+            "source": "labels"
+          }
+        },
+        {
+          "id": "convertFieldType",
+          "options": {
+            "conversions": [
+              {
+                "destinationType": "number",
+                "targetField": "Odos Swap"
+              },
+              {
+                "destinationType": "number",
+                "targetField": "Uni Swap"
+              },
+              {
+                "destinationType": "number",
+                "targetField": "Clober Swap"
+              }
+            ],
+            "fields": {}
+          }
+        }
+      ],
+      "type": "timeseries"
     }
   ],
   "refresh": "",
@@ -1030,13 +1183,13 @@
     "list": []
   },
   "time": {
-    "from": "now-1m",
+    "from": "now-6h",
     "to": "now"
   },
   "timepicker": {},
   "timezone": "browser",
   "title": "Clober Market Maker",
   "uid": "admc7cz4wbri8a",
-  "version": 21,
+  "version": 4,
   "weekStart": ""
 }

@@ -358,6 +358,11 @@ export class CloberMarketMaker {
       market,
       baseNet: totalBase.minus(params.startBaseAmount).toString(),
       quoteNet: totalQuote.minus(params.startQuoteAmount).toString(),
+      onHold: oraclePrice
+        .times(params.startBaseAmount)
+        .plus(params.startQuoteAmount)
+        .toString(),
+      onCurrent: oraclePrice.times(totalBase).plus(totalQuote).toString(),
       basePnL: totalBase
         .minus(params.startBaseAmount)
         .plus(totalQuote.minus(params.startQuoteAmount).div(oraclePrice))
