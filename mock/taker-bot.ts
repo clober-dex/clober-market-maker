@@ -38,7 +38,7 @@ const WETH_USDC_POOLS = [
   '0xb2cc224c1c9feE385f8ad6a55b4d94E92359DC59',
   '0xd0b53D9277642d899DF5C87A3966A349A798F224',
 ]
-const BATCH_SIZE = 1000n
+const BATCH_SIZE = 20n
 
 const abs = (n: bigint) => (n < 0n ? -n : n)
 
