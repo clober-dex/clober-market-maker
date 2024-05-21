@@ -15,9 +15,11 @@ import { arbitrumSepolia, base } from 'viem/chains'
 import { approveERC20, marketOrder, type Currency } from '@clober/v2-sdk'
 import { privateKeyToAccount } from 'viem/accounts'
 import * as YAML from 'yaml'
+import chalk from 'chalk'
 
 import { WHITELISTED_CURRENCIES } from '../constants/currency.ts'
 import { waitTransaction } from '../utils/transaction.ts'
+import { logger } from '../utils/logger.ts'
 
 const BASE_CURRENCY = {
   address: '0xF2e615A933825De4B39b497f6e6991418Fb31b78',
@@ -169,6 +171,7 @@ const fetchTradeFromHashes = async (
     console.log(
       `Fetched ${trades.length} trades from block ${startBlock} to ${latestBlock}`,
     )
+    let numberOfMarketOrders = 0
     if (trades.length > 0) {
       for (const trade of trades) {
         const isBid = trade.type === 'bid'
@@ -178,7 +181,7 @@ const fetchTradeFromHashes = async (
           : formatUnits(trade.baseAmount, BASE_CURRENCY.decimals)
         const {
           transaction,
-          result: { taken },
+          result: { taken, spent },
         } = await marketOrder({
           chainId: arbitrumSepolia.id,
           userAddress: account.address,
@@ -197,7 +200,10 @@ const fetchTradeFromHashes = async (
         )
 
         if (actualAmountOut < expectedAmountOut) {
-          console.log(`[Trade] ${trade.type} with ${amountIn}`)
+          numberOfMarketOrders += 1
+          console.log(
+            `[Trade] ${trade.type} ${amountIn} ${spent.currency.symbol}`,
+          )
           console.log(
             `  Actual amount out: ${formatUnits(actualAmountOut, taken.currency.decimals)} ${taken.currency.symbol}`,
           )
@@ -230,6 +236,16 @@ const fetchTradeFromHashes = async (
         }
       }
     }
+
+    logger(chalk.green, 'Swap Event', {
+      startBlock: Number(startBlock),
+      latestBlock: Number(latestBlock),
+      hashesLength: hashes.length,
+      tradesLength: trades.length,
+      askTradesLength: trades.filter((trade) => trade.type === 'ask').length,
+      bidTradesLength: trades.filter((trade) => trade.type === 'bid').length,
+      numberOfMarketOrders,
+    })
 
     startBlock = latestBlock + 1n
     await new Promise((resolve) => setTimeout(resolve, 2 * 1000))
