@@ -10,8 +10,6 @@ Setting private key in `.env`
 ```text
 PRIVATE_KEY=0x...
 RPC_URL=
-SLACK_INFO_WEBHOOK=
-SLACK_ERROR_WEBHOOK=
 ```
 
 To run:
