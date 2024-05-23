@@ -1,4 +1,9 @@
 import type { ChalkInstance } from 'chalk'
+import { createLogger, format, Logger, transports } from 'winston'
+import LokiTransport from 'winston-loki'
+import type { CHAIN_IDS } from '@clober/v2-sdk'
+
+import { CHAIN_MAP } from '../constants/chain.ts'
 
 import { SlackClient } from './slack.ts'
 
@@ -10,11 +15,54 @@ export const slackClient =
       )
     : undefined
 
+let lokiLogger: Logger
+
+const initializeLokiLogger = () => {
+  if (lokiLogger) {
+    return
+  }
+  if (
+    !process.env.DASHBOARD_PASSWORD ||
+    !process.env.DASHBOARD_URL ||
+    !process.env.CHAIN_ID
+  ) {
+    throw new Error(
+      `Missing environment variables for Loki logger DASHBOARD_PASSWORD, DASHBOARD_URL, CHAIN_ID : ${process.env.DASHBOARD_PASSWORD}, ${process.env.DASHBOARD_URL}, ${process.env.CHAIN_ID}`,
+    )
+  }
+  const chain = CHAIN_MAP[Number(process.env.CHAIN_ID) as CHAIN_IDS]
+
+  lokiLogger = createLogger({
+    transports: [
+      new LokiTransport({
+        host: process.env.DASHBOARD_URL,
+        labels: { app: `clober-mm-${chain.name}` },
+        basicAuth: `admin:${process.env.DASHBOARD_PASSWORD}`,
+        json: true,
+        level: 'debug',
+        format: format.json(),
+        replaceTimestamp: true,
+        clearOnError: false,
+        onConnectionError: (err) => console.error(err),
+      }),
+      new transports.Console({
+        format: format.combine(format.simple(), format.colorize()),
+      }),
+    ],
+  })
+}
+
+const getLokiLogger = () => {
+  initializeLokiLogger()
+  return lokiLogger
+}
+
 export const logger = async (
   color: ChalkInstance,
   message: string,
   value: any,
 ) => {
+  const lokiLogger = getLokiLogger()
   try {
     console.log(
       color(
@@ -23,6 +71,11 @@ export const logger = async (
         JSON.stringify(value),
       ),
     )
+
+    lokiLogger.debug({
+      message,
+      ...value,
+    })
 
     if (slackClient) {
       await slackClient.log({

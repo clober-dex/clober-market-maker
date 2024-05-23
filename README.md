@@ -3,6 +3,7 @@
 To install dependencies:
 
 ```bash
+npm i -g pm2
 bun install
 ```
 
@@ -10,14 +11,12 @@ Setting private key in `.env`
 ```text
 PRIVATE_KEY=0x...
 RPC_URL=
-SLACK_INFO_WEBHOOK=
-SLACK_ERROR_WEBHOOK=
 ```
 
 To run:
 
 ```bash
-CHAIN_ID=421614 bun run index.ts
+pm2 start --interpreter CHAIN_ID=421614 bun index.ts
 ```
 
 To run mock taker bot:
@@ -30,7 +29,7 @@ SLACK_TAKER_WEBHOOK=
 ```
 
 ```bash
-bun run mock/taker-bot.ts
+pm2 start --interpreter CHAIN_ID=421614 bun run mock/taker-bot.ts
 ```
 
 This project was created using `bun init` in bun v1.0.20. [Bun](https://bun.sh) is a fast all-in-one JavaScript runtime.

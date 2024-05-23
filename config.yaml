@@ -14,6 +14,8 @@ markets:
       minTickSpread: 3
       maxTickSpread: 10
       orderGap: 1
-      orderNum: 5
-      orderSize: 1
+      orderNum: 1
+      orderSize: 5
       minOrderSize: 0.5
+      startQuoteAmount: 31000
+      startBaseAmount: 10

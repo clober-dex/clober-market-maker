@@ -21,7 +21,7 @@ export const waitTransaction = async (
   } else {
     await logger(chalk.red, `Skip ${message}`, {
       ...value,
-      hash,
+      hash: '',
     })
   }
 }
