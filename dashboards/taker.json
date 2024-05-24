@@ -18,13 +18,13 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": 4,
+  "id": 7,
   "links": [],
   "panels": [
     {
       "datasource": {
         "type": "loki",
-        "uid": "ddmgklxwgdipsb"
+        "uid": "bdmk67audh3b4a"
       },
       "description": "",
       "fieldConfig": {
@@ -38,27 +38,16 @@
             "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
-            "barAlignment": 0,
-            "drawStyle": "bars",
-            "fillOpacity": 0,
+            "fillOpacity": 80,
             "gradientMode": "none",
             "hideFrom": {
               "legend": false,
               "tooltip": false,
               "viz": false
             },
-            "insertNulls": false,
-            "lineInterpolation": "linear",
             "lineWidth": 1,
-            "pointSize": 5,
             "scaleDistribution": {
               "type": "linear"
-            },
-            "showPoints": "auto",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
             },
             "thresholdsStyle": {
               "mode": "off"
@@ -79,32 +68,7 @@
             ]
           }
         },
-        "overrides": [
-          {
-            "__systemRef": "hideSeriesFrom",
-            "matcher": {
-              "id": "byNames",
-              "options": {
-                "mode": "exclude",
-                "names": [
-                  "Uni Volume"
-                ],
-                "prefix": "All except:",
-                "readOnly": true
-              }
-            },
-            "properties": [
-              {
-                "id": "custom.hideFrom",
-                "value": {
-                  "legend": false,
-                  "tooltip": false,
-                  "viz": true
-                }
-              }
-            ]
-          }
-        ]
+        "overrides": []
       },
       "gridPos": {
         "h": 11,
@@ -115,16 +79,25 @@
       "id": 3,
       "interval": "1h",
       "options": {
+        "barRadius": 0,
+        "barWidth": 0.97,
+        "fullHighlight": false,
+        "groupWidth": 0.7,
         "legend": {
           "calcs": [],
           "displayMode": "list",
           "placement": "bottom",
           "showLegend": true
         },
+        "orientation": "auto",
+        "showValue": "auto",
+        "stacking": "none",
         "tooltip": {
           "mode": "single",
           "sort": "none"
-        }
+        },
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 0
       },
       "targets": [
         {
@@ -132,56 +105,34 @@
             "type": "loki",
             "uid": "admc3w818idc0e"
           },
-          "editorMode": "builder",
-          "expr": "{app=\"clober-mm-Arbitrum Sepolia\"} | json | message = `Swap Event`",
+          "editorMode": "code",
+          "expr": "sum (\n  sum_over_time(\n    {app=\"clober-mm-Arbitrum Sepolia\"} | json | message = `Swap Event` | unwrap uniswapVolume\n  [1h]) \n)",
+          "legendFormat": "Uni Volume",
           "queryType": "range",
-          "refId": "A"
+          "refId": "A",
+          "step": "1h"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "bdmk67audh3b4a"
+          },
+          "editorMode": "code",
+          "expr": "sum (\n  sum_over_time(\n    {app=\"clober-mm-Arbitrum Sepolia\"} | json | message = `Swap Event` | unwrap cloberVolume\n  [1h]) \n)",
+          "hide": false,
+          "legendFormat": "Clober Volume",
+          "queryType": "range",
+          "refId": "B",
+          "step": "1h"
         }
       ],
       "title": "Volume of Swap Event",
-      "transformations": [
-        {
-          "id": "extractFields",
-          "options": {
-            "format": "json",
-            "jsonPaths": [
-              {
-                "alias": "Uni Volume",
-                "path": "uniswapVolume"
-              },
-              {
-                "alias": "Clober Volume",
-                "path": "cloberVolume"
-              }
-            ],
-            "keepTime": true,
-            "replace": true,
-            "source": "labels"
-          }
-        },
-        {
-          "id": "convertFieldType",
-          "options": {
-            "conversions": [
-              {
-                "destinationType": "number",
-                "targetField": "Uni Volume"
-              },
-              {
-                "destinationType": "number",
-                "targetField": "Clober Volume"
-              }
-            ],
-            "fields": {}
-          }
-        }
-      ],
-      "type": "timeseries"
+      "type": "barchart"
     },
     {
       "datasource": {
         "type": "loki",
-        "uid": "ddmgklxwgdipsb"
+        "uid": "bdmk67audh3b4a"
       },
       "fieldConfig": {
         "defaults": {
@@ -194,27 +145,16 @@
             "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
-            "barAlignment": 0,
-            "drawStyle": "bars",
-            "fillOpacity": 0,
+            "fillOpacity": 80,
             "gradientMode": "none",
             "hideFrom": {
               "legend": false,
               "tooltip": false,
               "viz": false
             },
-            "insertNulls": false,
-            "lineInterpolation": "linear",
             "lineWidth": 1,
-            "pointSize": 5,
             "scaleDistribution": {
               "type": "linear"
-            },
-            "showPoints": "auto",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
             },
             "thresholdsStyle": {
               "mode": "off"
@@ -245,76 +185,69 @@
       },
       "id": 2,
       "options": {
+        "barRadius": 0,
+        "barWidth": 0.97,
+        "fullHighlight": false,
+        "groupWidth": 0.7,
         "legend": {
           "calcs": [],
           "displayMode": "list",
           "placement": "bottom",
           "showLegend": true
         },
+        "orientation": "auto",
+        "showValue": "auto",
+        "stacking": "none",
         "tooltip": {
           "mode": "single",
           "sort": "none"
-        }
+        },
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 0
       },
       "targets": [
         {
           "datasource": {
             "type": "loki",
-            "uid": "admc3w818idc0e"
+            "uid": "bdmk67audh3b4a"
           },
-          "editorMode": "builder",
-          "expr": "{app=\"clober-mm-Arbitrum Sepolia\"} | json | message = `Swap Event`",
+          "editorMode": "code",
+          "expr": "sum (\n  sum_over_time(\n    {app=\"clober-mm-Arbitrum Sepolia\"} | json | message = `Swap Event` | unwrap hashesLength\n  [1h]) \n)",
+          "hide": false,
+          "legendFormat": "Odos Swap",
           "queryType": "range",
-          "refId": "A"
+          "refId": "A",
+          "step": "1h"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "bdmk67audh3b4a"
+          },
+          "editorMode": "code",
+          "expr": "sum (\n  sum_over_time(\n    {app=\"clober-mm-Arbitrum Sepolia\"} | json | message = `Swap Event` | unwrap tradesLength\n  [1h]) \n)",
+          "hide": false,
+          "legendFormat": "Uni Swap",
+          "queryType": "range",
+          "refId": "B",
+          "step": "1h"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "bdmk67audh3b4a"
+          },
+          "editorMode": "code",
+          "expr": "sum (\n  sum_over_time(\n    {app=\"clober-mm-Arbitrum Sepolia\"} | json | message = `Swap Event` | unwrap numberOfMarketOrders\n  [1h]) \n)",
+          "hide": false,
+          "legendFormat": "Clober Swap",
+          "queryType": "range",
+          "refId": "C",
+          "step": "1h"
         }
       ],
       "title": "Number of Swap Event",
-      "transformations": [
-        {
-          "id": "extractFields",
-          "options": {
-            "format": "json",
-            "jsonPaths": [
-              {
-                "alias": "Odos Swap",
-                "path": "hashesLength"
-              },
-              {
-                "alias": "Uni Swap",
-                "path": "tradesLength"
-              },
-              {
-                "alias": "Clober Swap",
-                "path": "numberOfMarketOrders"
-              }
-            ],
-            "keepTime": true,
-            "replace": true,
-            "source": "labels"
-          }
-        },
-        {
-          "id": "convertFieldType",
-          "options": {
-            "conversions": [
-              {
-                "destinationType": "number",
-                "targetField": "Odos Swap"
-              },
-              {
-                "destinationType": "number",
-                "targetField": "Uni Swap"
-              },
-              {
-                "destinationType": "number",
-                "targetField": "Clober Swap"
-              }
-            ],
-            "fields": {}
-          }
-        }
-      ],
-      "type": "timeseries"
+      "type": "barchart"
     }
   ],
   "schemaVersion": 39,
@@ -323,13 +256,13 @@
     "list": []
   },
   "time": {
-    "from": "now-6h",
+    "from": "now-24h",
     "to": "now"
   },
   "timepicker": {},
   "timezone": "browser",
   "title": "Taker",
   "uid": "edmgolfu2nncwe",
-  "version": 10,
+  "version": 7,
   "weekStart": ""
 }

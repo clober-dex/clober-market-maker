@@ -1,6 +1,5 @@
 import { createPublicClient, getAddress, http, type PublicClient } from 'viem'
 import { CHAIN_IDS, getMarket } from '@clober/v2-sdk'
-import { eip712WalletActions } from 'viem/zksync'
 import chalk from 'chalk'
 import BigNumber from 'bignumber.js'
 
@@ -26,9 +25,6 @@ export class Clober implements Exchange {
       chain: CHAIN_MAP[chainId],
       transport: process.env.RPC_URL ? http(process.env.RPC_URL) : http(),
     })
-    if (chainId === CHAIN_IDS.ZKSYNC_SEPOLIA) {
-      this.publicClient = this.publicClient!.extend(eip712WalletActions())
-    }
     this.markets = markets
   }
 

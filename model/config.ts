@@ -3,8 +3,6 @@ import type { Market } from './market.ts'
 /**
  * Represents the parameters required for configuring a trading strategy.
  * @typedef Params
- * @property {number} defaultBaseBalance - The expectation of the base balance for trading.
- * @property {number} deltaLimit - The standard deviation base of the base balance for trading.
  * @property {number} minTickSpread - The minimum spread allowed for trading.
  * @property {number} maxTickSpread - The maximum spread allowed for trading.
  * @property {number} orderGap - The order gap for trading.
@@ -16,8 +14,6 @@ import type { Market } from './market.ts'
  */
 
 export type Params = {
-  defaultBaseBalance: number
-  deltaLimit: number
   minTickSpread: number
   maxTickSpread: number
   orderGap: number
@@ -33,7 +29,7 @@ export type Config = {
   gasMultiplier: number
   markets: {
     [id: string]: {
-      binance: Market
+      chainlink: Market
       clober: Market
       params: Params
     }
