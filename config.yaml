@@ -15,5 +15,5 @@ markets:
       orderNum: 1
       orderSize: 5
       minOrderSize: 0.5
-      startQuoteAmount: 38000
+      startQuoteAmount: 37220
       startBaseAmount: 10
