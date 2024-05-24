@@ -18,13 +18,13 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": 6,
+  "id": 4,
   "links": [],
   "panels": [
     {
       "datasource": {
         "type": "loki",
-        "uid": "ddmgklxwgdipsb"
+        "uid": "bdmk67audh3b4a"
       },
       "description": "",
       "fieldConfig": {
@@ -163,19 +163,44 @@
     {
       "datasource": {
         "type": "loki",
-        "uid": "ddmgklxwgdipsb"
+        "uid": "bdmk67audh3b4a"
       },
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "thresholds"
+            "mode": "palette-classic"
           },
           "custom": {
-            "align": "auto",
-            "cellOptions": {
-              "type": "auto"
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
             },
-            "inspect": false
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
           },
           "mappings": [],
           "thresholds": {
@@ -202,38 +227,48 @@
       },
       "id": 4,
       "options": {
-        "cellHeight": "sm",
-        "footer": {
-          "countRows": false,
-          "fields": "",
-          "reducer": [
-            "sum"
-          ],
-          "show": false
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
         },
-        "showHeader": true,
-        "sortBy": [
-          {
-            "desc": true,
-            "displayName": "Time"
-          }
-        ]
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
       },
       "pluginVersion": "10.4.3",
       "targets": [
         {
           "datasource": {
             "type": "loki",
-            "uid": "admc3w818idc0e"
+            "uid": "bdmk67audh3b4a"
           },
-          "editorMode": "builder",
-          "expr": "sum_over_time({app=\"clober-mm-Arbitrum Sepolia\"} | json | message = `Execute Detail` | unwrap askSize [1h])",
+          "editorMode": "code",
+          "expr": "sum (\n  sum_over_time(\n    {app=\"clober-mm-Arbitrum Sepolia\"} | json | message = `Execute Detail` | unwrap targetAskOrderLength\n  [1h]) \n)",
+          "hide": false,
+          "legendFormat": "Ask",
           "queryType": "range",
-          "refId": "A"
+          "refId": "A",
+          "step": "1h"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "bdmk67audh3b4a"
+          },
+          "editorMode": "code",
+          "expr": "sum (\n  sum_over_time(\n    {app=\"clober-mm-Arbitrum Sepolia\"} | json | message = `Execute Detail` | unwrap targetBidOrderLength\n  [1h]) \n)",
+          "hide": false,
+          "legendFormat": "Bid",
+          "queryType": "range",
+          "refId": "B",
+          "step": "1h"
         }
       ],
-      "title": "Number of Order(Make, Cancel, Claim)",
-      "type": "table"
+      "title": "Number of Order(Make)",
+      "type": "timeseries"
     }
   ],
   "schemaVersion": 39,
@@ -249,6 +284,6 @@
   "timezone": "browser",
   "title": "Order Targeting",
   "uid": "edmgotrro8o3ke",
-  "version": 8,
+  "version": 6,
   "weekStart": ""
 }
