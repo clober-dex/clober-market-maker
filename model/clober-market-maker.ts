@@ -374,15 +374,12 @@ export class CloberMarketMaker {
         .toString(),
     })
 
-    // 1. calculate skew (total - defaultBaseBalance) / deltaLimit
-    let skew = totalBase
-      .minus(params.defaultBaseBalance)
-      .div(params.deltaLimit)
-      .toNumber()
+    // 1. calculate skew (total - quote) / deltaLimit
+    let skew = totalBase.minus(totalQuote).div(params.deltaLimit).toNumber()
     if (skew > 1) {
-      skew = 1
+      skew = 1 // too many base
     } else if (skew < -1) {
-      skew = -1
+      skew = -1 // too many quote
     }
 
     /*
