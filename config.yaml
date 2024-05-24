@@ -2,8 +2,8 @@ fetchIntervalMilliSeconds: 10000
 gasMultiplier: 1.1
 markets:
   WETH/USDC:
-    binance:
-      quote: USDT
+    chainlink:
+      quote: USDC
       base: ETH
     clober:
       quote: USDC

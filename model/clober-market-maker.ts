@@ -27,8 +27,8 @@ import {
 } from 'viem'
 import chalk from 'chalk'
 import { privateKeyToAccount } from 'viem/accounts'
-import { eip712WalletActions } from 'viem/zksync'
 import BigNumber from 'bignumber.js'
+import { arbitrumSepolia, base } from 'viem/chains'
 
 import { logger, slackClient } from '../utils/logger.ts'
 import { CHAIN_MAP } from '../constants/chain.ts'
@@ -48,10 +48,10 @@ import {
 import { CONTROLLER_ABI } from '../abis/core/controller-abi.ts'
 import { getBookTicks, getMarketPrice } from '../utils/tick.ts'
 
-import { Binance } from './binance.ts'
 import { Clober } from './clober.ts'
 import type { Config, Params } from './config.ts'
 import type { MakeParam } from './make-param.ts'
+import { ChainLink } from './chainLink.ts'
 
 const BID = 0
 const ASK = 1
@@ -65,7 +65,7 @@ export class CloberMarketMaker {
   config: Config
   erc20Tokens: `0x${string}`[] = []
   // define exchanges
-  binance: Binance
+  chainlink: ChainLink
   clober: Clober
   // mutable state
   openOrders: OpenOrder[] = []
@@ -85,9 +85,6 @@ export class CloberMarketMaker {
       chain: CHAIN_MAP[this.chainId],
       transport: process.env.RPC_URL ? http(process.env.RPC_URL) : http(),
     })
-    if (this.chainId === CHAIN_IDS.ZKSYNC_SEPOLIA) {
-      this.publicClient = this.publicClient.extend(eip712WalletActions())
-    }
 
     const account = privateKeyToAccount(
       process.env.PRIVATE_KEY as `0x${string}`,
@@ -103,8 +100,9 @@ export class CloberMarketMaker {
     this.userAddress = getAddress(this.walletClient.account.address)
 
     // set up exchanges
-    this.binance = new Binance(
-      _.mapValues(this.config.markets, (m) => m.binance),
+    this.chainlink = new ChainLink(
+      this.chainId === arbitrumSepolia.id ? base.id : this.chainId,
+      _.mapValues(this.config.markets, (m) => m.chainlink),
     )
     this.clober = new Clober(
       this.chainId,
@@ -254,7 +252,7 @@ export class CloberMarketMaker {
     while (true) {
       try {
         await Promise.all([
-          this.binance.update(),
+          this.chainlink.update(),
           this.clober.update(),
           this.update(),
         ])
@@ -293,7 +291,7 @@ export class CloberMarketMaker {
     const [lowestAsk, highestBid, oraclePrice] = [
       this.clober.lowestAsk(market),
       this.clober.highestBid(market),
-      this.binance.price(market),
+      this.chainlink.price(market),
     ]
 
     const [base, quote] = market.split('/')
