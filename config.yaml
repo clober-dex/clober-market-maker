@@ -9,7 +9,6 @@ markets:
       quote: USDC
       base: WETH
     params:
-      deltaLimit: 1000
       minTickSpread: 1
       maxTickSpread: 10
       orderGap: 1

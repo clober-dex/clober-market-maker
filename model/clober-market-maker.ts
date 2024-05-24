@@ -7,10 +7,10 @@ import {
   approveERC20,
   baseToQuote,
   CHAIN_IDS,
+  getContractAddresses,
   getOpenOrders,
   type OpenOrder,
   setApprovalOfOpenOrdersForAll,
-  getContractAddresses,
 } from '@clober/v2-sdk'
 import type { PublicClient, WalletClient } from 'viem'
 import {
@@ -372,22 +372,17 @@ export class CloberMarketMaker {
         .toString(),
     })
 
-    // 1. calculate skew (totalDollarBase - totalDollarQuote) / deltaLimit
-    // @dev we suppose that quote is usdc
-    let skew = totalBase
-      .times(oraclePrice)
+    // 1. calculate skew (totalDollarBase - totalDollarQuote) / (totalDollarBase + totalDollarQuote)
+    // @dev we suppose that quote is usdc -> totalDollarQuote = totalQuote
+    const totalDollarBase = totalBase.times(oraclePrice)
+    const skew = totalDollarBase
       .minus(totalQuote)
-      .div(params.deltaLimit)
+      .div(totalDollarBase.plus(totalQuote))
       .toNumber()
-    if (skew > 1) {
-      skew = 1 // too many base
-    } else if (skew < -1) {
-      skew = -1 // too many quote
-    }
 
     /*
-    if base balance = default + deltaLimit (skew = 1) => ask spread = min, bid spread = max
-    if base balance = default - deltaLimit (skew = -1) => ask spread = max, bid spread = min
+    if quote balance = 0 (skew = 1) => ask spread = min, bid spread = max
+    if base balance = 0 (skew = -1) => ask spread = max, bid spread = min
     */
     const askSpread = Math.round(
       (params.maxTickSpread - params.minTickSpread) * 0.5 * (skew + 1) +
