@@ -7,10 +7,10 @@ import {
   approveERC20,
   baseToQuote,
   CHAIN_IDS,
+  getContractAddresses,
   getOpenOrders,
   type OpenOrder,
   setApprovalOfOpenOrdersForAll,
-  getContractAddresses,
 } from '@clober/v2-sdk'
 import type { PublicClient, WalletClient } from 'viem'
 import {
@@ -27,8 +27,8 @@ import {
 } from 'viem'
 import chalk from 'chalk'
 import { privateKeyToAccount } from 'viem/accounts'
-import { eip712WalletActions } from 'viem/zksync'
 import BigNumber from 'bignumber.js'
+import { arbitrumSepolia, base } from 'viem/chains'
 
 import { logger, slackClient } from '../utils/logger.ts'
 import { CHAIN_MAP } from '../constants/chain.ts'
@@ -48,10 +48,10 @@ import {
 import { CONTROLLER_ABI } from '../abis/core/controller-abi.ts'
 import { getBookTicks, getMarketPrice } from '../utils/tick.ts'
 
-import { Binance } from './binance.ts'
 import { Clober } from './clober.ts'
 import type { Config, Params } from './config.ts'
 import type { MakeParam } from './make-param.ts'
+import { ChainLink } from './chainLink.ts'
 
 const BID = 0
 const ASK = 1
@@ -65,7 +65,7 @@ export class CloberMarketMaker {
   config: Config
   erc20Tokens: `0x${string}`[] = []
   // define exchanges
-  binance: Binance
+  chainlink: ChainLink
   clober: Clober
   // mutable state
   openOrders: OpenOrder[] = []
@@ -85,9 +85,6 @@ export class CloberMarketMaker {
       chain: CHAIN_MAP[this.chainId],
       transport: process.env.RPC_URL ? http(process.env.RPC_URL) : http(),
     })
-    if (this.chainId === CHAIN_IDS.ZKSYNC_SEPOLIA) {
-      this.publicClient = this.publicClient.extend(eip712WalletActions())
-    }
 
     const account = privateKeyToAccount(
       process.env.PRIVATE_KEY as `0x${string}`,
@@ -103,8 +100,9 @@ export class CloberMarketMaker {
     this.userAddress = getAddress(this.walletClient.account.address)
 
     // set up exchanges
-    this.binance = new Binance(
-      _.mapValues(this.config.markets, (m) => m.binance),
+    this.chainlink = new ChainLink(
+      this.chainId === arbitrumSepolia.id ? base.id : this.chainId,
+      _.mapValues(this.config.markets, (m) => m.chainlink),
     )
     this.clober = new Clober(
       this.chainId,
@@ -254,15 +252,15 @@ export class CloberMarketMaker {
     while (true) {
       try {
         await Promise.all([
-          this.binance.update(),
+          this.chainlink.update(),
           this.clober.update(),
           this.update(),
         ])
       } catch (e) {
         console.error('Error in update', e)
-        if (slackClient && Object.keys(slackClient).length > 0) {
+        if (slackClient && (e as any).toString().includes('Error')) {
           slackClient
-            .error({ message: 'Error in update', error: e })
+            .error({ message: 'Error in update', error: (e as any).toString() })
             .catch(() => {})
         }
       }
@@ -275,11 +273,11 @@ export class CloberMarketMaker {
         )
       } catch (e) {
         console.error('Error in market making', e)
-        if (slackClient) {
+        if (slackClient && (e as any).toString().includes('Error')) {
           slackClient
             .error({
               message: 'Error in market making',
-              error: e,
+              error: (e as any).toString(),
             })
             .catch(() => {})
         }
@@ -293,7 +291,7 @@ export class CloberMarketMaker {
     const [lowestAsk, highestBid, oraclePrice] = [
       this.clober.lowestAsk(market),
       this.clober.highestBid(market),
-      this.binance.price(market),
+      this.chainlink.price(market),
     ]
 
     const [base, quote] = market.split('/')
@@ -374,22 +372,17 @@ export class CloberMarketMaker {
         .toString(),
     })
 
-    // 1. calculate skew (totalDollarBase - totalDollarQuote) / deltaLimit
-    // @dev we suppose that quote is usdc
-    let skew = totalBase
-      .times(oraclePrice)
+    // 1. calculate skew (totalDollarBase - totalDollarQuote) / (totalDollarBase + totalDollarQuote)
+    // @dev we suppose that quote is usdc -> totalDollarQuote = totalQuote
+    const totalDollarBase = totalBase.times(oraclePrice)
+    const skew = totalDollarBase
       .minus(totalQuote)
-      .div(params.deltaLimit)
+      .div(totalDollarBase.plus(totalQuote))
       .toNumber()
-    if (skew > 1) {
-      skew = 1 // too many base
-    } else if (skew < -1) {
-      skew = -1 // too many quote
-    }
 
     /*
-    if base balance = default + deltaLimit (skew = 1) => ask spread = min, bid spread = max
-    if base balance = default - deltaLimit (skew = -1) => ask spread = max, bid spread = min
+    if quote balance = 0 (skew = 1) => ask spread = min, bid spread = max
+    if base balance = 0 (skew = -1) => ask spread = max, bid spread = min
     */
     const askSpread = Math.round(
       (params.maxTickSpread - params.minTickSpread) * 0.5 * (skew + 1) +
