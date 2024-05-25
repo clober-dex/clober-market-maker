@@ -384,12 +384,12 @@ export class CloberMarketMaker {
     if quote balance = 0 (skew = 1) => ask spread = min, bid spread = max
     if base balance = 0 (skew = -1) => ask spread = max, bid spread = min
     */
-    const askSpread = Math.round(
+    const bidSpread = Math.round(
       (params.maxTickSpread - params.minTickSpread) * 0.5 * (skew + 1) +
         params.minTickSpread,
     )
-    const bidSpread = Math.round(
-      params.maxTickSpread + params.minTickSpread - askSpread,
+    const askSpread = Math.round(
+      params.maxTickSpread + params.minTickSpread - bidSpread,
     )
 
     const askSize = params.orderSize * Math.min(skew + 1, 1)
