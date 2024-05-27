@@ -560,6 +560,7 @@ export class CloberMarketMaker {
         .filter((o) => o[1] > 0),
     }
     this.epoch[market][this.epoch[market].length - 1] = {
+      ...this.epoch[market][this.epoch[market].length - 1],
       minPrice: new BigNumber(
         humanReadableTargetOrders.bid.sort((a, b) => b[0] - a[0])[0]?.[0] ||
           '0',
