@@ -314,12 +314,15 @@ export class CloberMarketMaker {
           this.epoch[market][this.epoch[market].length - 1].maxPrice,
         ))
     ) {
-      const newEpoch = {
+      const newEpoch: Epoch = {
         id: this.epoch[market][this.epoch[market].length - 1].id + 1,
         startTimestamp: Math.floor(Date.now() / 1000),
         minSpread: 0, // TODO: update minSpread
         maxSpread: 0, // TODO: update maxSpread
-      } as Epoch
+        minPrice: new BigNumber(0), // TODO: update minPrice
+        maxPrice: new BigNumber(0), // TODO: update maxPrice
+        oraclePrice,
+      }
 
       this.epoch[market].push(newEpoch)
 
@@ -363,7 +366,7 @@ export class CloberMarketMaker {
         )
         .map((price) => new BigNumber(price))
 
-      const newEpoch = {
+      const newEpoch: Epoch = {
         id: 0,
         startTimestamp: Math.floor(Date.now() / 1000),
         minSpread,
@@ -374,7 +377,8 @@ export class CloberMarketMaker {
         maxPrice: askPrices
           .reduce((acc, price) => acc.plus(price), new BigNumber(0))
           .div(askPrices.length),
-      } as Epoch
+        oraclePrice,
+      }
 
       this.epoch[market] = [newEpoch]
 
