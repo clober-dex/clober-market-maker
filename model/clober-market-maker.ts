@@ -334,17 +334,20 @@ export class CloberMarketMaker {
 
     // first epoch
     else if (this.epoch[market].length === 0) {
-      const minSpread = 0
-      const maxSpread = params.initialTickSpread
+      const initialTickSpread = Math.round(
+        (params.minTickSpread + params.maxTickSpread) / 2,
+      )
       const askTicks = Array.from(
         { length: params.orderNum },
         (_, i) =>
-          oraclePriceAskBookTick - BigInt(askSpread - params.orderGap * i),
+          oraclePriceAskBookTick -
+          BigInt(initialTickSpread - params.orderGap * i),
       )
       const bidTicks = Array.from(
         { length: params.orderNum },
         (_, i) =>
-          oraclePriceBidBookTick - BigInt(bidSpread - params.orderGap * i),
+          oraclePriceBidBookTick -
+          BigInt(initialTickSpread - params.orderGap * i),
       )
 
       const askPrices = askTicks
@@ -369,8 +372,8 @@ export class CloberMarketMaker {
       const newEpoch: Epoch = {
         id: 0,
         startTimestamp: Math.floor(Date.now() / 1000),
-        minSpread,
-        maxSpread,
+        minSpread: params.minTickSpread,
+        maxSpread: params.maxTickSpread,
         minPrice: bidPrices
           .reduce((acc, price) => acc.plus(price), new BigNumber(0))
           .div(bidPrices.length),
