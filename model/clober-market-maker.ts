@@ -341,13 +341,13 @@ export class CloberMarketMaker {
         { length: params.orderNum },
         (_, i) =>
           oraclePriceAskBookTick -
-          BigInt(initialTickSpread - params.orderGap * i),
+          BigInt(initialTickSpread + params.orderGap * i),
       )
       const bidTicks = Array.from(
         { length: params.orderNum },
         (_, i) =>
           oraclePriceBidBookTick -
-          BigInt(initialTickSpread - params.orderGap * i),
+          BigInt(initialTickSpread + params.orderGap * i),
       )
 
       const askPrices = askTicks
@@ -520,12 +520,12 @@ export class CloberMarketMaker {
     ] = [{}, {}]
     for (let i = 0; i < params.orderNum; i++) {
       const tick =
-        oraclePriceAskBookTick - BigInt(askSpread - params.orderGap * i)
+        oraclePriceAskBookTick - BigInt(askSpread + params.orderGap * i)
       targetOrders[ASK][Number(tick)] = askSize
     }
     for (let i = 0; i < params.orderNum; i++) {
       const tick =
-        oraclePriceBidBookTick - BigInt(bidSpread - params.orderGap * i)
+        oraclePriceBidBookTick - BigInt(bidSpread + params.orderGap * i)
       targetOrders[BID][Number(tick)] = bidSize
     }
 
