@@ -314,13 +314,53 @@ export class CloberMarketMaker {
           this.epoch[market][this.epoch[market].length - 1].maxPrice,
         ))
     ) {
+      // TODO: calculate minSpread, maxSpread, minPrice, maxPrice based on the previous epoch
+      const initialTickSpread = Math.round(
+        (params.minTickSpread + params.maxTickSpread) / 2,
+      )
+      const askTicks = Array.from(
+        { length: params.orderNum },
+        (_, i) =>
+          oraclePriceAskBookTick -
+          BigInt(initialTickSpread + params.orderGap * i),
+      )
+      const bidTicks = Array.from(
+        { length: params.orderNum },
+        (_, i) =>
+          oraclePriceBidBookTick -
+          BigInt(initialTickSpread + params.orderGap * i),
+      )
+
+      const askPrices = askTicks
+        .map((tick) =>
+          getMarketPrice({
+            marketQuoteCurrency: findCurrencyBySymbol(this.chainId, quote),
+            marketBaseCurrency: findCurrencyBySymbol(this.chainId, base),
+            askTick: tick,
+          }),
+        )
+        .map((price) => new BigNumber(price))
+      const bidPrices = bidTicks
+        .map((tick) =>
+          getMarketPrice({
+            marketQuoteCurrency: findCurrencyBySymbol(this.chainId, quote),
+            marketBaseCurrency: findCurrencyBySymbol(this.chainId, base),
+            bidTick: tick,
+          }),
+        )
+        .map((price) => new BigNumber(price))
+
       const newEpoch: Epoch = {
         id: this.epoch[market][this.epoch[market].length - 1].id + 1,
         startTimestamp: Math.floor(Date.now() / 1000),
-        minSpread: 0, // TODO: update minSpread
-        maxSpread: 0, // TODO: update maxSpread
-        minPrice: new BigNumber(0), // TODO: update minPrice
-        maxPrice: new BigNumber(0), // TODO: update maxPrice
+        minSpread: params.minTickSpread, // TODO: calculate minSpread
+        maxSpread: params.maxTickSpread, // TODO: calculate maxSpread
+        minPrice: bidPrices // TODO: calculate minPrice
+          .reduce((acc, price) => acc.plus(price), new BigNumber(0))
+          .div(bidPrices.length),
+        maxPrice: askPrices // TODO: calculate maxPrice
+          .reduce((acc, price) => acc.plus(price), new BigNumber(0))
+          .div(askPrices.length),
         oraclePrice,
       }
 
