@@ -72,12 +72,6 @@ export class CloberMarketMaker {
   openOrders: OpenOrder[] = []
   balances: { [address: `0x${string}`]: bigint } = {}
   epoch: { [market: string]: Epoch[] } = {}
-  latestBandWidth: {
-    [market: string]: {
-      highestBid: BigNumber
-      lowestAsk: BigNumber
-    }
-  } = {}
   private initialized = false
 
   constructor(configPath?: string) {
@@ -301,48 +295,44 @@ export class CloberMarketMaker {
       this.clober.highestBid(market),
       this.chainlink.price(market),
     ]
-    if (
-      Object.keys(this.latestBandWidth[market]).length === 0 ||
-      (Object.keys(this.latestBandWidth[market]).length > 0 &&
-        (oraclePrice.isLessThanOrEqualTo(
-          this.latestBandWidth[market].highestBid,
-        ) ||
-          oraclePrice.isGreaterThanOrEqualTo(
-            this.latestBandWidth[market].lowestAsk,
-          )))
-    ) {
-      if (this.epoch[market].length > 0) {
-        const { id: lastEpochId } =
-          this.epoch[market][this.epoch[market].length - 1]
-        // TODO: calculate lastEpoch's PnL
-        this.epoch[market].push({
-          id: this.epoch[market][lastEpochId].id + 1,
-          startTimestamp: Math.floor(Date.now() / 1000),
-          minSpread: this.epoch[market][lastEpochId].minSpread, // TODO: update minSpread
-          maxSpread: this.epoch[market][lastEpochId].maxSpread, // TODO: update maxSpread
-        } as Epoch)
-      } else {
-        this.epoch[market] = [
-          {
-            id: 0,
-            startTimestamp: Math.floor(Date.now() / 1000),
-            minSpread: Math.floor(
-              params.minTickSpread + params.maxTickSpread / 2,
-            ),
-            maxSpread: Math.floor(
-              params.minTickSpread + params.maxTickSpread / 2,
-            ),
-          } as Epoch,
-        ]
-      }
 
-      const newEpoch = this.epoch[market][this.epoch[market].length - 1]
+    if (
+      this.epoch[market].length > 0 &&
+      (oraclePrice.isLessThanOrEqualTo(
+        this.epoch[market][this.epoch[market].length - 1].minPrice,
+      ) ||
+        oraclePrice.isGreaterThanOrEqualTo(
+          this.epoch[market][this.epoch[market].length - 1].maxPrice,
+        ))
+    ) {
+      const newEpoch = {
+        id: this.epoch[market][this.epoch[market].length - 1].id + 1,
+        startTimestamp: Math.floor(Date.now() / 1000),
+        minSpread: 0, // TODO: update minSpread
+        maxSpread: 0, // TODO: update maxSpread
+      } as Epoch
+
+      this.epoch[market].push(newEpoch)
+
       await logger(chalk.redBright, 'New Epoch', {
         market,
-        id: newEpoch.id,
-        startTimestamp: newEpoch.startTimestamp,
-        minSpread: newEpoch.minSpread,
-        maxSpread: newEpoch.maxSpread,
+        ...newEpoch,
+      })
+    }
+    // first epoch
+    else if (this.epoch[market].length === 0) {
+      const newEpoch = {
+        id: 0,
+        startTimestamp: Math.floor(Date.now() / 1000),
+        minSpread: Math.floor(params.minTickSpread + params.maxTickSpread / 2),
+        maxSpread: Math.floor(params.minTickSpread + params.maxTickSpread / 2),
+      } as Epoch
+
+      this.epoch[market] = [newEpoch]
+
+      await logger(chalk.redBright, 'New Epoch', {
+        market,
+        ...newEpoch,
       })
     }
 
@@ -569,12 +559,12 @@ export class CloberMarketMaker {
         .sort((a, b) => b[0] - a[0])
         .filter((o) => o[1] > 0),
     }
-    this.latestBandWidth[market] = {
-      highestBid: new BigNumber(
+    this.epoch[market][this.epoch[market].length - 1] = {
+      minPrice: new BigNumber(
         humanReadableTargetOrders.bid.sort((a, b) => b[0] - a[0])[0]?.[0] ||
           '0',
       ),
-      lowestAsk: new BigNumber(
+      maxPrice: new BigNumber(
         humanReadableTargetOrders.ask.sort((a, b) => a[0] - b[0])[0]?.[0] ||
           Math.pow(2, 256) - 1,
       ),
