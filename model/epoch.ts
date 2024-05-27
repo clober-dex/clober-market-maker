@@ -6,7 +6,7 @@ export type Epoch = {
   minSpread: number
   maxSpread: number
   startTimestamp: number
-  maxPrice: BigNumber
   minPrice: BigNumber
+  maxPrice: BigNumber
   oraclePrice: BigNumber
 }
