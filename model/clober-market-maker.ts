@@ -324,8 +324,8 @@ export class CloberMarketMaker {
       const newEpoch = {
         id: 0,
         startTimestamp: Math.floor(Date.now() / 1000),
-        minSpread: Math.floor(params.minTickSpread + params.maxTickSpread / 2),
-        maxSpread: Math.floor(params.minTickSpread + params.maxTickSpread / 2),
+        minSpread: Math.floor(params.initialTickSpread / 2),
+        maxSpread: Math.floor(params.initialTickSpread / 2),
       } as Epoch
 
       this.epoch[market] = [newEpoch]
@@ -775,9 +775,9 @@ export class CloberMarketMaker {
       if (params.maxTickSpread <= params.minTickSpread) {
         throw new Error('maxTickSpread must be greater than minTickSpread')
       }
-      // maxTickSpread + minTickSpread should be even
-      if ((params.maxTickSpread + params.minTickSpread) % 2 !== 0) {
-        throw new Error('maxTickSpread + minTickSpread should be even')
+      // initialTickSpread should be even
+      if (params.initialTickSpread % 2 !== 0) {
+        throw new Error('initialTickSpread should be even')
       }
     })
   }
