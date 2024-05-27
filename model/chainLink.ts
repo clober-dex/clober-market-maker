@@ -61,8 +61,10 @@ export class ChainLink implements Oracle {
             abi: _abi,
             functionName: 'latestAnswer',
           })
-          .then((price: bigint) => {
-            this.prices[id] = new BigNumber(price.toString()).div(10 ** 8)
+          .then((price) => {
+            this.prices[id] = new BigNumber((price as bigint).toString()).div(
+              10 ** 8,
+            )
           }),
       )
     }
