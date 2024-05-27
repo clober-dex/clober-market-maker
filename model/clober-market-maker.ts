@@ -334,8 +334,8 @@ export class CloberMarketMaker {
 
     // first epoch
     else if (this.epoch[market].length === 0) {
-      const minSpread = Math.floor(params.initialTickSpread / 2)
-      const maxSpread = Math.floor(params.initialTickSpread / 2)
+      const minSpread = 0
+      const maxSpread = params.initialTickSpread
       const askTicks = Array.from(
         { length: params.orderNum },
         (_, i) =>
