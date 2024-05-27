@@ -52,6 +52,7 @@ import { Clober } from './clober.ts'
 import type { Config, Params } from './config.ts'
 import type { MakeParam } from './make-param.ts'
 import { ChainLink } from './chainLink.ts'
+import type { Epoch } from './epoch.ts'
 
 const BID = 0
 const ASK = 1
@@ -70,6 +71,13 @@ export class CloberMarketMaker {
   // mutable state
   openOrders: OpenOrder[] = []
   balances: { [address: `0x${string}`]: bigint } = {}
+  epoch: { [market: string]: Epoch[] } = {}
+  latestBandWidth: {
+    [market: string]: {
+      highestBid: BigNumber
+      lowestAsk: BigNumber
+    }
+  } = {}
   private initialized = false
 
   constructor(configPath?: string) {
@@ -293,6 +301,50 @@ export class CloberMarketMaker {
       this.clober.highestBid(market),
       this.chainlink.price(market),
     ]
+    if (
+      Object.keys(this.latestBandWidth[market]).length === 0 ||
+      (Object.keys(this.latestBandWidth[market]).length > 0 &&
+        (oraclePrice.isLessThanOrEqualTo(
+          this.latestBandWidth[market].highestBid,
+        ) ||
+          oraclePrice.isGreaterThanOrEqualTo(
+            this.latestBandWidth[market].lowestAsk,
+          )))
+    ) {
+      if (this.epoch[market].length > 0) {
+        const { id: lastEpochId } =
+          this.epoch[market][this.epoch[market].length - 1]
+        // TODO: calculate lastEpoch's PnL
+        this.epoch[market].push({
+          id: this.epoch[market][lastEpochId].id + 1,
+          startTimestamp: Math.floor(Date.now() / 1000),
+          minSpread: this.epoch[market][lastEpochId].minSpread, // TODO: update minSpread
+          maxSpread: this.epoch[market][lastEpochId].maxSpread, // TODO: update maxSpread
+        } as Epoch)
+      } else {
+        this.epoch[market] = [
+          {
+            id: 0,
+            startTimestamp: Math.floor(Date.now() / 1000),
+            minSpread: Math.floor(
+              params.minTickSpread + params.maxTickSpread / 2,
+            ),
+            maxSpread: Math.floor(
+              params.minTickSpread + params.maxTickSpread / 2,
+            ),
+          } as Epoch,
+        ]
+      }
+
+      const newEpoch = this.epoch[market][this.epoch[market].length - 1]
+      await logger(chalk.redBright, 'New Epoch', {
+        market,
+        id: newEpoch.id,
+        startTimestamp: newEpoch.startTimestamp,
+        minSpread: newEpoch.minSpread,
+        maxSpread: newEpoch.maxSpread,
+      })
+    }
 
     const [base, quote] = market.split('/')
     const quoteCurrency = findCurrencyBySymbol(this.chainId, quote)
@@ -489,6 +541,45 @@ export class CloberMarketMaker {
       price: highestBid.toString(),
     })
 
+    const humanReadableTargetOrders = {
+      ask: Object.keys(targetOrders[ASK])
+        .map((tick) => [
+          Number(
+            getMarketPrice({
+              marketQuoteCurrency: findCurrencyBySymbol(this.chainId, quote),
+              marketBaseCurrency: findCurrencyBySymbol(this.chainId, base),
+              askTick: BigInt(tick),
+            }),
+          ),
+          targetOrders[ASK][Number(tick)],
+        ])
+        .sort((a, b) => b[0] - a[0])
+        .filter((o) => o[1] > 0),
+      bid: Object.keys(targetOrders[BID])
+        .map((tick) => [
+          Number(
+            getMarketPrice({
+              marketQuoteCurrency: findCurrencyBySymbol(this.chainId, quote),
+              marketBaseCurrency: findCurrencyBySymbol(this.chainId, base),
+              bidTick: BigInt(tick),
+            }),
+          ),
+          targetOrders[BID][Number(tick)],
+        ])
+        .sort((a, b) => b[0] - a[0])
+        .filter((o) => o[1] > 0),
+    }
+    this.latestBandWidth[market] = {
+      highestBid: new BigNumber(
+        humanReadableTargetOrders.bid.sort((a, b) => b[0] - a[0])[0]?.[0] ||
+          '0',
+      ),
+      lowestAsk: new BigNumber(
+        humanReadableTargetOrders.ask.sort((a, b) => a[0] - b[0])[0]?.[0] ||
+          Math.pow(2, 256) - 1,
+      ),
+    }
+
     // Skip when the oracle price is in the spread
     if (
       lowestAsk &&
@@ -547,35 +638,6 @@ export class CloberMarketMaker {
           ),
         )
       }
-    }
-
-    const humanReadableTargetOrders = {
-      ask: Object.keys(targetOrders[ASK])
-        .map((tick) => [
-          Number(
-            getMarketPrice({
-              marketQuoteCurrency: findCurrencyBySymbol(this.chainId, quote),
-              marketBaseCurrency: findCurrencyBySymbol(this.chainId, base),
-              askTick: BigInt(tick),
-            }),
-          ),
-          targetOrders[ASK][Number(tick)],
-        ])
-        .sort((a, b) => b[0] - a[0])
-        .filter((o) => o[1] > 0),
-      bid: Object.keys(targetOrders[BID])
-        .map((tick) => [
-          Number(
-            getMarketPrice({
-              marketQuoteCurrency: findCurrencyBySymbol(this.chainId, quote),
-              marketBaseCurrency: findCurrencyBySymbol(this.chainId, base),
-              bidTick: BigInt(tick),
-            }),
-          ),
-          targetOrders[BID][Number(tick)],
-        ])
-        .sort((a, b) => b[0] - a[0])
-        .filter((o) => o[1] > 0),
     }
 
     const bidMakeParams: MakeParam[] = Object.entries(targetOrders[BID]).map(
