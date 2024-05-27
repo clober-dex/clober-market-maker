@@ -3,7 +3,6 @@ import type { Market } from './market.ts'
 /**
  * Represents the parameters required for configuring a trading strategy.
  * @typedef Params
- * @property {number} initialTickSpread - The initial spread for trading.
  * @property {number} minTickSpread - The minimum spread allowed for trading.
  * @property {number} maxTickSpread - The maximum spread allowed for trading.
  * @property {number} orderGap - The order gap for trading.
@@ -15,7 +14,6 @@ import type { Market } from './market.ts'
  */
 
 export type Params = {
-  initialTickSpread: number
   minTickSpread: number
   maxTickSpread: number
   orderGap: number
