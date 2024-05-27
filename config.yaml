@@ -10,7 +10,7 @@ markets:
       base: WETH
     params:
       minTickSpread: 0
-      maxTickSpread: 5
+      maxTickSpread: 6
       orderGap: 1
       orderNum: 1
       orderSize: 5
