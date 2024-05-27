@@ -290,11 +290,20 @@ export class CloberMarketMaker {
   }
 
   async marketMaking(market: string, params: Params) {
+    const [base, quote] = market.split('/')
     const [lowestAsk, highestBid, oraclePrice] = [
       this.clober.lowestAsk(market),
       this.clober.highestBid(market),
       this.chainlink.price(market),
     ]
+    const {
+      bidBookTick: oraclePriceBidBookTick,
+      askBookTick: oraclePriceAskBookTick,
+    } = getBookTicks({
+      marketQuoteCurrency: findCurrencyBySymbol(this.chainId, quote),
+      marketBaseCurrency: findCurrencyBySymbol(this.chainId, base),
+      price: oraclePrice.toString(),
+    })
 
     if (
       this.epoch[market].length > 0 &&
@@ -319,13 +328,52 @@ export class CloberMarketMaker {
         ...newEpoch,
       })
     }
+
     // first epoch
     else if (this.epoch[market].length === 0) {
+      const minSpread = Math.floor(params.initialTickSpread / 2)
+      const maxSpread = Math.floor(params.initialTickSpread / 2)
+      const askTicks = Array.from(
+        { length: params.orderNum },
+        (_, i) =>
+          oraclePriceAskBookTick - BigInt(askSpread - params.orderGap * i),
+      )
+      const bidTicks = Array.from(
+        { length: params.orderNum },
+        (_, i) =>
+          oraclePriceBidBookTick - BigInt(bidSpread - params.orderGap * i),
+      )
+
+      const askPrices = askTicks
+        .map((tick) =>
+          getMarketPrice({
+            marketQuoteCurrency: findCurrencyBySymbol(this.chainId, quote),
+            marketBaseCurrency: findCurrencyBySymbol(this.chainId, base),
+            askTick: tick,
+          }),
+        )
+        .map((price) => new BigNumber(price))
+      const bidPrices = bidTicks
+        .map((tick) =>
+          getMarketPrice({
+            marketQuoteCurrency: findCurrencyBySymbol(this.chainId, quote),
+            marketBaseCurrency: findCurrencyBySymbol(this.chainId, base),
+            bidTick: tick,
+          }),
+        )
+        .map((price) => new BigNumber(price))
+
       const newEpoch = {
         id: 0,
         startTimestamp: Math.floor(Date.now() / 1000),
-        minSpread: Math.floor(params.initialTickSpread / 2),
-        maxSpread: Math.floor(params.initialTickSpread / 2),
+        minSpread,
+        maxSpread,
+        minPrice: bidPrices
+          .reduce((acc, price) => acc.plus(price), new BigNumber(0))
+          .div(bidPrices.length),
+        maxPrice: askPrices
+          .reduce((acc, price) => acc.plus(price), new BigNumber(0))
+          .div(askPrices.length),
       } as Epoch
 
       this.epoch[market] = [newEpoch]
@@ -336,7 +384,6 @@ export class CloberMarketMaker {
       })
     }
 
-    const [base, quote] = market.split('/')
     const quoteCurrency = findCurrencyBySymbol(this.chainId, quote)
     const baseCurrency = findCurrencyBySymbol(this.chainId, base)
     const openOrders = this.openOrders.filter(
@@ -460,21 +507,18 @@ export class CloberMarketMaker {
     }
 
     // 3. calculate target orders
-    const { bidBookTick, askBookTick } = getBookTicks({
-      marketQuoteCurrency: findCurrencyBySymbol(this.chainId, quote),
-      marketBaseCurrency: findCurrencyBySymbol(this.chainId, base),
-      price: oraclePrice.toString(),
-    })
     const targetOrders: [
       { [tick: number]: number },
       { [tick: number]: number },
     ] = [{}, {}]
     for (let i = 0; i < params.orderNum; i++) {
-      const tick = askBookTick - BigInt(askSpread - params.orderGap * i)
+      const tick =
+        oraclePriceAskBookTick - BigInt(askSpread - params.orderGap * i)
       targetOrders[ASK][Number(tick)] = askSize
     }
     for (let i = 0; i < params.orderNum; i++) {
-      const tick = bidBookTick - BigInt(bidSpread - params.orderGap * i)
+      const tick =
+        oraclePriceBidBookTick - BigInt(bidSpread - params.orderGap * i)
       targetOrders[BID][Number(tick)] = bidSize
     }
 
@@ -558,17 +602,6 @@ export class CloberMarketMaker {
         ])
         .sort((a, b) => b[0] - a[0])
         .filter((o) => o[1] > 0),
-    }
-    this.epoch[market][this.epoch[market].length - 1] = {
-      ...this.epoch[market][this.epoch[market].length - 1],
-      minPrice: new BigNumber(
-        humanReadableTargetOrders.bid.sort((a, b) => b[0] - a[0])[0]?.[0] ||
-          '0',
-      ),
-      maxPrice: new BigNumber(
-        humanReadableTargetOrders.ask.sort((a, b) => a[0] - b[0])[0]?.[0] ||
-          Math.pow(2, 256) - 1,
-      ),
     }
 
     // Skip when the oracle price is in the spread
