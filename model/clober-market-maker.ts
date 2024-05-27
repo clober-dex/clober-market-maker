@@ -722,6 +722,10 @@ export class CloberMarketMaker {
       if (params.maxTickSpread <= params.minTickSpread) {
         throw new Error('maxTickSpread must be greater than minTickSpread')
       }
+      // maxTickSpread + minTickSpread should be even
+      if ((params.maxTickSpread + params.minTickSpread) % 2 !== 0) {
+        throw new Error('maxTickSpread + minTickSpread should be even')
+      }
     })
   }
 }
