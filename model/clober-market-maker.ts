@@ -306,7 +306,7 @@ export class CloberMarketMaker {
     })
 
     if (
-      this.epoch[market].length > 0 &&
+      this.epoch[market] &&
       (oraclePrice.isLessThanOrEqualTo(
         this.epoch[market][this.epoch[market].length - 1].minPrice,
       ) ||
@@ -333,7 +333,7 @@ export class CloberMarketMaker {
     }
 
     // first epoch
-    else if (this.epoch[market].length === 0) {
+    else if (!this.epoch[market]) {
       const initialTickSpread = Math.round(
         (params.minTickSpread + params.maxTickSpread) / 2,
       )
