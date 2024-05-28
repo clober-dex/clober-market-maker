@@ -270,11 +270,6 @@ export class CloberMarketMaker {
         ])
       } catch (e) {
         console.error('Error in update', e)
-        if (slackClient && (e as any).toString().includes('Error')) {
-          slackClient
-            .error({ message: 'Error in update', error: (e as any).toString() })
-            .catch(() => {})
-        }
       }
 
       try {
