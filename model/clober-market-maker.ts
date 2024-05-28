@@ -37,7 +37,10 @@ import {
   findCurrencyBySymbol,
 } from '../utils/currency.ts'
 import { getGasPrice, waitTransaction } from '../utils/transaction.ts'
-import { getDeadlineTimestampInSeconds } from '../utils/time.ts'
+import {
+  convertTimestampToBlockNumber,
+  getDeadlineTimestampInSeconds,
+} from '../utils/time.ts'
 import { Action } from '../constants/action.ts'
 import {
   CANCEL_ORDER_PARAMS_ABI,
@@ -321,6 +324,19 @@ export class CloberMarketMaker {
         ))
     ) {
       // TODO: calculate minSpread, maxSpread, minPrice, maxPrice based on the previous epoch
+      const startTimestamp = Math.floor(Date.now() / 1000)
+      const [startBlock, endBlock] = await Promise.all([
+        convertTimestampToBlockNumber(
+          this.chainId === arbitrumSepolia.id ? 8453 : this.chainId,
+          this.epoch[market][this.epoch[market].length - 1].startTimestamp,
+        ),
+        convertTimestampToBlockNumber(
+          this.chainId === arbitrumSepolia.id ? 8453 : this.chainId,
+          startTimestamp,
+        ),
+      ])
+      this.dexSimulator.findSpread(market, startBlock, endBlock, oraclePrice)
+
       const initialTickSpread = Math.round(
         (params.minTickSpread + params.maxTickSpread) / 2,
       )

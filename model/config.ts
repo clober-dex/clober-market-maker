@@ -29,7 +29,7 @@ export type Config = {
   gasMultiplier: number
   markets: {
     [id: string]: {
-      chainlink: Market
+      binance: Market
       clober: Market
       params: Params
     }
