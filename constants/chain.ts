@@ -1,9 +1,5 @@
 import { arbitrumSepolia, base, type Chain } from 'viem/chains'
-
-export enum CHAIN_IDS {
-  ARBITRUM_SEPOLIA = arbitrumSepolia.id,
-  BASE = base.id,
-}
+import { CHAIN_IDS } from '@clober/v2-sdk'
 
 export const CHAIN_MAP: {
   [chain in CHAIN_IDS]: Chain

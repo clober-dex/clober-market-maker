@@ -12,7 +12,12 @@ import {
   zeroAddress,
 } from 'viem'
 import { arbitrumSepolia, base } from 'viem/chains'
-import { approveERC20, marketOrder, type Currency } from '@clober/v2-sdk'
+import {
+  approveERC20,
+  marketOrder,
+  type Currency,
+  CHAIN_IDS,
+} from '@clober/v2-sdk'
 import { privateKeyToAccount } from 'viem/accounts'
 import * as YAML from 'yaml'
 import chalk from 'chalk'
