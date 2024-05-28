@@ -51,7 +51,7 @@ import { getBookTicks, getMarketPrice } from '../utils/tick.ts'
 import { Clober } from './clober.ts'
 import type { Config, Params } from './config.ts'
 import type { MakeParam } from './make-param.ts'
-import { ChainLink } from './chainLink.ts'
+import { ChainLink } from './chainlink.ts'
 import type { Epoch } from './epoch.ts'
 
 const BID = 0
