@@ -27,7 +27,6 @@ import {
 } from 'viem'
 import chalk from 'chalk'
 import { privateKeyToAccount } from 'viem/accounts'
-import BigNumber from 'bignumber.js'
 import { arbitrumSepolia, base } from 'viem/chains'
 
 import { logger, slackClient } from '../utils/logger.ts'
@@ -47,6 +46,7 @@ import {
 } from '../abis/core/params-abi.ts'
 import { CONTROLLER_ABI } from '../abis/core/controller-abi.ts'
 import { getBookTicks, getMarketPrice } from '../utils/tick.ts'
+import BigNumber from '../utils/bignumber.ts'
 
 import { Clober } from './clober.ts'
 import type { Config, Params } from './config.ts'

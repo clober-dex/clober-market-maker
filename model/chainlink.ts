@@ -1,4 +1,3 @@
-import BigNumber from 'bignumber.js'
 import { CHAIN_IDS } from '@clober/v2-sdk'
 import { createPublicClient, http, type PublicClient } from 'viem'
 import chalk from 'chalk'
@@ -6,6 +5,7 @@ import chalk from 'chalk'
 import { CHAIN_MAP } from '../constants/chain.ts'
 import { CHAINLINK_CONTRACT_ADDRESS } from '../constants/chainlink.ts'
 import { logger } from '../utils/logger.ts'
+import BigNumber from '../utils/bignumber.ts'
 
 import type { Oracle } from './oracle.ts'
 import type { Market } from './market.ts'

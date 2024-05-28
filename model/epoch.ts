@@ -1,4 +1,4 @@
-import BigNumber from 'bignumber.js'
+import type BigNumber from '../utils/bignumber'
 
 // Constants values when epoch is created
 export type Epoch = {

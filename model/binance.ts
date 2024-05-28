@@ -1,8 +1,8 @@
 import { binance, pro as ccxt } from 'ccxt'
 import chalk from 'chalk'
-import BigNumber from 'bignumber.js'
 
 import { logger } from '../utils/logger.ts'
+import BigNumber from '../utils/bignumber.ts'
 
 import type { OrderBook } from './order-book.ts'
 import type { Exchange } from './exchange.ts'
