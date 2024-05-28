@@ -53,6 +53,7 @@ import type { Config, Params } from './config.ts'
 import type { MakeParam } from './make-param.ts'
 import { ChainLink } from './chainlink.ts'
 import type { Epoch } from './epoch.ts'
+import { DexSimulator } from './dex-simulator.ts'
 
 const BID = 0
 const ASK = 1
@@ -65,6 +66,7 @@ export class CloberMarketMaker {
   walletClient: WalletClient
   config: Config
   erc20Tokens: `0x${string}`[] = []
+  dexSimulator: DexSimulator
   // define exchanges
   chainlink: ChainLink
   clober: Clober
@@ -100,6 +102,10 @@ export class CloberMarketMaker {
       throw new Error('WalletClient must have an account')
     }
     this.userAddress = getAddress(this.walletClient.account.address)
+    this.dexSimulator = new DexSimulator(
+      this.chainId === arbitrumSepolia.id ? base.id : this.chainId,
+      _.mapValues(this.config.markets, (m) => m.chainlink),
+    )
 
     // set up exchanges
     this.chainlink = new ChainLink(
@@ -254,6 +260,7 @@ export class CloberMarketMaker {
     while (true) {
       try {
         await Promise.all([
+          this.dexSimulator.update(),
           this.chainlink.update(),
           this.clober.update(),
           this.update(),
