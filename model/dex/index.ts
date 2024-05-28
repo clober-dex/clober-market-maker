@@ -1,7 +1,7 @@
-import type { Trade } from '../trade.ts'
+import type { TakenTrade } from '../taken-trade.ts'
 
 export interface Dex {
   address: `0x${string}`
 
-  extract(logs: any[]): Trade[]
+  extract(logs: any[]): TakenTrade[]
 }

@@ -1,5 +1,5 @@
-export type Trade = {
-  type: 'bid' | 'ask'
+export type TakenTrade = {
+  isTakingBidSide: boolean
   amountIn: string
   amountOut: string
   price: string

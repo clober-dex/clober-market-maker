@@ -7,7 +7,7 @@ import {
 } from 'viem'
 import type { Currency } from '@clober/v2-sdk'
 
-import type { Trade } from '../trade.ts'
+import type { TakenTrade } from '../taken-trade.ts'
 import BigNumber from '../../utils/bignumber'
 import { abs } from '../../utils/bigint.ts'
 
@@ -28,7 +28,7 @@ export class UniSwapV3 implements Dex {
     this.currency1 = currency1
   }
 
-  extract(logs: any[]): Trade[] {
+  extract(logs: any[]): TakenTrade[] {
     const filterLogs = logs.filter((log: any) =>
       isAddressEqual(log.address, this.address),
     )
@@ -42,7 +42,7 @@ export class UniSwapV3 implements Dex {
       ({ blockNumber, logIndex, args: { sqrtPriceX96, amount0, amount1 } }) => {
         return {
           logIndex,
-          type: amount0 > 0n ? 'ask' : 'bid',
+          isTakingBidSide: amount0 > 0n,
           amountIn:
             amount0 > 0n
               ? formatUnits(abs(amount0), this.currency0.decimals)

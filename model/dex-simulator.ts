@@ -6,14 +6,14 @@ import { ODOS_ROUTER_CONTRACT_ADDRESS } from '../constants/odos.ts'
 import { WHITELIST_DEX } from '../constants/dex.ts'
 
 import type { Market } from './market.ts'
-import type { Trade } from './trade.ts'
+import type { TakenTrade } from './taken-trade.ts'
 
 export class DexSimulator {
   markets: { [id: string]: Market }
   chainId: CHAIN_IDS
   publicClient: PublicClient
 
-  trades: { [id: string]: Trade[] } = {}
+  trades: { [id: string]: TakenTrade[] } = {}
   startBlock: bigint = 0n
   latestBlock: bigint = 0n
 
@@ -65,7 +65,7 @@ export class DexSimulator {
     for (const [id] of Object.entries(this.markets)) {
       const trades = WHITELIST_DEX[this.chainId][id].reduce(
         (acc, dex) => acc.concat(dex.extract(logs.flat())),
-        [] as Trade[],
+        [] as TakenTrade[],
       )
       this.trades[id] = [...(this.trades[id] || []), ...trades]
     }
