@@ -51,9 +51,9 @@ import BigNumber from '../utils/bignumber.ts'
 import { Clober } from './clober.ts'
 import type { Config, Params } from './config.ts'
 import type { MakeParam } from './make-param.ts'
-import { ChainLink } from './chainlink.ts'
 import type { Epoch } from './epoch.ts'
 import { DexSimulator } from './dex-simulator.ts'
+import { Binance } from './binance.ts'
 
 const BID = 0
 const ASK = 1
@@ -68,7 +68,7 @@ export class CloberMarketMaker {
   erc20Tokens: `0x${string}`[] = []
   dexSimulator: DexSimulator
   // define exchanges
-  chainlink: ChainLink
+  binance: Binance
   clober: Clober
   // mutable state
   openOrders: OpenOrder[] = []
@@ -104,13 +104,12 @@ export class CloberMarketMaker {
     this.userAddress = getAddress(this.walletClient.account.address)
     this.dexSimulator = new DexSimulator(
       this.chainId === arbitrumSepolia.id ? base.id : this.chainId,
-      _.mapValues(this.config.markets, (m) => m.chainlink),
+      _.mapValues(this.config.markets, (m) => m.clober),
     )
 
     // set up exchanges
-    this.chainlink = new ChainLink(
-      this.chainId === arbitrumSepolia.id ? base.id : this.chainId,
-      _.mapValues(this.config.markets, (m) => m.chainlink),
+    this.binance = new Binance(
+      _.mapValues(this.config.markets, (m) => m.binance),
     )
     this.clober = new Clober(
       this.chainId,
@@ -261,7 +260,7 @@ export class CloberMarketMaker {
       try {
         await Promise.all([
           this.dexSimulator.update(),
-          this.chainlink.update(),
+          this.binance.update(),
           this.clober.update(),
           this.update(),
         ])
@@ -301,7 +300,7 @@ export class CloberMarketMaker {
     const [lowestAsk, highestBid, oraclePrice] = [
       this.clober.lowestAsk(market),
       this.clober.highestBid(market),
-      this.chainlink.price(market),
+      this.binance.price(market),
     ]
     const {
       bidBookTick: oraclePriceBidBookTick,

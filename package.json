@@ -23,6 +23,7 @@
     "ccxt": "^4.3.17",
     "chalk": "^5.3.0",
     "dotenv": "^16.4.5",
+    "technicalindicators": "^3.1.0",
     "viem": "^2.10.1",
     "winston": "^3.13.0",
     "winston-loki": "^6.1.2",
