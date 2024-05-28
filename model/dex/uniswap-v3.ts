@@ -61,6 +61,8 @@ export class UniSwapV3 implements Dex {
             .toFixed(),
           pool: this.address,
           blockNumber,
+          currency0: this.currency0,
+          currency1: this.currency1,
         }
       },
     )
