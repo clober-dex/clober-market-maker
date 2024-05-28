@@ -164,8 +164,8 @@ export class DexSimulator {
     if (sortedProfits.length > 0) {
       logger(chalk.green, 'Simulation', {
         market: marketId,
-        startBlock,
-        endBlock,
+        startBlock: Number(startBlock),
+        endBlock: Number(endBlock),
         oraclePrice: oraclePrice.toString(),
         profit: sortedProfits[0].quoteProfit.toString(),
         targetAskPrice: sortedProfits[0].targetAskPrice,
