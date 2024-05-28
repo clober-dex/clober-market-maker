@@ -39,7 +39,7 @@ export class UniSwapV3 implements Dex {
       logs: filterLogs,
     })
     return parseLogs.map(
-      ({ blockNumber, logIndex, args: { sqrtPriceX96, amount0, amount1 } }) => {
+      ({ blockNumber, logIndex, args: { amount0, amount1 } }) => {
         return {
           logIndex,
           isTakingBidSide: amount0 > 0n,
@@ -51,12 +51,11 @@ export class UniSwapV3 implements Dex {
             amount0 > 0n
               ? formatUnits(abs(amount1), this.currency1.decimals)
               : formatUnits(abs(amount0), this.currency0.decimals),
-          price: new BigNumber(sqrtPriceX96.toString())
-            .div(new BigNumber(2).pow(96))
-            .pow(2)
-            .times(
-              new BigNumber(10).pow(
-                this.currency0.decimals - this.currency1.decimals,
+          price: new BigNumber(abs(amount1).toString())
+            .div(new BigNumber(10).pow(this.currency1.decimals))
+            .div(
+              new BigNumber(abs(amount0).toString()).div(
+                new BigNumber(10).pow(this.currency0.decimals),
               ),
             )
             .toFixed(),
