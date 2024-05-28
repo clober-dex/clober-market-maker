@@ -11,6 +11,7 @@ import {
   getOpenOrders,
   type OpenOrder,
   setApprovalOfOpenOrdersForAll,
+  getPriceNeighborhood,
 } from '@clober/v2-sdk'
 import type { PublicClient, WalletClient } from 'viem'
 import {
@@ -48,7 +49,7 @@ import {
   MAKE_ORDER_PARAMS_ABI,
 } from '../abis/core/params-abi.ts'
 import { CONTROLLER_ABI } from '../abis/core/controller-abi.ts'
-import { getBookTicks, getMarketPrice } from '../utils/tick.ts'
+import { getMarketPrice } from '../utils/tick.ts'
 import BigNumber from '../utils/bignumber.ts'
 
 import { Clober } from './clober.ts'
@@ -306,12 +307,17 @@ export class CloberMarketMaker {
       this.binance.price(market),
     ]
     const {
-      bidBookTick: oraclePriceBidBookTick,
-      askBookTick: oraclePriceAskBookTick,
-    } = getBookTicks({
-      marketQuoteCurrency: findCurrencyBySymbol(this.chainId, quote),
-      marketBaseCurrency: findCurrencyBySymbol(this.chainId, base),
+      normal: {
+        now: { tick: oraclePriceBidBookTick },
+      },
+      inverted: {
+        now: { tick: oraclePriceAskBookTick },
+      },
+    } = getPriceNeighborhood({
+      chainId: this.chainId,
       price: oraclePrice.toString(),
+      currency0: findCurrencyBySymbol(this.chainId, quote),
+      currency1: findCurrencyBySymbol(this.chainId, base),
     })
 
     if (
@@ -633,15 +639,25 @@ export class CloberMarketMaker {
       return
     }
 
-    const { bidBookTick: lowestAskBidBookTick } = getBookTicks({
-      marketQuoteCurrency: findCurrencyBySymbol(this.chainId, quote),
-      marketBaseCurrency: findCurrencyBySymbol(this.chainId, base),
+    const {
+      normal: {
+        now: { tick: lowestAskBidBookTick },
+      },
+    } = getPriceNeighborhood({
+      chainId: this.chainId,
       price: lowestAsk.toString(),
+      currency0: findCurrencyBySymbol(this.chainId, quote),
+      currency1: findCurrencyBySymbol(this.chainId, base),
     })
-    const { bidBookTick: highestBidBidBookTick } = getBookTicks({
-      marketQuoteCurrency: findCurrencyBySymbol(this.chainId, quote),
-      marketBaseCurrency: findCurrencyBySymbol(this.chainId, base),
+    const {
+      normal: {
+        now: { tick: highestBidBidBookTick },
+      },
+    } = getPriceNeighborhood({
+      chainId: this.chainId,
       price: highestBid.toString(),
+      currency0: findCurrencyBySymbol(this.chainId, quote),
+      currency1: findCurrencyBySymbol(this.chainId, base),
     })
 
     const humanReadableTargetOrders = {
