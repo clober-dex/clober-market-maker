@@ -11,8 +11,8 @@ markets:
     params:
       minTickSpread: 0
       maxTickSpread: 6
-      defaultBidTickSpread: 30
-      defaultAskTickSpread: 30
+      defaultBidTickSpread: 10
+      defaultAskTickSpread: 10
       orderGap: 1
       orderNum: 1
       orderSize: 5
