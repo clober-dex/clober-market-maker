@@ -26,7 +26,7 @@ export const WHITELISTED_CURRENCIES: {
       decimals: 6,
     },
   ],
-  [CHAIN_IDS.ARBITRUM_SEPOLIA]: [
+  [CHAIN_IDS.BASE]: [
     ETH,
     {
       address: '0x4200000000000000000000000000000000000006',
