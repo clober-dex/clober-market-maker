@@ -179,8 +179,12 @@ export class CloberMarketMaker {
       userAddress: this.userAddress,
     })
     await this.execute(
-      [],
-      openOrders.map((order) => order.id),
+      openOrders
+        .map((order) => order.claimable.value > 0n)
+        .map((order) => order.id),
+      openOrders
+        .map((order) => order.amount.value !== order.filled.value)
+        .map((order) => order.id),
       [],
       [],
     )
