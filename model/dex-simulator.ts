@@ -219,7 +219,7 @@ export class DexSimulator {
         currency1: findCurrencyBySymbol(this.chainId, base),
       })
 
-      spreads.askSpread = Number(lowestAskBidBookTick - oraclePriceAskBookTick)
+      spreads.askSpread = Number(oraclePriceAskBookTick - lowestAskBidBookTick)
       spreads.bidSpread = Number(oraclePriceBidBookTick - highestBidBidBookTick)
     }
 
