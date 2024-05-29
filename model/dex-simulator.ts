@@ -209,7 +209,7 @@ export class DexSimulator {
         currency1: findCurrencyBySymbol(this.chainId, base),
       })
       const {
-        normal: {
+        inverted: {
           now: { tick: lowestAskBidBookTick },
         },
       } = getPriceNeighborhood({
@@ -219,8 +219,8 @@ export class DexSimulator {
         currency1: findCurrencyBySymbol(this.chainId, base),
       })
 
-      spreads.askSpread = Number(oraclePriceAskBookTick - lowestAskBidBookTick)
-      spreads.bidSpread = Number(highestBidBidBookTick - oraclePriceBidBookTick)
+      spreads.askSpread = Number(lowestAskBidBookTick - oraclePriceAskBookTick)
+      spreads.bidSpread = Number(oraclePriceBidBookTick - highestBidBidBookTick)
     }
 
     logger(chalk.green, 'Simulation', {
@@ -229,8 +229,14 @@ export class DexSimulator {
       endBlock: Number(endBlock),
       oraclePrice: oraclePrice.toString(),
       profit: profit.toString(),
-      targetAskPrice: sortedProfits[0].targetAskPrice,
-      targetBidPrice: sortedProfits[0].targetBidPrice,
+      targetAskPrice:
+        sortedProfits.length > 0
+          ? sortedProfits[0].targetAskPrice
+          : previousOraclePrice.toString(),
+      targetBidPrice:
+        sortedProfits.length > 0
+          ? sortedProfits[0].targetBidPrice
+          : previousOraclePrice.toString(),
       askSpread: spreads.askSpread,
       bidSpread: spreads.bidSpread,
     })
