@@ -83,7 +83,6 @@ export class CloberMarketMaker {
   constructor(configPath?: string) {
     configPath = configPath ?? path.join(__dirname, '../config.yaml')
     this.config = yaml.parse(fs.readFileSync(configPath, 'utf8')) as Config
-    this.paramsValidator(this.config)
     this.chainId = Number(process.env.CHAIN_ID) as CHAIN_IDS
     if (!process.env.CHAIN_ID) {
       throw new Error('CHAIN_ID must be set')
@@ -344,20 +343,17 @@ export class CloberMarketMaker {
         this.epoch[market][this.epoch[market].length - 1].oraclePrice,
       )
 
-      const initialTickSpread = Math.round(
-        (params.minTickSpread + params.maxTickSpread) / 2,
-      )
       const askTicks = Array.from(
         { length: params.orderNum },
         (_, i) =>
           oraclePriceAskBookTick -
-          BigInt(initialTickSpread + params.orderGap * i),
+          BigInt(params.defaultAskTickSpread + params.orderGap * i),
       )
       const bidTicks = Array.from(
         { length: params.orderNum },
         (_, i) =>
           oraclePriceBidBookTick -
-          BigInt(initialTickSpread + params.orderGap * i),
+          BigInt(params.defaultBidTickSpread + params.orderGap * i),
       )
 
       const askPrices = askTicks
@@ -382,8 +378,8 @@ export class CloberMarketMaker {
       const newEpoch: Epoch = {
         id: this.epoch[market][this.epoch[market].length - 1].id + 1,
         startTimestamp: Math.floor(Date.now() / 1000),
-        minSpread: params.minTickSpread, // TODO: calculate minSpread
-        maxSpread: params.maxTickSpread, // TODO: calculate maxSpread
+        askSpread: params.defaultAskTickSpread,
+        bidSpread: params.defaultBidTickSpread,
         minPrice: bidPrices // TODO: calculate minPrice
           .reduce((acc, price) => acc.plus(price), new BigNumber(0))
           .div(bidPrices.length),
@@ -403,20 +399,17 @@ export class CloberMarketMaker {
 
     // first epoch
     else if (!this.epoch[market]) {
-      const initialTickSpread = Math.round(
-        (params.minTickSpread + params.maxTickSpread) / 2,
-      )
       const askTicks = Array.from(
         { length: params.orderNum },
         (_, i) =>
           oraclePriceAskBookTick -
-          BigInt(initialTickSpread + params.orderGap * i),
+          BigInt(params.defaultAskTickSpread + params.orderGap * i),
       )
       const bidTicks = Array.from(
         { length: params.orderNum },
         (_, i) =>
           oraclePriceBidBookTick -
-          BigInt(initialTickSpread + params.orderGap * i),
+          BigInt(params.defaultBidTickSpread + params.orderGap * i),
       )
 
       const askPrices = askTicks
@@ -441,8 +434,8 @@ export class CloberMarketMaker {
       const newEpoch: Epoch = {
         id: 0,
         startTimestamp: Math.floor(Date.now() / 1000),
-        minSpread: params.minTickSpread,
-        maxSpread: params.maxTickSpread,
+        askSpread: params.defaultAskTickSpread,
+        bidSpread: params.defaultBidTickSpread,
         minPrice: bidPrices
           .reduce((acc, price) => acc.plus(price), new BigNumber(0))
           .div(bidPrices.length),
@@ -886,18 +879,5 @@ export class CloberMarketMaker {
 
   async sleep(ms: number) {
     return new Promise((resolve) => setTimeout(resolve, ms))
-  }
-
-  private paramsValidator(config: Config) {
-    Object.values(config.markets).forEach(({ params }) => {
-      // maxTickSpread > minTickSpread
-      if (params.maxTickSpread <= params.minTickSpread) {
-        throw new Error('maxTickSpread must be greater than minTickSpread')
-      }
-      // `minTickSpread` + `maxTickSpread` should be even
-      if ((params.minTickSpread + params.maxTickSpread) % 2 !== 0) {
-        throw new Error('initialTickSpread should be even')
-      }
-    })
   }
 }
