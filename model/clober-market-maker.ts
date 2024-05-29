@@ -666,9 +666,25 @@ export class CloberMarketMaker {
     const orderIdsToClaim: { id: string; isBid: boolean }[] = openOrders
       .filter((order) => Number(order.claimable.value) > 0)
       .map((order) => ({ id: order.id, isBid: order.isBid }))
-    const orderIdsToCancel: { id: string; isBid: boolean }[] = openOrders
-      .filter((order) => order.amount.value !== order.filled.value)
-      .map((order) => ({ id: order.id, isBid: order.isBid }))
+
+    const bidOrderIdsToCancel = openOrders
+      .filter(
+        (order) => order.isBid && order.amount.value !== order.filled.value,
+      )
+      // filter out the tick that trying to make
+      .filter((order) => !bidMakeParams.find((p) => p.tick === order.tick))
+      .map((order) => ({ id: order.id, isBid: true }))
+    const askOrderIdsToCancel = openOrders
+      .filter(
+        (order) => !order.isBid && order.amount.value !== order.filled.value,
+      )
+      // filter out the tick that trying to make
+      .filter((order) => !askMakeParams.find((p) => p.tick === order.tick))
+      .map((order) => ({ id: order.id, isBid: false }))
+    const orderIdsToCancel: { id: string; isBid: boolean }[] = [
+      ...bidOrderIdsToCancel,
+      ...askOrderIdsToCancel,
+    ]
 
     const humanReadableTargetOrders: {
       ask: [string, string][]
