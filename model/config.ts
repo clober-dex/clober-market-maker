@@ -10,6 +10,7 @@ import type { Market } from './market.ts'
  * @property {number} orderGap - The order gap for trading.
  * @property {number} orderNum - The number of orders for trading.
  * @property {number} orderSize - The size of each order for trading.
+ * @property {number} minOrderSize - The minimum order size for trading.
  * @property {number} startQuoteAmount - The starting quote amount for trading.
  * @property {number} startBaseAmount - The starting base amount for trading.
  */
@@ -22,6 +23,7 @@ export type Params = {
   orderGap: number
   orderNum: number
   orderSize: number
+  minOrderSize: number
   startQuoteAmount: number
   startBaseAmount: number
 }
