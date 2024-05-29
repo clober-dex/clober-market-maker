@@ -294,6 +294,78 @@ export class CloberMarketMaker {
     }
   }
 
+  buildTickAndPriceArray(
+    base: string,
+    quote: string,
+    oraclePrice: BigNumber,
+    askSpread: number,
+    bidSpread: number,
+    orderNum: number,
+    orderGap: number,
+  ): {
+    askTicks: number[]
+    askPrices: BigNumber[]
+    bidTicks: number[]
+    bidPrices: BigNumber[]
+    minPrice: BigNumber
+    maxPrice: BigNumber
+  } {
+    const {
+      normal: {
+        now: { tick: oraclePriceBidBookTick },
+      },
+      inverted: {
+        now: { tick: oraclePriceAskBookTick },
+      },
+    } = getPriceNeighborhood({
+      chainId: this.chainId,
+      price: oraclePrice.toString(),
+      currency0: findCurrencyBySymbol(this.chainId, quote),
+      currency1: findCurrencyBySymbol(this.chainId, base),
+    })
+
+    const askTicks = Array.from(
+      { length: orderNum },
+      (_, i) => oraclePriceAskBookTick - BigInt(askSpread + orderGap * i),
+    )
+    const askPrices = askTicks
+      .map((tick) =>
+        getMarketPrice({
+          marketQuoteCurrency: findCurrencyBySymbol(this.chainId, quote),
+          marketBaseCurrency: findCurrencyBySymbol(this.chainId, base),
+          askTick: tick,
+        }),
+      )
+      .map((price) => new BigNumber(price))
+
+    const bidTicks = Array.from(
+      { length: orderNum },
+      (_, i) => oraclePriceBidBookTick - BigInt(bidSpread + orderGap * i),
+    )
+    const bidPrices = bidTicks
+      .map((tick) =>
+        getMarketPrice({
+          marketQuoteCurrency: findCurrencyBySymbol(this.chainId, quote),
+          marketBaseCurrency: findCurrencyBySymbol(this.chainId, base),
+          bidTick: tick,
+        }),
+      )
+      .map((price) => new BigNumber(price))
+
+    return {
+      askTicks: askTicks.map((tick) => Number(tick)),
+      askPrices,
+      bidTicks: bidTicks.map((tick) => Number(tick)),
+      bidPrices,
+      minPrice: bidPrices
+        .reduce((acc, price) => acc.plus(price), new BigNumber(0))
+        .div(bidPrices.length),
+      maxPrice: askPrices
+        .reduce((acc, price) => acc.plus(price), new BigNumber(0))
+        .div(askPrices.length),
+    }
+  }
+
   async marketMaking(market: string, params: Params) {
     const [base, quote] = market.split('/')
     const [lowestAsk, highestBid, oraclePrice] = [
@@ -324,8 +396,7 @@ export class CloberMarketMaker {
           this.epoch[market][this.epoch[market].length - 1].maxPrice,
         ))
     ) {
-      // TODO: calculate minSpread, maxSpread, minPrice, maxPrice based on the previous epoch
-      const startTimestamp = Math.floor(Date.now() / 1000)
+      const timestamp = Math.floor(Date.now() / 1000)
       const [startBlock, endBlock] = await Promise.all([
         convertTimestampToBlockNumber(
           this.chainId === arbitrumSepolia.id ? 8453 : this.chainId,
@@ -333,61 +404,37 @@ export class CloberMarketMaker {
         ),
         convertTimestampToBlockNumber(
           this.chainId === arbitrumSepolia.id ? 8453 : this.chainId,
-          startTimestamp,
+          timestamp,
         ),
       ])
-      this.dexSimulator.findSpread(
+      const { askSpread, bidSpread } = this.dexSimulator.findSpread(
         market,
         startBlock,
         endBlock,
         oraclePrice,
         this.epoch[market][this.epoch[market].length - 1].oraclePrice,
       )
-
-      const askTicks = Array.from(
-        { length: params.orderNum },
-        (_, i) =>
-          oraclePriceAskBookTick -
-          BigInt(params.defaultAskTickSpread + params.orderGap * i),
-      )
-      const bidTicks = Array.from(
-        { length: params.orderNum },
-        (_, i) =>
-          oraclePriceBidBookTick -
-          BigInt(params.defaultBidTickSpread + params.orderGap * i),
-      )
-
-      const askPrices = askTicks
-        .map((tick) =>
-          getMarketPrice({
-            marketQuoteCurrency: findCurrencyBySymbol(this.chainId, quote),
-            marketBaseCurrency: findCurrencyBySymbol(this.chainId, base),
-            askTick: tick,
-          }),
+      const { askTicks, bidTicks, minPrice, maxPrice } =
+        this.buildTickAndPriceArray(
+          base,
+          quote,
+          oraclePrice,
+          askSpread,
+          bidSpread,
+          params.orderNum,
+          params.orderGap,
         )
-        .map((price) => new BigNumber(price))
-      const bidPrices = bidTicks
-        .map((tick) =>
-          getMarketPrice({
-            marketQuoteCurrency: findCurrencyBySymbol(this.chainId, quote),
-            marketBaseCurrency: findCurrencyBySymbol(this.chainId, base),
-            bidTick: tick,
-          }),
-        )
-        .map((price) => new BigNumber(price))
 
       const newEpoch: Epoch = {
         id: this.epoch[market][this.epoch[market].length - 1].id + 1,
-        startTimestamp: Math.floor(Date.now() / 1000),
-        askSpread: params.defaultAskTickSpread,
-        bidSpread: params.defaultBidTickSpread,
-        minPrice: bidPrices // TODO: calculate minPrice
-          .reduce((acc, price) => acc.plus(price), new BigNumber(0))
-          .div(bidPrices.length),
-        maxPrice: askPrices // TODO: calculate maxPrice
-          .reduce((acc, price) => acc.plus(price), new BigNumber(0))
-          .div(askPrices.length),
+        startTimestamp: timestamp,
+        askSpread,
+        bidSpread,
+        minPrice,
+        maxPrice,
         oraclePrice,
+        askTicks,
+        bidTicks,
       }
 
       this.epoch[market].push(newEpoch)
@@ -400,50 +447,27 @@ export class CloberMarketMaker {
 
     // first epoch
     else if (!this.epoch[market]) {
-      const askTicks = Array.from(
-        { length: params.orderNum },
-        (_, i) =>
-          oraclePriceAskBookTick -
-          BigInt(params.defaultAskTickSpread + params.orderGap * i),
-      )
-      const bidTicks = Array.from(
-        { length: params.orderNum },
-        (_, i) =>
-          oraclePriceBidBookTick -
-          BigInt(params.defaultBidTickSpread + params.orderGap * i),
-      )
-
-      const askPrices = askTicks
-        .map((tick) =>
-          getMarketPrice({
-            marketQuoteCurrency: findCurrencyBySymbol(this.chainId, quote),
-            marketBaseCurrency: findCurrencyBySymbol(this.chainId, base),
-            askTick: tick,
-          }),
+      const { askTicks, bidTicks, minPrice, maxPrice } =
+        this.buildTickAndPriceArray(
+          base,
+          quote,
+          oraclePrice,
+          params.defaultAskTickSpread,
+          params.defaultBidTickSpread,
+          params.orderNum,
+          params.orderGap,
         )
-        .map((price) => new BigNumber(price))
-      const bidPrices = bidTicks
-        .map((tick) =>
-          getMarketPrice({
-            marketQuoteCurrency: findCurrencyBySymbol(this.chainId, quote),
-            marketBaseCurrency: findCurrencyBySymbol(this.chainId, base),
-            bidTick: tick,
-          }),
-        )
-        .map((price) => new BigNumber(price))
 
       const newEpoch: Epoch = {
         id: 0,
         startTimestamp: Math.floor(Date.now() / 1000),
         askSpread: params.defaultAskTickSpread,
         bidSpread: params.defaultBidTickSpread,
-        minPrice: bidPrices
-          .reduce((acc, price) => acc.plus(price), new BigNumber(0))
-          .div(bidPrices.length),
-        maxPrice: askPrices
-          .reduce((acc, price) => acc.plus(price), new BigNumber(0))
-          .div(askPrices.length),
+        minPrice,
+        maxPrice,
         oraclePrice,
+        askTicks,
+        bidTicks,
       }
 
       this.epoch[market] = [newEpoch]

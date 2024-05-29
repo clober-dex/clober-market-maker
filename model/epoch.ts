@@ -9,4 +9,6 @@ export type Epoch = {
   minPrice: BigNumber
   maxPrice: BigNumber
   oraclePrice: BigNumber
+  askTicks: number[]
+  bidTicks: number[]
 }
