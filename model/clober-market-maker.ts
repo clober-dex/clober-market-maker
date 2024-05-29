@@ -336,7 +336,13 @@ export class CloberMarketMaker {
           startTimestamp,
         ),
       ])
-      this.dexSimulator.findSpread(market, startBlock, endBlock, oraclePrice)
+      this.dexSimulator.findSpread(
+        market,
+        startBlock,
+        endBlock,
+        oraclePrice,
+        this.epoch[market][this.epoch[market].length - 1].oraclePrice,
+      )
 
       const initialTickSpread = Math.round(
         (params.minTickSpread + params.maxTickSpread) / 2,

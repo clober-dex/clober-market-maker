@@ -81,6 +81,7 @@ export class DexSimulator {
     startBlock: bigint,
     endBlock: bigint,
     oraclePrice: BigNumber,
+    previousOraclePrice: BigNumber,
   ) {
     const trades = this.trades[marketId]
       .filter(
@@ -99,19 +100,23 @@ export class DexSimulator {
       ...trades
         .filter((trade) => trade.isTakingBidSide)
         .map((trade) => trade.price),
-      oraclePrice.toString(),
+      previousOraclePrice.toString(),
     ]
       .sort((a, b) => new BigNumber(a).comparedTo(new BigNumber(b)))
-      .filter((price) => new BigNumber(price).comparedTo(oraclePrice) <= 0)
+      .filter(
+        (price) => new BigNumber(price).comparedTo(previousOraclePrice) <= 0,
+      )
 
     const askPirces = [
       ...trades
         .filter((trade) => !trade.isTakingBidSide)
         .map((trade) => trade.price),
-      oraclePrice.toString(),
+      previousOraclePrice.toString(),
     ]
       .sort((a, b) => new BigNumber(a).comparedTo(new BigNumber(b)))
-      .filter((price) => new BigNumber(price).comparedTo(oraclePrice) >= 0)
+      .filter(
+        (price) => new BigNumber(price).comparedTo(previousOraclePrice) >= 0,
+      )
 
     const profits: {
       quoteProfit: BigNumber
@@ -146,7 +151,7 @@ export class DexSimulator {
               quoteAmount = quoteAmount.plus(amountIn)
             }
           }
-          const quoteProfit = quoteAmount.plus(baseAmount.times(targetBidPrice))
+          const quoteProfit = quoteAmount.plus(baseAmount.times(oraclePrice))
 
           profits.push({
             quoteProfit,
