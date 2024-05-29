@@ -12,6 +12,7 @@ import {
   type OpenOrder,
   setApprovalOfOpenOrdersForAll,
   getPriceNeighborhood,
+  type Currency,
 } from '@clober/v2-sdk'
 import type { PublicClient, WalletClient } from 'viem'
 import {
@@ -366,6 +367,67 @@ export class CloberMarketMaker {
     }
   }
 
+  getOpenOrders(baseCurrency: Currency, quoteCurrency: Currency): OpenOrder[] {
+    return this.openOrders.filter(
+      (order) =>
+        (isAddressEqual(order.inputCurrency.address, baseCurrency.address) &&
+          isAddressEqual(
+            order.outputCurrency.address,
+            quoteCurrency.address,
+          )) ||
+        (isAddressEqual(order.inputCurrency.address, quoteCurrency.address) &&
+          isAddressEqual(order.outputCurrency.address, baseCurrency.address)),
+    )
+  }
+
+  getBalances(baseCurrency: Currency, quoteCurrency: Currency) {
+    const openOrders = this.getOpenOrders(baseCurrency, quoteCurrency)
+    const freeBase = new BigNumber(
+      formatUnits(
+        this.balances[getAddress(baseCurrency.address)],
+        baseCurrency.decimals,
+      ),
+    )
+    const freeQuote = new BigNumber(
+      formatUnits(
+        this.balances[getAddress(quoteCurrency.address)],
+        quoteCurrency.decimals,
+      ),
+    )
+    const claimableBase = openOrders.reduce(
+      (acc, order) =>
+        order.isBid ? acc.plus(order.claimable.value) : acc.plus(0),
+      new BigNumber(0),
+    )
+    const claimableQuote = openOrders.reduce(
+      (acc, order) =>
+        order.isBid ? acc.plus(0) : acc.plus(order.claimable.value),
+      new BigNumber(0),
+    )
+    const cancelableBase = openOrders.reduce(
+      (acc, order) =>
+        order.isBid ? acc.plus(0) : acc.plus(order.cancelable.value),
+      new BigNumber(0),
+    )
+    const cancelableQuote = openOrders.reduce(
+      (acc, order) =>
+        order.isBid ? acc.plus(order.cancelable.value) : acc.plus(0),
+      new BigNumber(0),
+    )
+    const totalBase = freeBase.plus(claimableBase).plus(cancelableBase)
+    const totalQuote = freeQuote.plus(claimableQuote).plus(cancelableQuote)
+    return {
+      totalBase,
+      freeBase,
+      claimableBase,
+      cancelableBase,
+      totalQuote,
+      freeQuote,
+      claimableQuote,
+      cancelableQuote,
+    }
+  }
+
   async marketMaking(market: string, params: Params) {
     const [base, quote] = market.split('/')
     const [lowestAsk, highestBid, oraclePrice] = [
@@ -480,50 +542,18 @@ export class CloberMarketMaker {
 
     const quoteCurrency = findCurrencyBySymbol(this.chainId, quote)
     const baseCurrency = findCurrencyBySymbol(this.chainId, base)
-    const openOrders = this.openOrders.filter(
-      (order) =>
-        (isAddressEqual(order.inputCurrency.address, baseCurrency.address) &&
-          isAddressEqual(
-            order.outputCurrency.address,
-            quoteCurrency.address,
-          )) ||
-        (isAddressEqual(order.inputCurrency.address, quoteCurrency.address) &&
-          isAddressEqual(order.outputCurrency.address, baseCurrency.address)),
-    )
-    const freeBase = new BigNumber(
-      formatUnits(
-        this.balances[getAddress(baseCurrency.address)],
-        baseCurrency.decimals,
-      ),
-    )
-    const freeQuote = new BigNumber(
-      formatUnits(
-        this.balances[getAddress(quoteCurrency.address)],
-        quoteCurrency.decimals,
-      ),
-    )
-    const claimableBase = openOrders.reduce(
-      (acc, order) =>
-        order.isBid ? acc.plus(order.claimable.value) : acc.plus(0),
-      new BigNumber(0),
-    )
-    const claimableQuote = openOrders.reduce(
-      (acc, order) =>
-        order.isBid ? acc.plus(0) : acc.plus(order.claimable.value),
-      new BigNumber(0),
-    )
-    const cancelableBase = openOrders.reduce(
-      (acc, order) =>
-        order.isBid ? acc.plus(0) : acc.plus(order.cancelable.value),
-      new BigNumber(0),
-    )
-    const cancelableQuote = openOrders.reduce(
-      (acc, order) =>
-        order.isBid ? acc.plus(order.cancelable.value) : acc.plus(0),
-      new BigNumber(0),
-    )
-    const totalBase = freeBase.plus(claimableBase).plus(cancelableBase)
-    const totalQuote = freeQuote.plus(claimableQuote).plus(cancelableQuote)
+    const openOrders = this.getOpenOrders(baseCurrency, quoteCurrency)
+    const {
+      totalBase,
+      freeBase,
+      claimableBase,
+      cancelableBase,
+      totalQuote,
+      freeQuote,
+      claimableQuote,
+      cancelableQuote,
+    } = this.getBalances(baseCurrency, quoteCurrency)
+
     await logger(chalk.redBright, 'Balance', {
       market,
       totalBase: totalBase.toString(),
