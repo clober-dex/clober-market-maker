@@ -672,14 +672,18 @@ export class CloberMarketMaker {
         (order) => order.isBid && order.amount.value !== order.filled.value,
       )
       // filter out the tick that trying to make
-      .filter((order) => !bidMakeParams.find((p) => p.tick === order.tick))
+      .filter(
+        (order) => !currentEpoch.bidTicks.find((tick) => tick === order.tick),
+      )
       .map((order) => ({ id: order.id, isBid: true }))
     const askOrderIdsToCancel = openOrders
       .filter(
         (order) => !order.isBid && order.amount.value !== order.filled.value,
       )
       // filter out the tick that trying to make
-      .filter((order) => !askMakeParams.find((p) => p.tick === order.tick))
+      .filter(
+        (order) => !currentEpoch.askTicks.find((tick) => tick === order.tick),
+      )
       .map((order) => ({ id: order.id, isBid: false }))
     const orderIdsToCancel: { id: string; isBid: boolean }[] = [
       ...bidOrderIdsToCancel,
