@@ -92,6 +92,9 @@ export class DexSimulator {
   ): {
     askSpread: number
     bidSpread: number
+    profit: BigNumber
+    targetAskPrice: Bignumber
+    targetBidPrice: BigNumber
   } {
     const trades = this.trades[marketId]
       .filter(
@@ -228,27 +231,20 @@ export class DexSimulator {
       )
     }
 
-    logger(chalk.green, 'Simulation', {
-      market: marketId,
-      startBlock: Number(startBlock),
-      endBlock: Number(endBlock),
-      oraclePrice: previousOraclePrice.toString(),
-      profit: profit.toString(),
-      targetAskPrice:
-        sortedProfits.length > 0
-          ? sortedProfits[0].targetAskPrice
-          : previousOraclePrice.toString(),
-      targetBidPrice:
-        sortedProfits.length > 0
-          ? sortedProfits[0].targetBidPrice
-          : previousOraclePrice.toString(),
-      askSpread: spreads.askSpread,
-      bidSpread: spreads.bidSpread,
-    })
-
     return {
       askSpread: spreads.askSpread,
       bidSpread: spreads.bidSpread,
+      profit,
+      targetAskPrice: new BigNumber(
+        sortedProfits.length > 0
+          ? sortedProfits[0].targetAskPrice
+          : previousOraclePrice.toString(),
+      ),
+      targetBidPrice: new BigNumber(
+        sortedProfits.length > 0
+          ? sortedProfits[0].targetBidPrice
+          : previousOraclePrice.toString(),
+      ),
     }
   }
 }
