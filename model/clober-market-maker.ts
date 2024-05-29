@@ -667,8 +667,8 @@ export class CloberMarketMaker {
       .map((order) => ({ id: order.id, isBid: order.isBid }))
 
     const humanReadableTargetOrders: {
-      ask: [BigNumber, BigNumber][]
-      bid: [BigNumber, BigNumber][]
+      ask: [string, string][]
+      bid: [string, string][]
     } = {
       ask: currentEpoch.askPrices
         .sort((a, b) => b.minus(a).toNumber())
@@ -700,13 +700,13 @@ export class CloberMarketMaker {
       targetBidOrderLength: humanReadableTargetOrders.bid.length,
       targetAskOrderLength: humanReadableTargetOrders.ask.length,
       lowestAsk:
-        humanReadableTargetOrders.ask.sort((a, b) =>
-          a[0].minus(b[0]).toNumber(),
+        humanReadableTargetOrders.ask.sort(
+          (a, b) => Number(a[0]) - Number(b[0]),
         )[0]?.[0] || '-',
       oraclePrice: oraclePrice.toString(),
       highestBid:
-        humanReadableTargetOrders.bid.sort((a, b) =>
-          b[0].minus(a[0]).toNumber(),
+        humanReadableTargetOrders.bid.sort(
+          (a, b) => Number(b[0]) - Number(a[0]),
         )[0]?.[0] || '-',
     })
 
