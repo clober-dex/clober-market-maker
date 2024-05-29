@@ -9,6 +9,8 @@ markets:
       quote: USDC
       base: WETH
     params:
+      minTickSpread: 0
+      maxTickSpread: 6
       defaultBidTickSpread: 30
       defaultAskTickSpread: 30
       orderGap: 1
