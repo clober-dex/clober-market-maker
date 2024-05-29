@@ -88,7 +88,6 @@ export class DexSimulator {
     marketId: string,
     startBlock: bigint,
     endBlock: bigint,
-    oraclePrice: BigNumber,
     previousOraclePrice: BigNumber,
   ): {
     askSpread: number
@@ -162,7 +161,9 @@ export class DexSimulator {
               quoteAmount = quoteAmount.plus(amountIn)
             }
           }
-          const quoteProfit = quoteAmount.plus(baseAmount.times(oraclePrice))
+          const quoteProfit = quoteAmount.plus(
+            baseAmount.times(previousOraclePrice),
+          )
 
           profits.push({
             quoteProfit,
@@ -231,7 +232,7 @@ export class DexSimulator {
       market: marketId,
       startBlock: Number(startBlock),
       endBlock: Number(endBlock),
-      oraclePrice: oraclePrice.toString(),
+      oraclePrice: previousOraclePrice.toString(),
       profit: profit.toString(),
       targetAskPrice:
         sortedProfits.length > 0

@@ -470,7 +470,6 @@ export class CloberMarketMaker {
         market,
         startBlock,
         endBlock,
-        oraclePrice,
         this.epoch[market][this.epoch[market].length - 1].oraclePrice,
       )
       const { askTicks, askPrices, bidTicks, bidPrices, minPrice, maxPrice } =
