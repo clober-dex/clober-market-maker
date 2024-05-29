@@ -15,7 +15,6 @@ markets:
       defaultAskTickSpread: 10
       orderGap: 1
       orderNum: 1
-      orderSize: 5
-      minOrderSize: 0.5
+      orderSize: 2
       startQuoteAmount: 38630
       startBaseAmount: 10

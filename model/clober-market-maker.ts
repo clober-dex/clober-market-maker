@@ -51,6 +51,7 @@ import {
 import { CONTROLLER_ABI } from '../abis/core/controller-abi.ts'
 import { getMarketPrice } from '../utils/tick.ts'
 import BigNumber from '../utils/bignumber.ts'
+import { min } from '../utils/bigint.ts'
 
 import { Clober } from './clober.ts'
 import type { Config, Params } from './config.ts'
@@ -623,25 +624,36 @@ export class CloberMarketMaker {
       return
     }
 
-    const bidMakeParams: MakeParam[] = currentEpoch.bidTicks.map((tick) => ({
-      id: BigInt(this.clober.bookIds[market][BID]),
-      tick,
-      quoteAmount: parseUnits(
+    const bidOrderSize = min(
+      parseUnits(
         totalQuote.div(params.orderNum).toFixed(),
         quoteCurrency.decimals,
       ),
+      parseUnits(
+        oraclePrice.times(params.orderSize).toFixed(),
+        quoteCurrency.decimals,
+      ),
+    )
+    const bidMakeParams: MakeParam[] = currentEpoch.bidTicks.map((tick) => ({
+      id: BigInt(this.clober.bookIds[market][BID]),
+      tick,
+      quoteAmount: bidOrderSize,
       hookData: zeroHash,
       isBid: true,
       isETH: isAddressEqual(quoteCurrency.address, zeroAddress),
     }))
 
-    const askMakeParams: MakeParam[] = currentEpoch.askTicks.map((tick) => ({
-      id: BigInt(this.clober.bookIds[market][ASK]),
-      tick: Number(tick),
-      quoteAmount: parseUnits(
+    const askOrderSize = min(
+      parseUnits(
         totalBase.div(params.orderNum).toFixed(),
         baseCurrency.decimals,
       ),
+      parseUnits(params.orderSize.toString(), baseCurrency.decimals),
+    )
+    const askMakeParams: MakeParam[] = currentEpoch.askTicks.map((tick) => ({
+      id: BigInt(this.clober.bookIds[market][ASK]),
+      tick: Number(tick),
+      quoteAmount: askOrderSize,
       hookData: zeroHash,
       isBid: false,
       isETH: isAddressEqual(baseCurrency.address, zeroAddress),
@@ -660,10 +672,16 @@ export class CloberMarketMaker {
     } = {
       ask: currentEpoch.askPrices
         .sort((a, b) => b.minus(a).toNumber())
-        .map((price) => [price, totalBase.div(params.orderNum)]),
+        .map((price) => [
+          price.toFixed(4),
+          formatUnits(askOrderSize, baseCurrency.decimals),
+        ]),
       bid: currentEpoch.bidPrices
         .sort((a, b) => a.minus(b).toNumber())
-        .map((price) => [price, totalQuote.div(params.orderNum)]),
+        .map((price) => [
+          price.toFixed(4),
+          formatUnits(bidOrderSize, quoteCurrency.decimals),
+        ]),
     }
 
     await logger(chalk.redBright, 'Execute Detail', {
@@ -676,8 +694,8 @@ export class CloberMarketMaker {
       cancelAskOrderLength: orderIdsToCancel.filter((o) => !o.isBid).length,
       askSpread: currentEpoch.askSpread,
       bidSpread: currentEpoch.bidSpread,
-      askSize: totalQuote.div(params.orderNum).toString(),
-      bidSize: totalBase.div(params.orderNum).toString(),
+      askSize: formatUnits(askOrderSize, baseCurrency.decimals),
+      bidSize: formatUnits(bidOrderSize, quoteCurrency.decimals),
       targetOrders: humanReadableTargetOrders,
       targetBidOrderLength: humanReadableTargetOrders.bid.length,
       targetAskOrderLength: humanReadableTargetOrders.ask.length,
