@@ -180,7 +180,7 @@ export class CloberMarketMaker {
     })
     await this.execute(
       openOrders
-        .map((order) => order.claimable.value > 0n)
+        .map((order) => Number(order.claimable.value) > 0)
         .map((order) => order.id),
       openOrders
         .map((order) => order.amount.value !== order.filled.value)
