@@ -663,9 +663,26 @@ export class CloberMarketMaker {
             .find((o) => o.tick === params.tick) === undefined,
       )
 
-    const orderIdsToClaim: { id: string; isBid: boolean }[] = openOrders
-      .filter((order) => Number(order.claimable.value) > 0)
-      .map((order) => ({ id: order.id, isBid: order.isBid }))
+    const bidOrderIdsToClaim = openOrders
+      .filter((order) => order.isBid && Number(order.claimable.value) > 0)
+      .filter(
+        (order) =>
+          currentEpoch.bidTicks.find((tick) => tick === order.tick) ===
+          undefined,
+      )
+      .map((order) => ({ id: order.id, isBid: true }))
+    const askOrderIdsToClaim = openOrders
+      .filter((order) => !order.isBid && Number(order.claimable.value) > 0)
+      .filter(
+        (order) =>
+          currentEpoch.askTicks.find((tick) => tick === order.tick) ===
+          undefined,
+      )
+      .map((order) => ({ id: order.id, isBid: false }))
+    const orderIdsToClaim: { id: string; isBid: boolean }[] = [
+      ...bidOrderIdsToClaim,
+      ...askOrderIdsToClaim,
+    ]
 
     const bidOrderIdsToCancel = openOrders
       .filter(
