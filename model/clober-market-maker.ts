@@ -660,10 +660,16 @@ export class CloberMarketMaker {
     } = {
       ask: currentEpoch.askPrices
         .sort((a, b) => b.minus(a).toNumber())
-        .map((price) => [price, totalBase.div(params.orderNum)]),
+        .map((price) => [
+          price.toFixed(4),
+          totalBase.div(params.orderNum).toFixed(),
+        ]),
       bid: currentEpoch.bidPrices
         .sort((a, b) => a.minus(b).toNumber())
-        .map((price) => [price, totalQuote.div(params.orderNum)]),
+        .map((price) => [
+          price.toFixed(4),
+          totalQuote.div(params.orderNum).toFixed(),
+        ]),
     }
 
     await logger(chalk.redBright, 'Execute Detail', {
