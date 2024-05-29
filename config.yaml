@@ -9,6 +9,7 @@ markets:
       quote: USDC
       base: WETH
     params:
+      balancePercentage: 20
       defaultBidTickSpread: 10
       defaultAskTickSpread: 10
       orderGap: 1

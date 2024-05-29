@@ -627,14 +627,15 @@ export class CloberMarketMaker {
       return
     }
 
+    const bidSize = totalQuote
+      .times(params.balancePercentage / 100)
+      .div(params.orderNum)
+      .toFixed()
     const bidMakeParams: MakeParam[] = currentEpoch.bidTicks
       .map((tick) => ({
         id: BigInt(this.clober.bookIds[market][BID]),
         tick,
-        quoteAmount: parseUnits(
-          totalQuote.div(params.orderNum).toFixed(),
-          quoteCurrency.decimals,
-        ),
+        quoteAmount: parseUnits(bidSize, quoteCurrency.decimals),
         hookData: zeroHash,
         isBid: true,
         isETH: isAddressEqual(quoteCurrency.address, zeroAddress),
@@ -647,14 +648,15 @@ export class CloberMarketMaker {
             .find((o) => o.tick === params.tick) === undefined,
       )
 
+    const askSize = totalBase
+      .times(params.balancePercentage / 100)
+      .div(params.orderNum)
+      .toFixed()
     const askMakeParams: MakeParam[] = currentEpoch.askTicks
       .map((tick) => ({
         id: BigInt(this.clober.bookIds[market][ASK]),
         tick: Number(tick),
-        quoteAmount: parseUnits(
-          totalBase.div(params.orderNum).toFixed(),
-          baseCurrency.decimals,
-        ),
+        quoteAmount: parseUnits(askSize, baseCurrency.decimals),
         hookData: zeroHash,
         isBid: false,
         isETH: isAddressEqual(baseCurrency.address, zeroAddress),
@@ -717,16 +719,10 @@ export class CloberMarketMaker {
     } = {
       ask: currentEpoch.askPrices
         .sort((a, b) => b.minus(a).toNumber())
-        .map((price) => [
-          price.toFixed(4),
-          totalBase.div(params.orderNum).toFixed(),
-        ]),
+        .map((price) => [price.toFixed(4), askSize]),
       bid: currentEpoch.bidPrices
         .sort((a, b) => a.minus(b).toNumber())
-        .map((price) => [
-          price.toFixed(4),
-          totalQuote.div(params.orderNum).toFixed(),
-        ]),
+        .map((price) => [price.toFixed(4), bidSize]),
     }
 
     await logger(chalk.redBright, 'Execute Detail', {
@@ -739,8 +735,8 @@ export class CloberMarketMaker {
       cancelAskOrderLength: orderIdsToCancel.filter((o) => !o.isBid).length,
       askSpread: currentEpoch.askSpread,
       bidSpread: currentEpoch.bidSpread,
-      askSize: totalQuote.div(params.orderNum).toString(),
-      bidSize: totalBase.div(params.orderNum).toString(),
+      askSize,
+      bidSize,
       targetOrders: humanReadableTargetOrders,
       targetBidOrderLength: humanReadableTargetOrders.bid.length,
       targetAskOrderLength: humanReadableTargetOrders.ask.length,
