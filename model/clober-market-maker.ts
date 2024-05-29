@@ -623,29 +623,45 @@ export class CloberMarketMaker {
       return
     }
 
-    const bidMakeParams: MakeParam[] = currentEpoch.bidTicks.map((tick) => ({
-      id: BigInt(this.clober.bookIds[market][BID]),
-      tick,
-      quoteAmount: parseUnits(
-        totalQuote.div(params.orderNum).toFixed(),
-        quoteCurrency.decimals,
-      ),
-      hookData: zeroHash,
-      isBid: true,
-      isETH: isAddressEqual(quoteCurrency.address, zeroAddress),
-    }))
+    const bidMakeParams: MakeParam[] = currentEpoch.bidTicks
+      .map((tick) => ({
+        id: BigInt(this.clober.bookIds[market][BID]),
+        tick,
+        quoteAmount: parseUnits(
+          totalQuote.div(params.orderNum).toFixed(),
+          quoteCurrency.decimals,
+        ),
+        hookData: zeroHash,
+        isBid: true,
+        isETH: isAddressEqual(quoteCurrency.address, zeroAddress),
+      }))
+      // filter out the tick that already has open orders
+      .filter(
+        (params) =>
+          openOrders
+            .filter((o) => o.isBid)
+            .find((o) => o.tick === params.tick) === undefined,
+      )
 
-    const askMakeParams: MakeParam[] = currentEpoch.askTicks.map((tick) => ({
-      id: BigInt(this.clober.bookIds[market][ASK]),
-      tick: Number(tick),
-      quoteAmount: parseUnits(
-        totalBase.div(params.orderNum).toFixed(),
-        baseCurrency.decimals,
-      ),
-      hookData: zeroHash,
-      isBid: false,
-      isETH: isAddressEqual(baseCurrency.address, zeroAddress),
-    }))
+    const askMakeParams: MakeParam[] = currentEpoch.askTicks
+      .map((tick) => ({
+        id: BigInt(this.clober.bookIds[market][ASK]),
+        tick: Number(tick),
+        quoteAmount: parseUnits(
+          totalBase.div(params.orderNum).toFixed(),
+          baseCurrency.decimals,
+        ),
+        hookData: zeroHash,
+        isBid: false,
+        isETH: isAddressEqual(baseCurrency.address, zeroAddress),
+      }))
+      // filter out the tick that already has open orders
+      .filter(
+        (params) =>
+          openOrders
+            .filter((o) => !o.isBid)
+            .find((o) => o.tick === params.tick) === undefined,
+      )
 
     const orderIdsToClaim: { id: string; isBid: boolean }[] = openOrders
       .filter((order) => Number(order.claimable.value) > 0)
