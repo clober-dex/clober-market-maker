@@ -6,7 +6,7 @@ export type TakenTrade = {
   amountOut: string
   price: string
   pool: `0x${string}`
-  blockNumber: bigint
+  blockNumber: number
   logIndex: number
   currency0: Currency
   currency1: Currency
