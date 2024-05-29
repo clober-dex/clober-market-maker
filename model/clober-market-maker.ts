@@ -5,7 +5,6 @@ import _ from 'lodash'
 import * as yaml from 'yaml'
 import {
   approveERC20,
-  baseToQuote,
   CHAIN_IDS,
   getContractAddresses,
   getOpenOrders,
@@ -296,8 +295,8 @@ export class CloberMarketMaker {
   }
 
   buildTickAndPriceArray(
-    base: string,
-    quote: string,
+    baseCurrency: Currency,
+    quoteCurrency: Currency,
     oraclePrice: BigNumber,
     askSpread: number,
     bidSpread: number,
@@ -321,8 +320,8 @@ export class CloberMarketMaker {
     } = getPriceNeighborhood({
       chainId: this.chainId,
       price: oraclePrice.toString(),
-      currency0: findCurrencyBySymbol(this.chainId, quote),
-      currency1: findCurrencyBySymbol(this.chainId, base),
+      currency0: quoteCurrency,
+      currency1: baseCurrency,
     })
 
     const askTicks = Array.from(
@@ -332,8 +331,8 @@ export class CloberMarketMaker {
     const askPrices = askTicks
       .map((tick) =>
         getMarketPrice({
-          marketQuoteCurrency: findCurrencyBySymbol(this.chainId, quote),
-          marketBaseCurrency: findCurrencyBySymbol(this.chainId, base),
+          marketQuoteCurrency: quoteCurrency,
+          marketBaseCurrency: baseCurrency,
           askTick: tick,
         }),
       )
@@ -346,8 +345,8 @@ export class CloberMarketMaker {
     const bidPrices = bidTicks
       .map((tick) =>
         getMarketPrice({
-          marketQuoteCurrency: findCurrencyBySymbol(this.chainId, quote),
-          marketBaseCurrency: findCurrencyBySymbol(this.chainId, base),
+          marketQuoteCurrency: quoteCurrency,
+          marketBaseCurrency: baseCurrency,
           bidTick: tick,
         }),
       )
@@ -429,26 +428,20 @@ export class CloberMarketMaker {
   }
 
   async marketMaking(market: string, params: Params) {
-    const [base, quote] = market.split('/')
+    const quoteCurrency = findCurrencyBySymbol(
+      this.chainId,
+      market.split('/')[1],
+    )
+    const baseCurrency = findCurrencyBySymbol(
+      this.chainId,
+      market.split('/')[0],
+    )
+
     const [lowestAsk, highestBid, oraclePrice] = [
       this.clober.lowestAsk(market),
       this.clober.highestBid(market),
       this.binance.price(market),
     ]
-    const {
-      normal: {
-        now: { tick: oraclePriceBidBookTick },
-      },
-      inverted: {
-        now: { tick: oraclePriceAskBookTick },
-      },
-    } = getPriceNeighborhood({
-      chainId: this.chainId,
-      price: oraclePrice.toString(),
-      currency0: findCurrencyBySymbol(this.chainId, quote),
-      currency1: findCurrencyBySymbol(this.chainId, base),
-    })
-
     if (
       this.epoch[market] &&
       (oraclePrice.isLessThanOrEqualTo(
@@ -461,11 +454,11 @@ export class CloberMarketMaker {
       const timestamp = Math.floor(Date.now() / 1000)
       const [startBlock, endBlock] = await Promise.all([
         convertTimestampToBlockNumber(
-          this.chainId === arbitrumSepolia.id ? 8453 : this.chainId,
+          this.chainId === arbitrumSepolia.id ? base.id : this.chainId,
           this.epoch[market][this.epoch[market].length - 1].startTimestamp,
         ),
         convertTimestampToBlockNumber(
-          this.chainId === arbitrumSepolia.id ? 8453 : this.chainId,
+          this.chainId === arbitrumSepolia.id ? base.id : this.chainId,
           timestamp,
         ),
       ])
@@ -476,10 +469,10 @@ export class CloberMarketMaker {
         oraclePrice,
         this.epoch[market][this.epoch[market].length - 1].oraclePrice,
       )
-      const { askTicks, bidTicks, minPrice, maxPrice } =
+      const { askTicks, askPrices, bidTicks, bidPrices, minPrice, maxPrice } =
         this.buildTickAndPriceArray(
-          base,
-          quote,
+          baseCurrency,
+          quoteCurrency,
           oraclePrice,
           askSpread,
           bidSpread,
@@ -496,7 +489,9 @@ export class CloberMarketMaker {
         maxPrice,
         oraclePrice,
         askTicks,
+        askPrices,
         bidTicks,
+        bidPrices,
       }
 
       this.epoch[market].push(newEpoch)
@@ -509,10 +504,10 @@ export class CloberMarketMaker {
 
     // first epoch
     else if (!this.epoch[market]) {
-      const { askTicks, bidTicks, minPrice, maxPrice } =
+      const { askTicks, askPrices, bidTicks, bidPrices, minPrice, maxPrice } =
         this.buildTickAndPriceArray(
-          base,
-          quote,
+          baseCurrency,
+          quoteCurrency,
           oraclePrice,
           params.defaultAskTickSpread,
           params.defaultBidTickSpread,
@@ -529,7 +524,9 @@ export class CloberMarketMaker {
         maxPrice,
         oraclePrice,
         askTicks,
+        askPrices,
         bidTicks,
+        bidPrices,
       }
 
       this.epoch[market] = [newEpoch]
@@ -540,8 +537,6 @@ export class CloberMarketMaker {
       })
     }
 
-    const quoteCurrency = findCurrencyBySymbol(this.chainId, quote)
-    const baseCurrency = findCurrencyBySymbol(this.chainId, base)
     const openOrders = this.getOpenOrders(baseCurrency, quoteCurrency)
     const {
       totalBase,
@@ -585,109 +580,8 @@ export class CloberMarketMaker {
         .toString(),
     })
 
-    // 1. calculate skew (totalDollarBase - totalDollarQuote) / (totalDollarBase + totalDollarQuote)
-    // @dev we suppose that quote is usdc -> totalDollarQuote = totalQuote
-    const totalDollarBase = totalBase.times(oraclePrice)
-    const skew = totalDollarBase
-      .minus(totalQuote)
-      .div(totalDollarBase.plus(totalQuote))
-      .toNumber()
-
-    /*
-    if quote balance = 0 (skew = 1) => ask spread = min, bid spread = max
-    if base balance = 0 (skew = -1) => ask spread = max, bid spread = min
-    */
-    const bidSpread = Math.round(
-      (params.maxTickSpread - params.minTickSpread) * 0.5 * (skew + 1) +
-        params.minTickSpread,
-    )
-    const askSpread = Math.round(
-      params.maxTickSpread + params.minTickSpread - bidSpread,
-    )
-
-    const askSize = params.orderSize * Math.min(skew + 1, 1)
-    const bidSize = params.orderSize * Math.min(1 - skew, 1)
-
-    // 2. sort current open orders from openOrders
-    const currentOpenOrders: [
-      {
-        [tick: number]: OpenOrder[]
-      },
-      { [tick: number]: OpenOrder[] },
-    ] = [{}, {}]
-    _.forEach(openOrders, (order) => {
-      const arr = order.isBid ? currentOpenOrders[BID] : currentOpenOrders[ASK]
-      if (!arr[order.tick]) {
-        arr[order.tick] = []
-      }
-      arr[order.tick].push(order)
-    })
-    for (const side of [BID, ASK]) {
-      for (const id of Object.keys(currentOpenOrders[side])) {
-        currentOpenOrders[side][+id].sort(
-          (a, b) => +a.orderIndex - +b.orderIndex,
-        )
-      }
-    }
-
-    // 3. calculate target orders
-    const targetOrders: [
-      { [tick: number]: number },
-      { [tick: number]: number },
-    ] = [{}, {}]
-    for (let i = 0; i < params.orderNum; i++) {
-      const tick =
-        oraclePriceAskBookTick - BigInt(askSpread + params.orderGap * i)
-      targetOrders[ASK][Number(tick)] = askSize
-    }
-    for (let i = 0; i < params.orderNum; i++) {
-      const tick =
-        oraclePriceBidBookTick - BigInt(bidSpread + params.orderGap * i)
-      targetOrders[BID][Number(tick)] = bidSize
-    }
-
-    const requiredQuoteAmount = new BigNumber(
-      formatUnits(
-        Object.entries(targetOrders[BID])
-          .map(([tick, size]) =>
-            baseToQuote(
-              BigInt(tick),
-              parseUnits(size.toString(), baseCurrency.decimals),
-              true,
-            ),
-          )
-          .reduce((acc: bigint, quoteAmount) => acc + quoteAmount, 0n),
-        quoteCurrency.decimals,
-      ),
-    )
-    if (requiredQuoteAmount.isGreaterThan(totalQuote)) {
-      await logger(chalk.redBright, 'Insufficient quote balance', {
-        market,
-        quoteCurrency: quoteCurrency.address,
-        totalQuoteAmount: requiredQuoteAmount.toString(),
-        balance: this.balances[getAddress(quoteCurrency.address)].toString(),
-      })
-      return
-    }
-
-    const requiredBaseAmount = new BigNumber(
-      formatUnits(
-        Object.values(targetOrders[ASK])
-          .map((size) => parseUnits(size.toString(), baseCurrency.decimals))
-          .reduce((acc: bigint, baseAmount) => acc + baseAmount, 0n),
-        baseCurrency.decimals,
-      ),
-    )
-    if (requiredBaseAmount.isGreaterThan(totalBase)) {
-      await logger(chalk.redBright, 'Insufficient base balance', {
-        market,
-        baseCurrency: baseCurrency.address,
-        totalBaseAmount: requiredBaseAmount.toString(),
-        balance: this.balances[getAddress(baseCurrency.address)].toString(),
-      })
-      return
-    }
-
+    const currentEpoch: Epoch =
+      this.epoch[market][this.epoch[market].length - 1]
     const {
       normal: {
         now: { tick: lowestAskBidBookTick },
@@ -695,8 +589,8 @@ export class CloberMarketMaker {
     } = getPriceNeighborhood({
       chainId: this.chainId,
       price: lowestAsk.toString(),
-      currency0: findCurrencyBySymbol(this.chainId, quote),
-      currency1: findCurrencyBySymbol(this.chainId, base),
+      currency0: quoteCurrency,
+      currency1: baseCurrency,
     })
     const {
       normal: {
@@ -705,38 +599,9 @@ export class CloberMarketMaker {
     } = getPriceNeighborhood({
       chainId: this.chainId,
       price: highestBid.toString(),
-      currency0: findCurrencyBySymbol(this.chainId, quote),
-      currency1: findCurrencyBySymbol(this.chainId, base),
+      currency0: quoteCurrency,
+      currency1: baseCurrency,
     })
-
-    const humanReadableTargetOrders = {
-      ask: Object.keys(targetOrders[ASK])
-        .map((tick) => [
-          Number(
-            getMarketPrice({
-              marketQuoteCurrency: findCurrencyBySymbol(this.chainId, quote),
-              marketBaseCurrency: findCurrencyBySymbol(this.chainId, base),
-              askTick: BigInt(tick),
-            }),
-          ),
-          targetOrders[ASK][Number(tick)],
-        ])
-        .sort((a, b) => b[0] - a[0])
-        .filter((o) => o[1] > 0),
-      bid: Object.keys(targetOrders[BID])
-        .map((tick) => [
-          Number(
-            getMarketPrice({
-              marketQuoteCurrency: findCurrencyBySymbol(this.chainId, quote),
-              marketBaseCurrency: findCurrencyBySymbol(this.chainId, base),
-              bidTick: BigInt(tick),
-            }),
-          ),
-          targetOrders[BID][Number(tick)],
-        ])
-        .sort((a, b) => b[0] - a[0])
-        .filter((o) => o[1] > 0),
-    }
 
     // Skip when the oracle price is in the spread
     if (
@@ -758,95 +623,73 @@ export class CloberMarketMaker {
       return
     }
 
-    // 4. calculate orders to cancel & claim
-    const orderIdsToClaim: { id: string; isBid: boolean }[] = []
-    const orderIdsToCancel: { id: string; isBid: boolean }[] = []
-    for (const side of [BID, ASK]) {
-      for (const id of Object.keys(currentOpenOrders[side])) {
-        let cancelIndex = 0
-        if (targetOrders[side][+id]) {
-          for (
-            ;
-            cancelIndex < currentOpenOrders[side][+id].length;
-            cancelIndex += 1
-          ) {
-            const order = currentOpenOrders[side][+id][cancelIndex]
-            const openAmount = Number(order.cancelable.value) // without rebate
-            if (openAmount > targetOrders[side][+id]) {
-              break
-            }
-            targetOrders[side][+id] -= openAmount
-          }
-          if (targetOrders[side][+id] < params.minOrderSize) {
-            // cutting off small orders
-            delete targetOrders[side][+id]
-          }
-        }
-        orderIdsToClaim.push(
-          ...currentOpenOrders[side][+id]
-            .filter((order) => Number(order.claimable.value) > 0)
-            .map((order) => ({ id: order.id, isBid: order.isBid })),
-        )
-        orderIdsToCancel.push(
-          ..._.map(
-            currentOpenOrders[side][+id]
-              .slice(cancelIndex)
-              .filter((order) => order.amount.value !== order.filled.value),
-            (order) => ({ id: order.id, isBid: order.isBid }),
-          ),
-        )
-      }
+    const bidMakeParams: MakeParam[] = currentEpoch.bidTicks.map((tick) => ({
+      id: BigInt(this.clober.bookIds[market][BID]),
+      tick,
+      quoteAmount: parseUnits(
+        totalQuote.div(params.orderNum).toFixed(),
+        quoteCurrency.decimals,
+      ),
+      hookData: zeroHash,
+      isBid: true,
+      isETH: isAddressEqual(quoteCurrency.address, zeroAddress),
+    }))
+
+    const askMakeParams: MakeParam[] = currentEpoch.askTicks.map((tick) => ({
+      id: BigInt(this.clober.bookIds[market][ASK]),
+      tick: Number(tick),
+      quoteAmount: parseUnits(
+        totalBase.div(params.orderNum).toFixed(),
+        baseCurrency.decimals,
+      ),
+      hookData: zeroHash,
+      isBid: false,
+      isETH: isAddressEqual(baseCurrency.address, zeroAddress),
+    }))
+
+    const orderIdsToClaim: { id: string; isBid: boolean }[] = openOrders
+      .filter((order) => Number(order.claimable.value) > 0)
+      .map((order) => ({ id: order.id, isBid: order.isBid }))
+    const orderIdsToCancel: { id: string; isBid: boolean }[] = openOrders
+      .filter((order) => order.amount.value !== order.filled.value)
+      .map((order) => ({ id: order.id, isBid: order.isBid }))
+
+    const humanReadableTargetOrders: {
+      ask: [BigNumber, BigNumber][]
+      bid: [BigNumber, BigNumber][]
+    } = {
+      ask: currentEpoch.askPrices
+        .sort((a, b) => b.minus(a).toNumber())
+        .map((price) => [price, totalBase.div(params.orderNum)]),
+      bid: currentEpoch.bidPrices
+        .sort((a, b) => a.minus(b).toNumber())
+        .map((price) => [price, totalQuote.div(params.orderNum)]),
     }
-
-    const bidMakeParams: MakeParam[] = Object.entries(targetOrders[BID]).map(
-      ([tick, size]) => ({
-        id: BigInt(this.clober.bookIds[market][BID]),
-        tick: Number(tick),
-        quoteAmount: baseToQuote(
-          BigInt(tick),
-          parseUnits(size.toString(), baseCurrency.decimals),
-          true,
-        ),
-        hookData: zeroHash,
-        isBid: true,
-        isETH: isAddressEqual(quoteCurrency.address, zeroAddress),
-      }),
-    )
-
-    const askMakeParams: MakeParam[] = Object.entries(targetOrders[ASK]).map(
-      ([tick, size]) => ({
-        id: BigInt(this.clober.bookIds[market][ASK]),
-        tick: Number(tick),
-        quoteAmount: parseUnits(size.toString(), baseCurrency.decimals),
-        hookData: zeroHash,
-        isBid: false,
-        isETH: isAddressEqual(baseCurrency.address, zeroAddress),
-      }),
-    )
 
     await logger(chalk.redBright, 'Execute Detail', {
       market,
-      skew,
       orderIdsToClaim,
       claimBidOrderLength: orderIdsToClaim.filter((o) => o.isBid).length,
       claimAskOrderLength: orderIdsToClaim.filter((o) => !o.isBid).length,
       orderIdsToCancel,
       cancelBidOrderLength: orderIdsToCancel.filter((o) => o.isBid).length,
       cancelAskOrderLength: orderIdsToCancel.filter((o) => !o.isBid).length,
-      askSpread,
-      bidSpread,
-      askSize,
-      bidSize,
+      askSpread: currentEpoch.askSpread,
+      bidSpread: currentEpoch.bidSpread,
+      askSize: totalQuote.div(params.orderNum).toString(),
+      bidSize: totalBase.div(params.orderNum).toString(),
       targetOrders: humanReadableTargetOrders,
       targetBidOrderLength: humanReadableTargetOrders.bid.length,
       targetAskOrderLength: humanReadableTargetOrders.ask.length,
       lowestAsk:
-        humanReadableTargetOrders.ask.sort((a, b) => a[0] - b[0])[0]?.[0] ||
-        '-',
+        humanReadableTargetOrders.ask.sort((a, b) =>
+          a[0].minus(b[0]).toNumber(),
+        )[0]?.[0] || '-',
       oraclePrice: oraclePrice.toString(),
       highestBid:
-        humanReadableTargetOrders.bid.sort((a, b) => b[0] - a[0])[0]?.[0] ||
-        '-',
+        humanReadableTargetOrders.bid.sort((a, b) =>
+          b[0].minus(a[0]).toNumber(),
+        )[0]?.[0] || '-',
     })
 
     await this.execute(
