@@ -614,9 +614,9 @@ export class CloberMarketMaker {
       oraclePrice.isGreaterThan(highestBid) &&
       oraclePrice.isLessThan(lowestAsk) &&
       lowestAskBidBookTick - highestBidBidBookTick <=
-        params.maxTickSpread + params.minTickSpread
+        currentEpoch.askSpread + currentEpoch.bidSpread
       // highestBid < oraclePrice && oraclePrice < lowestAsk &&
-      // lowestAskBidBookTick - highestBidBidBookTick <= params.maxTickSpread + params.minTickSpread
+      // lowestAskBidBookTick - highestBidBidBookTick <= currentEpoch.askSpread + currentEpoch.bidSpread
     ) {
       await logger(chalk.red, 'Skip making orders', {
         market,
