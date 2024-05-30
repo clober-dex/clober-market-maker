@@ -733,7 +733,7 @@ export class CloberMarketMaker {
       ask: [string, string][]
       bid: [string, string][]
     } = {
-      ask: bidMakeParams.map(({ tick }) => [
+      ask: askMakeParams.map(({ tick }) => [
         getMarketPrice({
           marketQuoteCurrency: quoteCurrency,
           marketBaseCurrency: baseCurrency,
@@ -741,7 +741,7 @@ export class CloberMarketMaker {
         }),
         askSize,
       ]),
-      bid: askMakeParams.map(({ tick }) => [
+      bid: bidMakeParams.map(({ tick }) => [
         getMarketPrice({
           marketQuoteCurrency: quoteCurrency,
           marketBaseCurrency: baseCurrency,
