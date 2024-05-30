@@ -129,76 +129,116 @@ export class DexSimulator {
         (price) => new BigNumber(price).comparedTo(previousOraclePrice) >= 0,
       )
 
-    const profits: {
+    const askProfits: {
       quoteProfit: BigNumber
       targetAskPrice: string
+    }[] = []
+    const bidProfits: {
+      quoteProfit: BigNumber
       targetBidPrice: string
     }[] = []
-    // O(trades ^ 2)
-    for (const targetBidPrice of bidPrices) {
-      for (const targetAskPrice of askPirces) {
-        if (new BigNumber(targetAskPrice).comparedTo(targetBidPrice) > 0) {
-          let baseAmount = new BigNumber(0)
-          let quoteAmount = new BigNumber(0)
+    for (const targetAskPrice of askPirces) {
+      let baseAmount = new BigNumber(0)
+      let quoteAmount = new BigNumber(0)
 
-          for (const {
-            isTakingBidSide,
-            amountIn,
-            amountOut,
-            price: takenPrice,
-          } of trades) {
-            // simulate trade
-            if (
-              isTakingBidSide &&
-              new BigNumber(targetBidPrice).comparedTo(takenPrice) > 0 // not considering taker fee in Clober
-            ) {
-              const cloberAmountOut = new BigNumber(amountIn).times(
-                targetBidPrice,
-              )
-              baseAmount = baseAmount.plus(amountIn)
-              quoteAmount = quoteAmount.minus(cloberAmountOut)
-            } else if (
-              !isTakingBidSide &&
-              new BigNumber(takenPrice).comparedTo(targetAskPrice) > 0 // not considering taker fee in Clober
-            ) {
-              const cloberAmountOut = new BigNumber(amountIn).div(
-                targetAskPrice,
-              )
-              baseAmount = baseAmount.minus(cloberAmountOut)
-              quoteAmount = quoteAmount.plus(amountIn)
-            }
-          }
-          const quoteProfit = quoteAmount.plus(
-            baseAmount.times(previousOraclePrice),
-          )
-
-          profits.push({
-            quoteProfit,
-            targetAskPrice,
-            targetBidPrice,
-          })
+      for (const { isTakingBidSide, amountIn, price: takenPrice } of trades) {
+        // simulate trade
+        if (
+          !isTakingBidSide &&
+          new BigNumber(takenPrice).comparedTo(targetAskPrice) > 0 // not considering taker fee in Clober
+        ) {
+          const cloberAmountOut = new BigNumber(amountIn).div(targetAskPrice)
+          baseAmount = baseAmount.minus(cloberAmountOut)
+          quoteAmount = quoteAmount.plus(amountIn)
         }
       }
+      const quoteProfit = quoteAmount.plus(
+        baseAmount.times(previousOraclePrice),
+      )
+
+      askProfits.push({
+        quoteProfit,
+        targetAskPrice,
+      })
+    }
+    for (const targetBidPrice of bidPrices) {
+      let baseAmount = new BigNumber(0)
+      let quoteAmount = new BigNumber(0)
+
+      for (const { isTakingBidSide, amountIn, price: takenPrice } of trades) {
+        // simulate trade
+        if (
+          isTakingBidSide &&
+          new BigNumber(targetBidPrice).comparedTo(takenPrice) > 0 // not considering taker fee in Clober
+        ) {
+          const cloberAmountOut = new BigNumber(amountIn).times(targetBidPrice)
+          baseAmount = baseAmount.plus(amountIn)
+          quoteAmount = quoteAmount.minus(cloberAmountOut)
+        }
+      }
+      const quoteProfit = quoteAmount.plus(
+        baseAmount.times(previousOraclePrice),
+      )
+
+      bidProfits.push({
+        quoteProfit,
+        targetBidPrice,
+      })
     }
 
-    const sortedProfits = profits
+    const sortedAskProfits = askProfits
       .filter((profit) => profit.quoteProfit.gt(0))
       .sort((a, b) => b.quoteProfit.comparedTo(a.quoteProfit))
 
-    const profit =
-      sortedProfits.length > 0 ? sortedProfits[0].quoteProfit : new BigNumber(0)
+    const sortedBidProfits = bidProfits
+      .filter((profit) => profit.quoteProfit.gt(0))
+      .sort((a, b) => b.quoteProfit.comparedTo(a.quoteProfit))
+
+    const askProfit =
+      sortedAskProfits.length > 0
+        ? sortedAskProfits[0].quoteProfit
+        : new BigNumber(0)
+    const bidProfit =
+      sortedBidProfits.length > 0
+        ? sortedBidProfits[0].quoteProfit
+        : new BigNumber(0)
+
     const spreads = {
       askSpread: this.params[marketId].defaultBidTickSpread,
       bidSpread: this.params[marketId].defaultAskTickSpread,
     }
-    if (profit.gt(0)) {
-      const [base, quote] = marketId.split('/')
+
+    const [base, quote] = marketId.split('/')
+    if (askProfit.gt(0)) {
+      const {
+        inverted: {
+          now: { tick: previousOraclePriceAskBookTick },
+        },
+      } = getPriceNeighborhood({
+        chainId: this.chainId,
+        price: previousOraclePrice.toString(),
+        currency0: findCurrencyBySymbol(this.chainId, quote),
+        currency1: findCurrencyBySymbol(this.chainId, base),
+      })
+      const {
+        inverted: {
+          now: { tick: lowestAskBidBookTick },
+        },
+      } = getPriceNeighborhood({
+        chainId: this.chainId,
+        price: sortedAskProfits[0].targetAskPrice.toString(),
+        currency0: findCurrencyBySymbol(this.chainId, quote),
+        currency1: findCurrencyBySymbol(this.chainId, base),
+      })
+
+      spreads.askSpread = Number(
+        previousOraclePriceAskBookTick - lowestAskBidBookTick,
+      )
+    }
+    if (bidProfit.gt(0)) {
       const {
         normal: {
           now: { tick: previousOraclePriceBidBookTick },
-        },
-        inverted: {
-          now: { tick: previousOraclePriceAskBookTick },
         },
       } = getPriceNeighborhood({
         chainId: this.chainId,
@@ -212,24 +252,11 @@ export class DexSimulator {
         },
       } = getPriceNeighborhood({
         chainId: this.chainId,
-        price: sortedProfits[0].targetBidPrice.toString(),
-        currency0: findCurrencyBySymbol(this.chainId, quote),
-        currency1: findCurrencyBySymbol(this.chainId, base),
-      })
-      const {
-        inverted: {
-          now: { tick: lowestAskBidBookTick },
-        },
-      } = getPriceNeighborhood({
-        chainId: this.chainId,
-        price: sortedProfits[0].targetAskPrice.toString(),
+        price: sortedBidProfits[0].targetBidPrice.toString(),
         currency0: findCurrencyBySymbol(this.chainId, quote),
         currency1: findCurrencyBySymbol(this.chainId, base),
       })
 
-      spreads.askSpread = Number(
-        previousOraclePriceAskBookTick - lowestAskBidBookTick,
-      )
       spreads.bidSpread = Number(
         previousOraclePriceBidBookTick - highestBidBidBookTick,
       )
@@ -238,15 +265,15 @@ export class DexSimulator {
     return {
       askSpread: spreads.askSpread,
       bidSpread: spreads.bidSpread,
-      profit,
+      profit: askProfit.plus(bidProfit),
       targetAskPrice: new BigNumber(
-        sortedProfits.length > 0
-          ? sortedProfits[0].targetAskPrice
+        sortedAskProfits.length > 0
+          ? sortedAskProfits[0].targetAskPrice
           : previousOraclePrice.toString(),
       ),
       targetBidPrice: new BigNumber(
-        sortedProfits.length > 0
-          ? sortedProfits[0].targetBidPrice
+        sortedBidProfits.length > 0
+          ? sortedBidProfits[0].targetBidPrice
           : previousOraclePrice.toString(),
       ),
     }
