@@ -27,6 +27,7 @@ import { WHITELISTED_CURRENCIES } from '../constants/currency.ts'
 import { waitTransaction } from '../utils/transaction.ts'
 import { logger } from '../utils/logger.ts'
 import { WHITELIST_DEX } from '../constants/dex.ts'
+import { Binance } from '../model/binance.ts'
 
 const BASE_CURRENCY = {
   address: '0xF2e615A933825De4B39b497f6e6991418Fb31b78',
@@ -139,6 +140,9 @@ const fetchTradeFromHashes = async (
 }
 
 ;(async () => {
+  const binance = new Binance({
+    'WETH/USDC': { quote: 'USDT', base: 'ETH' },
+  })
   await sendSlackMessage({
     message: 'Taker bot started',
     account: account.address,
@@ -167,7 +171,10 @@ const fetchTradeFromHashes = async (
 
   // eslint-disable-next-line no-constant-condition
   while (true) {
-    const latestBlock = await mainnetPublicClient.getBlockNumber()
+    const [latestBlock] = await Promise.all([
+      mainnetPublicClient.getBlockNumber(),
+      binance.update(),
+    ])
     const hashes = await fetchHashesFromSwapEvent(startBlock, latestBlock)
     const trades = await fetchTradeFromHashes(hashes)
     const uniswapVolume = trades.reduce(
@@ -209,12 +216,23 @@ const fetchTradeFromHashes = async (
           options: process.env.RPC_URL
             ? {
                 rpcUrl: process.env.RPC_URL,
+                useSubgraph: false,
               }
             : {},
         })
         const expectedAmountOut = parseUnits(
           taken.amount,
           taken.currency.decimals,
+        )
+
+        console.log(
+          `[${actualAmountOut < expectedAmountOut ? 'Succeed' : 'Failed'}][Trade] ${trade.type} ${amountIn} ${spent.currency.symbol}`,
+        )
+        console.log(
+          `  Actual amount out: ${formatUnits(actualAmountOut, taken.currency.decimals)} ${taken.currency.symbol}`,
+        )
+        console.log(
+          `  Expected amount out: ${formatUnits(expectedAmountOut, taken.currency.decimals)} ${taken.currency.symbol}`,
         )
 
         if (actualAmountOut < expectedAmountOut) {
@@ -224,15 +242,6 @@ const fetchTradeFromHashes = async (
           cloberVolume += isBid
             ? expectedAmountOut
             : parseUnits(amountIn, spent.currency.decimals)
-          console.log(
-            `[Trade] ${trade.type} ${amountIn} ${spent.currency.symbol}`,
-          )
-          console.log(
-            `  Actual amount out: ${formatUnits(actualAmountOut, taken.currency.decimals)} ${taken.currency.symbol}`,
-          )
-          console.log(
-            `  Expected amount out: ${formatUnits(expectedAmountOut, taken.currency.decimals)} ${taken.currency.symbol}`,
-          )
           const hash = await testnetWalletClient.sendTransaction({
             data: transaction.data,
             to: transaction.to,
@@ -276,6 +285,7 @@ const fetchTradeFromHashes = async (
               .toFixed(4),
           )
           .sort((a, b) => Number(b) - Number(a))[0] ?? '-',
+      oraclePrice: binance.price('WETH/USDC').toString(),
       uniswapLowestAskPrice:
         trades
           .filter((trade) => trade.type === 'bid')
