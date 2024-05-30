@@ -10,8 +10,8 @@ markets:
       base: WETH
     params:
       balancePercentage: 20
-      defaultBidTickSpread: 10
-      defaultAskTickSpread: 10
+      defaultBidTickSpread: 30
+      defaultAskTickSpread: 30
       orderGap: 1
       orderNum: 1
       startQuoteAmount: 386300
