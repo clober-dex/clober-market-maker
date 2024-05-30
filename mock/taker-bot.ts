@@ -22,6 +22,7 @@ import { privateKeyToAccount } from 'viem/accounts'
 import * as YAML from 'yaml'
 import chalk from 'chalk'
 
+import BigNumber from '../utils/bignumber.ts'
 import { WHITELISTED_CURRENCIES } from '../constants/currency.ts'
 import { waitTransaction } from '../utils/transaction.ts'
 import { logger } from '../utils/logger.ts'
@@ -264,6 +265,21 @@ const fetchTradeFromHashes = async (
       latestBlock: Number(latestBlock),
       hashesLength: hashes.length,
       tradesLength: trades.length,
+      askPrices: trades
+        .filter((trade) => trade.type === 'ask')
+        .map((trade) =>
+          new BigNumber(abs(trade.quoteAmount).toString())
+            .div(abs(trade.baseAmount).toString())
+            .toString(),
+        )
+        .sort((a, b) => Number(a) - Number(b)),
+      bidPrices: trades
+        .filter((trade) => trade.type === 'bid')
+        .map((trade) =>
+          new BigNumber(abs(trade.quoteAmount).toString())
+            .div(abs(trade.baseAmount).toString())
+            .toString(),
+        ),
       uniswapBidVolume: formatUnits(uniswapBidVolume, BASE_CURRENCY.decimals),
       uniswapAskVolume: formatUnits(uniswapAskVolume, BASE_CURRENCY.decimals),
       uniswapVolume: formatUnits(uniswapVolume, BASE_CURRENCY.decimals),
