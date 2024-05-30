@@ -269,26 +269,16 @@ const fetchTradeFromHashes = async (
         .filter((trade) => trade.type === 'ask')
         .map((trade) =>
           new BigNumber(abs(trade.quoteAmount).toString())
-            .times(new BigNumber(10).pow(QUOTE_CURRENCY.decimals))
-            .div(
-              new BigNumber(abs(trade.baseAmount).toString()).times(
-                new BigNumber(10).pow(BASE_CURRENCY.decimals),
-              ),
-            )
-            .toFixed(4),
+            .div(abs(trade.baseAmount).toString())
+            .toString(),
         )
         .sort((a, b) => Number(a) - Number(b)),
       bidPrices: trades
         .filter((trade) => trade.type === 'bid')
         .map((trade) =>
           new BigNumber(abs(trade.quoteAmount).toString())
-            .times(new BigNumber(10).pow(QUOTE_CURRENCY.decimals))
-            .div(
-              new BigNumber(abs(trade.baseAmount).toString()).times(
-                new BigNumber(10).pow(BASE_CURRENCY.decimals),
-              ),
-            )
-            .toFixed(4),
+            .div(abs(trade.baseAmount).toString())
+            .toString(),
         ),
       uniswapBidVolume: formatUnits(uniswapBidVolume, BASE_CURRENCY.decimals),
       uniswapAskVolume: formatUnits(uniswapAskVolume, BASE_CURRENCY.decimals),
