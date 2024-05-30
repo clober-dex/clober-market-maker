@@ -733,12 +733,22 @@ export class CloberMarketMaker {
       ask: [string, string][]
       bid: [string, string][]
     } = {
-      ask: currentEpoch.askPrices
-        .sort((a, b) => b.minus(a).toNumber())
-        .map((price) => [price.toFixed(4), askSize]),
-      bid: currentEpoch.bidPrices
-        .sort((a, b) => a.minus(b).toNumber())
-        .map((price) => [price.toFixed(4), bidSize]),
+      ask: bidMakeParams.map(({ tick }) => [
+        getMarketPrice({
+          marketQuoteCurrency: quoteCurrency,
+          marketBaseCurrency: baseCurrency,
+          askTick: BigInt(tick),
+        }),
+        askSize,
+      ]),
+      bid: askMakeParams.map(({ tick }) => [
+        getMarketPrice({
+          marketQuoteCurrency: quoteCurrency,
+          marketBaseCurrency: baseCurrency,
+          bidTick: BigInt(tick),
+        }),
+        bidSize,
+      ]),
     }
 
     await logger(chalk.redBright, 'Execute Detail', {
