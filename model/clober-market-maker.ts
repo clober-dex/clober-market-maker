@@ -474,6 +474,7 @@ export class CloberMarketMaker {
         market,
         startBlock: Number(startBlock),
         endBlock: Number(endBlock),
+        epoch: this.epoch[market][this.epoch[market].length - 1].id,
         oraclePrice:
           this.epoch[market][
             this.epoch[market].length - 1
