@@ -1,12 +1,10 @@
 import { CHAIN_IDS, getPriceNeighborhood } from '@clober/v2-sdk'
 import { createPublicClient, http, parseAbiItem, type PublicClient } from 'viem'
-import chalk from 'chalk'
 
 import { CHAIN_MAP } from '../constants/chain.ts'
 import { ODOS_ROUTER_CONTRACT_ADDRESS } from '../constants/odos.ts'
 import { WHITELIST_DEX } from '../constants/dex.ts'
 import BigNumber from '../utils/bignumber.ts'
-import { logger } from '../utils/logger.ts'
 import { findCurrencyBySymbol } from '../utils/currency.ts'
 
 import type { Market } from './market.ts'
@@ -93,7 +91,7 @@ export class DexSimulator {
     askSpread: number
     bidSpread: number
     profit: BigNumber
-    targetAskPrice: Bignumber
+    targetAskPrice: BigNumber
     targetBidPrice: BigNumber
   } {
     const trades = this.trades[marketId]
@@ -154,13 +152,19 @@ export class DexSimulator {
               isTakingBidSide &&
               new BigNumber(targetBidPrice).comparedTo(takenPrice) > 0 // not considering taker fee in Clober
             ) {
+              const cloberAmountOut = new BigNumber(amountIn).times(
+                targetBidPrice,
+              )
               baseAmount = baseAmount.plus(amountIn)
-              quoteAmount = quoteAmount.minus(amountOut)
+              quoteAmount = quoteAmount.minus(cloberAmountOut)
             } else if (
               !isTakingBidSide &&
               new BigNumber(takenPrice).comparedTo(targetAskPrice) > 0 // not considering taker fee in Clober
             ) {
-              baseAmount = baseAmount.minus(amountOut)
+              const cloberAmountOut = new BigNumber(amountIn).div(
+                targetAskPrice,
+              )
+              baseAmount = baseAmount.minus(cloberAmountOut)
               quoteAmount = quoteAmount.plus(amountIn)
             }
           }
