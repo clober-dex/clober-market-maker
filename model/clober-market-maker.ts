@@ -440,12 +440,8 @@ export class CloberMarketMaker {
       this.chainId,
       market.split('/')[0],
     )
+    const oraclePrice = this.binance.price(market)
 
-    const [lowestAsk, highestBid, oraclePrice] = [
-      this.clober.lowestAsk(market),
-      this.clober.highestBid(market),
-      this.binance.price(market),
-    ]
     if (
       this.epoch[market] &&
       (oraclePrice.isLessThanOrEqualTo(
@@ -602,47 +598,6 @@ export class CloberMarketMaker {
 
     const currentEpoch: Epoch =
       this.epoch[market][this.epoch[market].length - 1]
-    const {
-      normal: {
-        now: { tick: lowestAskBidBookTick },
-      },
-    } = getPriceNeighborhood({
-      chainId: this.chainId,
-      price: lowestAsk.toString(),
-      currency0: quoteCurrency,
-      currency1: baseCurrency,
-    })
-    const {
-      normal: {
-        now: { tick: highestBidBidBookTick },
-      },
-    } = getPriceNeighborhood({
-      chainId: this.chainId,
-      price: highestBid.toString(),
-      currency0: quoteCurrency,
-      currency1: baseCurrency,
-    })
-
-    // Skip when the oracle price is in the spread
-    if (
-      lowestAsk &&
-      highestBid &&
-      oraclePrice.isGreaterThan(highestBid) &&
-      oraclePrice.isLessThan(lowestAsk) &&
-      lowestAskBidBookTick - highestBidBidBookTick <=
-        currentEpoch.askSpread + currentEpoch.bidSpread
-      // highestBid < oraclePrice && oraclePrice < lowestAsk &&
-      // lowestAskBidBookTick - highestBidBidBookTick <= currentEpoch.askSpread + currentEpoch.bidSpread
-    ) {
-      await logger(chalk.red, 'Skip making orders', {
-        market,
-        lowestAsk: lowestAsk.toString(),
-        oraclePrice: oraclePrice.toString(),
-        highestBid: highestBid.toString(),
-      })
-      return
-    }
-
     const bidSize = totalQuote
       .times(params.balancePercentage / 100)
       .div(params.orderNum)
