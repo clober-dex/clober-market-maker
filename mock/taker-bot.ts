@@ -265,41 +265,28 @@ const fetchTradeFromHashes = async (
       latestBlock: Number(latestBlock),
       hashesLength: hashes.length,
       tradesLength: trades.length,
-      askPrices: trades
-        .filter((trade) => trade.type === 'ask')
-        .map((trade) =>
-          new BigNumber(
-            formatUnits(
-              abs(trade.quoteAmount).toString(),
-              QUOTE_CURRENCY.decimals,
-            ),
-          )
-            .div(
-              formatUnits(
-                abs(trade.baseAmount).toString(),
-                BASE_CURRENCY.decimals,
-              ),
+      uniswapHighestBidPrice:
+        trades
+          .filter((trade) => trade.type === 'ask')
+          .map((trade) =>
+            new BigNumber(
+              formatUnits(abs(trade.quoteAmount), QUOTE_CURRENCY.decimals),
             )
-            .toFixed(4),
-        )
-        .sort((a, b) => Number(a) - Number(b)),
-      bidPrices: trades
-        .filter((trade) => trade.type === 'bid')
-        .map((trade) =>
-          new BigNumber(
-            formatUnits(
-              abs(trade.quoteAmount).toString(),
-              QUOTE_CURRENCY.decimals,
-            ),
+              .div(formatUnits(abs(trade.baseAmount), BASE_CURRENCY.decimals))
+              .toFixed(4),
           )
-            .div(
-              formatUnits(
-                abs(trade.baseAmount).toString(),
-                BASE_CURRENCY.decimals,
-              ),
+          .sort((a, b) => Number(b) - Number(a))[0] ?? 0,
+      uniswapLowestAskPrice:
+        trades
+          .filter((trade) => trade.type === 'bid')
+          .map((trade) =>
+            new BigNumber(
+              formatUnits(abs(trade.quoteAmount), QUOTE_CURRENCY.decimals),
             )
-            .toFixed(4),
-        ),
+              .div(formatUnits(abs(trade.baseAmount), BASE_CURRENCY.decimals))
+              .toFixed(4),
+          )
+          .sort((a, b) => Number(a) - Number(b))[0] ?? 0,
       uniswapBidVolume: formatUnits(uniswapBidVolume, BASE_CURRENCY.decimals),
       uniswapAskVolume: formatUnits(uniswapAskVolume, BASE_CURRENCY.decimals),
       uniswapVolume: formatUnits(uniswapVolume, BASE_CURRENCY.decimals),
