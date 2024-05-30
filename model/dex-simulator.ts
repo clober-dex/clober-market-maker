@@ -1,4 +1,4 @@
-import { CHAIN_IDS } from '@clober/v2-sdk'
+import { CHAIN_IDS, getPriceNeighborhood } from '@clober/v2-sdk'
 import { createPublicClient, http, parseAbiItem, type PublicClient } from 'viem'
 import chalk from 'chalk'
 
@@ -7,12 +7,15 @@ import { ODOS_ROUTER_CONTRACT_ADDRESS } from '../constants/odos.ts'
 import { WHITELIST_DEX } from '../constants/dex.ts'
 import BigNumber from '../utils/bignumber.ts'
 import { logger } from '../utils/logger.ts'
+import { findCurrencyBySymbol } from '../utils/currency.ts'
 
 import type { Market } from './market.ts'
 import type { TakenTrade } from './taken-trade.ts'
+import type { Params } from './config.ts'
 
 export class DexSimulator {
   markets: { [id: string]: Market }
+  params: { [id: string]: Params }
   chainId: CHAIN_IDS
   publicClient: PublicClient
 
@@ -20,7 +23,11 @@ export class DexSimulator {
   startBlock: bigint = 0n
   latestBlock: bigint = 0n
 
-  constructor(chainId: CHAIN_IDS, markets: { [id: string]: Market }) {
+  constructor(
+    chainId: CHAIN_IDS,
+    markets: { [id: string]: Market },
+    params: { [id: string]: Params },
+  ) {
     this.chainId = chainId
     this.publicClient = createPublicClient({
       chain: CHAIN_MAP[chainId],
@@ -31,6 +38,7 @@ export class DexSimulator {
           : http(),
     })
     this.markets = markets
+    this.params = params
   }
 
   async update() {
@@ -80,8 +88,14 @@ export class DexSimulator {
     marketId: string,
     startBlock: bigint,
     endBlock: bigint,
-    oraclePrice: BigNumber,
-  ) {
+    previousOraclePrice: BigNumber,
+  ): {
+    askSpread: number
+    bidSpread: number
+    profit: BigNumber
+    targetAskPrice: Bignumber
+    targetBidPrice: BigNumber
+  } {
     const trades = this.trades[marketId]
       .filter(
         (trade) =>
@@ -99,19 +113,23 @@ export class DexSimulator {
       ...trades
         .filter((trade) => trade.isTakingBidSide)
         .map((trade) => trade.price),
-      oraclePrice.toString(),
+      previousOraclePrice.toString(),
     ]
       .sort((a, b) => new BigNumber(a).comparedTo(new BigNumber(b)))
-      .filter((price) => new BigNumber(price).comparedTo(oraclePrice) <= 0)
+      .filter(
+        (price) => new BigNumber(price).comparedTo(previousOraclePrice) <= 0,
+      )
 
     const askPirces = [
       ...trades
         .filter((trade) => !trade.isTakingBidSide)
         .map((trade) => trade.price),
-      oraclePrice.toString(),
+      previousOraclePrice.toString(),
     ]
       .sort((a, b) => new BigNumber(a).comparedTo(new BigNumber(b)))
-      .filter((price) => new BigNumber(price).comparedTo(oraclePrice) >= 0)
+      .filter(
+        (price) => new BigNumber(price).comparedTo(previousOraclePrice) >= 0,
+      )
 
     const profits: {
       quoteProfit: BigNumber
@@ -146,7 +164,9 @@ export class DexSimulator {
               quoteAmount = quoteAmount.plus(amountIn)
             }
           }
-          const quoteProfit = quoteAmount.plus(baseAmount.times(targetBidPrice))
+          const quoteProfit = quoteAmount.plus(
+            baseAmount.times(previousOraclePrice),
+          )
 
           profits.push({
             quoteProfit,
@@ -161,16 +181,70 @@ export class DexSimulator {
       .filter((profit) => profit.quoteProfit.gt(0))
       .sort((a, b) => b.quoteProfit.comparedTo(a.quoteProfit))
 
-    if (sortedProfits.length > 0) {
-      logger(chalk.green, 'Simulation', {
-        market: marketId,
-        startBlock: Number(startBlock),
-        endBlock: Number(endBlock),
-        oraclePrice: oraclePrice.toString(),
-        profit: sortedProfits[0].quoteProfit.toString(),
-        targetAskPrice: sortedProfits[0].targetAskPrice,
-        targetBidPrice: sortedProfits[0].targetBidPrice,
+    const profit =
+      sortedProfits.length > 0 ? sortedProfits[0].quoteProfit : new BigNumber(0)
+    const spreads = {
+      askSpread: this.params[marketId].defaultBidTickSpread,
+      bidSpread: this.params[marketId].defaultAskTickSpread,
+    }
+    if (profit.gt(0)) {
+      const [base, quote] = marketId.split('/')
+      const {
+        normal: {
+          now: { tick: previousOraclePriceBidBookTick },
+        },
+        inverted: {
+          now: { tick: previousOraclePriceAskBookTick },
+        },
+      } = getPriceNeighborhood({
+        chainId: this.chainId,
+        price: previousOraclePrice.toString(),
+        currency0: findCurrencyBySymbol(this.chainId, quote),
+        currency1: findCurrencyBySymbol(this.chainId, base),
       })
+      const {
+        normal: {
+          now: { tick: highestBidBidBookTick },
+        },
+      } = getPriceNeighborhood({
+        chainId: this.chainId,
+        price: sortedProfits[0].targetBidPrice.toString(),
+        currency0: findCurrencyBySymbol(this.chainId, quote),
+        currency1: findCurrencyBySymbol(this.chainId, base),
+      })
+      const {
+        inverted: {
+          now: { tick: lowestAskBidBookTick },
+        },
+      } = getPriceNeighborhood({
+        chainId: this.chainId,
+        price: sortedProfits[0].targetAskPrice.toString(),
+        currency0: findCurrencyBySymbol(this.chainId, quote),
+        currency1: findCurrencyBySymbol(this.chainId, base),
+      })
+
+      spreads.askSpread = Number(
+        previousOraclePriceAskBookTick - lowestAskBidBookTick,
+      )
+      spreads.bidSpread = Number(
+        previousOraclePriceBidBookTick - highestBidBidBookTick,
+      )
+    }
+
+    return {
+      askSpread: spreads.askSpread,
+      bidSpread: spreads.bidSpread,
+      profit,
+      targetAskPrice: new BigNumber(
+        sortedProfits.length > 0
+          ? sortedProfits[0].targetAskPrice
+          : previousOraclePrice.toString(),
+      ),
+      targetBidPrice: new BigNumber(
+        sortedProfits.length > 0
+          ? sortedProfits[0].targetBidPrice
+          : previousOraclePrice.toString(),
+      ),
     }
   }
 }

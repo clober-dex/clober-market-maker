@@ -9,11 +9,10 @@ markets:
       quote: USDC
       base: WETH
     params:
-      minTickSpread: 0
-      maxTickSpread: 6
+      balancePercentage: 20
+      defaultBidTickSpread: 10
+      defaultAskTickSpread: 10
       orderGap: 1
       orderNum: 1
-      orderSize: 5
-      minOrderSize: 0.5
-      startQuoteAmount: 37220
-      startBaseAmount: 10
+      startQuoteAmount: 386300
+      startBaseAmount: 100
