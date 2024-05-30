@@ -275,7 +275,7 @@ const fetchTradeFromHashes = async (
               .div(formatUnits(abs(trade.baseAmount), BASE_CURRENCY.decimals))
               .toFixed(4),
           )
-          .sort((a, b) => Number(b) - Number(a))[0] ?? 0,
+          .sort((a, b) => Number(b) - Number(a))[0] ?? '-',
       uniswapLowestAskPrice:
         trades
           .filter((trade) => trade.type === 'bid')
@@ -286,7 +286,7 @@ const fetchTradeFromHashes = async (
               .div(formatUnits(abs(trade.baseAmount), BASE_CURRENCY.decimals))
               .toFixed(4),
           )
-          .sort((a, b) => Number(a) - Number(b))[0] ?? 0,
+          .sort((a, b) => Number(a) - Number(b))[0] ?? '-',
       uniswapBidVolume: formatUnits(uniswapBidVolume, BASE_CURRENCY.decimals),
       uniswapAskVolume: formatUnits(uniswapAskVolume, BASE_CURRENCY.decimals),
       uniswapVolume: formatUnits(uniswapVolume, BASE_CURRENCY.decimals),
