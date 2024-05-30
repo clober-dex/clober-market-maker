@@ -26,4 +26,19 @@ export const WHITELISTED_CURRENCIES: {
       decimals: 6,
     },
   ],
+  [CHAIN_IDS.BASE]: [
+    ETH,
+    {
+      address: '0x4200000000000000000000000000000000000006',
+      name: 'Wrapped Ether',
+      symbol: 'WETH',
+      decimals: 18,
+    },
+    {
+      address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
+      name: 'USD Coin',
+      symbol: 'USDC',
+      decimals: 6,
+    },
+  ],
 }

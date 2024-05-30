@@ -1,44 +1,5 @@
 import type { Currency } from '@clober/v2-sdk'
-import {
-  formatPrice,
-  fromPrice,
-  invertPrice,
-  parsePrice,
-  toPrice,
-} from '@clober/v2-sdk'
-
-export const getBookTicks = ({
-  marketQuoteCurrency,
-  marketBaseCurrency,
-  price,
-}: {
-  marketQuoteCurrency: Currency
-  marketBaseCurrency: Currency
-  price: string
-}): {
-  bidBookTick: bigint
-  askBookTick: bigint
-} => {
-  return {
-    bidBookTick:
-      fromPrice(
-        parsePrice(
-          Number(price),
-          marketQuoteCurrency.decimals,
-          marketBaseCurrency.decimals,
-        ),
-      ) + 1n,
-    askBookTick: fromPrice(
-      invertPrice(
-        parsePrice(
-          Number(price),
-          marketQuoteCurrency.decimals,
-          marketBaseCurrency.decimals,
-        ),
-      ),
-    ),
-  }
-}
+import { formatPrice, invertPrice, toPrice } from '@clober/v2-sdk'
 
 export const getMarketPrice = ({
   marketQuoteCurrency,

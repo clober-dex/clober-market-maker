@@ -1,19 +1,18 @@
-fetchIntervalMilliSeconds: 10000
+fetchIntervalMilliSeconds: 1000
 gasMultiplier: 1.1
 markets:
   WETH/USDC:
-    chainlink:
-      quote: USDC
+    binance:
+      quote: USDT
       base: ETH
     clober:
       quote: USDC
       base: WETH
     params:
-      minTickSpread: 0
-      maxTickSpread: 6
+      balancePercentage: 20
+      defaultBidTickSpread: 10
+      defaultAskTickSpread: 10
       orderGap: 1
       orderNum: 1
-      orderSize: 5
-      minOrderSize: 0.5
-      startQuoteAmount: 37220
-      startBaseAmount: 10
+      startQuoteAmount: 386300
+      startBaseAmount: 100

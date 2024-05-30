@@ -1,4 +1,4 @@
-import BigNumber from 'bignumber.js'
+import type BigNumber from '../utils/bignumber.ts'
 
 import type { Market } from './market.ts'
 

@@ -12,7 +12,12 @@ import {
   zeroAddress,
 } from 'viem'
 import { arbitrumSepolia, base } from 'viem/chains'
-import { approveERC20, marketOrder, type Currency } from '@clober/v2-sdk'
+import {
+  approveERC20,
+  marketOrder,
+  type Currency,
+  CHAIN_IDS,
+} from '@clober/v2-sdk'
 import { privateKeyToAccount } from 'viem/accounts'
 import * as YAML from 'yaml'
 import chalk from 'chalk'
@@ -20,6 +25,7 @@ import chalk from 'chalk'
 import { WHITELISTED_CURRENCIES } from '../constants/currency.ts'
 import { waitTransaction } from '../utils/transaction.ts'
 import { logger } from '../utils/logger.ts'
+import { WHITELIST_DEX } from '../constants/dex.ts'
 
 const BASE_CURRENCY = {
   address: '0xF2e615A933825De4B39b497f6e6991418Fb31b78',
@@ -34,10 +40,6 @@ const QUOTE_CURRENCY = {
   decimals: 6,
 } as Currency
 
-const WETH_USDC_POOLS = [
-  '0xb2cc224c1c9feE385f8ad6a55b4d94E92359DC59',
-  '0xd0b53D9277642d899DF5C87A3966A349A798F224',
-]
 const BATCH_SIZE = 20n
 
 const abs = (n: bigint) => (n < 0n ? -n : n)
@@ -118,9 +120,9 @@ const fetchTradeFromHashes = async (
     )
     .flat()
     .filter((log) =>
-      WETH_USDC_POOLS.map((pool) => getAddress(pool)).includes(
-        getAddress(log.address),
-      ),
+      WHITELIST_DEX[CHAIN_IDS.BASE]['WETH/USDC']
+        .map((dex) => getAddress(dex.address))
+        .includes(getAddress(log.address)),
     )
   return trades.map((log) => {
     const amount0 = BigInt(log.args.amount0) // weth
