@@ -177,7 +177,7 @@ const fetchTradeFromHashes = async (
       (acc, trade) => acc + (trade.type === 'bid' ? trade.baseAmount : 0n),
       0n,
     )
-    const uniwapAskVolume = trades.reduce(
+    const uniswapAskVolume = trades.reduce(
       (acc, trade) => acc + (trade.type === 'ask' ? trade.baseAmount : 0n),
       0n,
     )
@@ -264,8 +264,8 @@ const fetchTradeFromHashes = async (
       latestBlock: Number(latestBlock),
       hashesLength: hashes.length,
       tradesLength: trades.length,
-      uniwapBidVolume: formatUnits(uniswapBidVolume, BASE_CURRENCY.decimals),
-      uniwapAskVolume: formatUnits(uniwapAskVolume, BASE_CURRENCY.decimals),
+      uniswapBidVolume: formatUnits(uniswapBidVolume, BASE_CURRENCY.decimals),
+      uniswapAskVolume: formatUnits(uniswapAskVolume, BASE_CURRENCY.decimals),
       uniswapVolume: formatUnits(uniswapVolume, BASE_CURRENCY.decimals),
       cloberBidVolume: formatUnits(cloberBidVolume, BASE_CURRENCY.decimals),
       cloberAskVolume: formatUnits(cloberAskVolume, BASE_CURRENCY.decimals),
