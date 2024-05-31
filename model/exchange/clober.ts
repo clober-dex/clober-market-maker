@@ -9,9 +9,9 @@ import BigNumber from '../../utils/bignumber.ts'
 import { type OrderBook } from '../order-book.ts'
 import type { Market } from '../market.ts'
 
-import type { Index } from './index.ts'
+import type { Exchange } from './index.ts'
 
-export class Clober implements Index {
+export class Clober implements Exchange {
   markets: { [id: string]: Market }
   orderBooks: { [id: string]: OrderBook } = {}
   bookIds: { [id: string]: [string, string] } = {}
