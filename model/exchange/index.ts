@@ -1,9 +1,8 @@
-import type BigNumber from '../utils/bignumber.ts'
+import type BigNumber from '../../utils/bignumber.ts'
+import { type OrderBook } from '../order-book.ts'
+import type { Market } from '../market.ts'
 
-import { type OrderBook } from './order-book.ts'
-import type { Market } from './market.ts'
-
-export interface Exchange {
+export interface Index {
   markets: { [id: string]: Market }
   orderBooks: { [id: string]: OrderBook }
 

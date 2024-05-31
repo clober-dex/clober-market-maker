@@ -1,6 +1,5 @@
-import type BigNumber from '../utils/bignumber.ts'
-
-import type { Market } from './market.ts'
+import type BigNumber from '../../utils/bignumber.ts'
+import type { Market } from '../market.ts'
 
 export interface Oracle {
   markets: { [id: string]: Market }

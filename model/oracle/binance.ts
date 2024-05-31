@@ -2,11 +2,11 @@ import { binance, pro as ccxt } from 'ccxt'
 import chalk from 'chalk'
 import { EMA } from 'technicalindicators'
 
-import { logger } from '../utils/logger.ts'
-import BigNumber from '../utils/bignumber.ts'
+import { logger } from '../../utils/logger.ts'
+import BigNumber from '../../utils/bignumber.ts'
+import type { Market } from '../market.ts'
 
-import type { Market } from './market.ts'
-import type { Oracle } from './oracle.ts'
+import type { Oracle } from './index.ts'
 
 export class Binance implements Oracle {
   readonly PERIOD = 30

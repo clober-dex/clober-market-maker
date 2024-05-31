@@ -52,12 +52,12 @@ import { CONTROLLER_ABI } from '../abis/core/controller-abi.ts'
 import { getMarketPrice } from '../utils/tick.ts'
 import BigNumber from '../utils/bignumber.ts'
 
-import { Clober } from './clober.ts'
+import { Clober } from './exchange/clober.ts'
 import type { Config, Params } from './config.ts'
 import type { MakeParam } from './make-param.ts'
 import type { Epoch } from './epoch.ts'
 import { DexSimulator } from './dex-simulator.ts'
-import { Binance } from './binance.ts'
+import { Binance } from './oracle/binance.ts'
 
 const BID = 0
 const ASK = 1
