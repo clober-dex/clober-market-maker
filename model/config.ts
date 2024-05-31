@@ -25,9 +25,13 @@ export type Params = {
 export type Config = {
   fetchIntervalMilliSeconds: number
   gasMultiplier: number
+  oracles: {
+    [marketId: string]: {
+      [subject: string]: Market
+    }
+  }
   markets: {
-    [id: string]: {
-      binance: Market
+    [marketId: string]: {
       clober: Market
       params: Params
     }

@@ -52,12 +52,13 @@ import { CONTROLLER_ABI } from '../abis/core/controller-abi.ts'
 import { getMarketPrice } from '../utils/tick.ts'
 import BigNumber from '../utils/bignumber.ts'
 
-import { Clober } from './clober.ts'
+import { Clober } from './exchange/clober.ts'
 import type { Config, Params } from './config.ts'
 import type { MakeParam } from './make-param.ts'
 import type { Epoch } from './epoch.ts'
 import { DexSimulator } from './dex-simulator.ts'
-import { Binance } from './binance.ts'
+import { Binance } from './oracle/binance.ts'
+import type { Oracle } from './oracle'
 
 const BID = 0
 const ASK = 1
@@ -72,7 +73,7 @@ export class CloberMarketMaker {
   erc20Tokens: `0x${string}`[] = []
   dexSimulator: DexSimulator
   // define exchanges
-  binance: Binance
+  oracle: Oracle
   clober: Clober
   // mutable state
   openOrders: OpenOrder[] = []
@@ -112,8 +113,8 @@ export class CloberMarketMaker {
     )
 
     // set up exchanges
-    this.binance = new Binance(
-      _.mapValues(this.config.markets, (m) => m.binance),
+    this.oracle = new Binance(
+      _.mapValues(this.config.oracles, (m) => m.binance as any),
     )
     this.clober = new Clober(
       this.chainId,
@@ -268,7 +269,7 @@ export class CloberMarketMaker {
       try {
         await Promise.all([
           this.dexSimulator.update(),
-          this.binance.update(),
+          this.oracle.update(),
           this.clober.update(),
           this.update(),
         ])
@@ -440,7 +441,7 @@ export class CloberMarketMaker {
       this.chainId,
       market.split('/')[0],
     )
-    const oraclePrice = this.binance.price(market)
+    const oraclePrice = this.oracle.price(market)
 
     if (
       this.epoch[market] &&

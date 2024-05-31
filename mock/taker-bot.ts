@@ -27,7 +27,7 @@ import { WHITELISTED_CURRENCIES } from '../constants/currency.ts'
 import { waitTransaction } from '../utils/transaction.ts'
 import { logger } from '../utils/logger.ts'
 import { WHITELIST_DEX } from '../constants/dex.ts'
-import { Binance } from '../model/binance.ts'
+import { Binance } from '../model/oracle/binance.ts'
 
 const BASE_CURRENCY = {
   address: '0xF2e615A933825De4B39b497f6e6991418Fb31b78',
@@ -141,7 +141,7 @@ const fetchTradeFromHashes = async (
 
 ;(async () => {
   const binance = new Binance({
-    'WETH/USDC': { quote: 'USDT', base: 'ETH' },
+    'WETH/USDC': { quote: 'USDT', base: 'ETH', period: 30, interval: '1s' },
   })
   await sendSlackMessage({
     message: 'Taker bot started',

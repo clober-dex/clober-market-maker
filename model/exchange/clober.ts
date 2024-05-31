@@ -2,16 +2,16 @@ import { createPublicClient, getAddress, http, type PublicClient } from 'viem'
 import { CHAIN_IDS, getMarket } from '@clober/v2-sdk'
 import chalk from 'chalk'
 
-import { CHAIN_MAP } from '../constants/chain.ts'
-import { logger } from '../utils/logger.ts'
-import { findCurrencyBySymbol } from '../utils/currency.ts'
-import BigNumber from '../utils/bignumber.ts'
+import { CHAIN_MAP } from '../../constants/chain.ts'
+import { logger } from '../../utils/logger.ts'
+import { findCurrencyBySymbol } from '../../utils/currency.ts'
+import BigNumber from '../../utils/bignumber.ts'
+import { type OrderBook } from '../order-book.ts'
+import type { Market } from '../market.ts'
 
-import { type OrderBook } from './order-book.ts'
-import type { Exchange } from './exchange.ts'
-import type { Market } from './market.ts'
+import type { Index } from './index.ts'
 
-export class Clober implements Exchange {
+export class Clober implements Index {
   markets: { [id: string]: Market }
   orderBooks: { [id: string]: OrderBook } = {}
   bookIds: { [id: string]: [string, string] } = {}
