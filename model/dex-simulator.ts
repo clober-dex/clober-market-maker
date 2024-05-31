@@ -226,7 +226,7 @@ export class DexSimulator {
         // calculate score
         const score = entropy.times(totalQuoteProfit)
 
-        if (score.comparedTo(bestSpreadPair.score) > 0) {
+        if (score.comparedTo(bestSpreadPair.score) >= 0) {
           bestSpreadPair.profit = totalQuoteProfit
           bestSpreadPair.askSideProfit = askSideQuoteProfit
           bestSpreadPair.bidSideProfit = bidSideQuoteProfit
