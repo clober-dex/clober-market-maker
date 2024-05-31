@@ -3,7 +3,7 @@ gasMultiplier: 1.1
 oracles:
   WETH/USDC:
     binance:
-      period: 30
+      period: 15
       inverval: 1s
       quote: USDT
       base: ETH
@@ -24,8 +24,8 @@ markets:
     params:
       oracle: onchain
       balancePercentage: 20
-      defaultBidTickSpread: 30
-      defaultAskTickSpread: 30
+      defaultBidTickSpread: 10
+      defaultAskTickSpread: 10
       orderGap: 1
       orderNum: 1
       startQuoteAmount: 386300
