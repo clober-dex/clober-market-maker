@@ -9,11 +9,9 @@ import { findCurrencyBySymbol } from '../utils/currency.ts'
 
 import type { Market } from './market.ts'
 import type { TakenTrade } from './taken-trade.ts'
-import type { Params } from './config.ts'
 
 export class DexSimulator {
   markets: { [id: string]: Market }
-  params: { [id: string]: Params }
   chainId: CHAIN_IDS
   publicClient: PublicClient
 
@@ -21,11 +19,7 @@ export class DexSimulator {
   startBlock: bigint = 0n
   latestBlock: bigint = 0n
 
-  constructor(
-    chainId: CHAIN_IDS,
-    markets: { [id: string]: Market },
-    params: { [id: string]: Params },
-  ) {
+  constructor(chainId: CHAIN_IDS, markets: { [id: string]: Market }) {
     this.chainId = chainId
     this.publicClient = createPublicClient({
       chain: CHAIN_MAP[chainId],
@@ -36,7 +30,6 @@ export class DexSimulator {
           : http(),
     })
     this.markets = markets
-    this.params = params
   }
 
   async update() {
@@ -204,8 +197,8 @@ export class DexSimulator {
         : new BigNumber(0)
 
     const spreads = {
-      askSpread: this.params[marketId].defaultBidTickSpread,
-      bidSpread: this.params[marketId].defaultAskTickSpread,
+      askSpread: 0,
+      bidSpread: 0,
     }
 
     const [base, quote] = marketId.split('/')
