@@ -1,3 +1,6 @@
+import fs from 'fs'
+
+import _ from 'lodash'
 import {
   createPublicClient,
   createWalletClient,
@@ -28,6 +31,7 @@ import { waitTransaction } from '../utils/transaction.ts'
 import { logger } from '../utils/logger.ts'
 import { WHITELIST_DEX } from '../constants/dex.ts'
 import { Binance } from '../model/oracle/binance.ts'
+import { type Config } from '../model/config.ts'
 
 const BASE_CURRENCY = {
   address: '0xF2e615A933825De4B39b497f6e6991418Fb31b78',
@@ -140,9 +144,10 @@ const fetchTradeFromHashes = async (
 }
 
 ;(async () => {
-  const binance = new Binance({
-    'WETH/USDC': { quote: 'USDT', base: 'ETH', period: 30, interval: '1s' },
-  })
+  const config = YAML.parse(fs.readFileSync('config.yaml', 'utf8')) as Config
+  const binance = new Binance(
+    _.mapValues(config.oracles, (m) => m.binance as any),
+  )
   await sendSlackMessage({
     message: 'Taker bot started',
     account: account.address,
