@@ -8,15 +8,18 @@ import type { Market } from '../market.ts'
 
 import type { Oracle } from './index.ts'
 
-export class Binance implements Oracle {
-  readonly PERIOD = 30
+export type BinanceMarket = Market & {
+  period: number
+  interval: string
+}
 
-  markets: { [id: string]: Market }
+export class Binance implements Oracle {
+  markets: { [id: string]: BinanceMarket }
   prices: { [p: string]: BigNumber } = {}
 
   public api: binance
 
-  constructor(markets: { [id: string]: Market }) {
+  constructor(markets: { [id: string]: BinanceMarket }) {
     this.api = new ccxt.binance({
       enableRateLimit: true,
     })
@@ -29,10 +32,15 @@ export class Binance implements Oracle {
     for (const [id, { quote, base }] of Object.entries(this.markets)) {
       fetchQueue.push(
         this.api
-          .fetchOHLCV(`${base}/${quote}`, '1s', undefined, this.PERIOD)
+          .fetchOHLCV(
+            `${base}/${quote}`,
+            this.markets[id].interval,
+            undefined,
+            this.markets[id].period,
+          )
           .then((data) => {
             const results = EMA.calculate({
-              period: this.PERIOD,
+              period: this.markets[id].period,
               values: data.map((d) => Number(d[4])),
             })
             this.prices[id] = new BigNumber(results[results.length - 1])

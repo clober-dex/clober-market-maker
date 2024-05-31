@@ -141,7 +141,7 @@ const fetchTradeFromHashes = async (
 
 ;(async () => {
   const binance = new Binance({
-    'WETH/USDC': { quote: 'USDT', base: 'ETH' },
+    'WETH/USDC': { quote: 'USDT', base: 'ETH', period: 30, interval: '1s' },
   })
   await sendSlackMessage({
     message: 'Taker bot started',

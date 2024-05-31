@@ -1,5 +1,18 @@
 fetchIntervalMilliSeconds: 1000
 gasMultiplier: 1.1
+oracles:
+  WETH/USDC:
+    binance:
+      period: 30
+      inverval: 1s
+      quote: USDT
+      base: ETH
+    chainlink:
+      quote: USDC
+      base: ETH
+    onchain:
+      quote: USDC
+      base: WETH
 markets:
   WETH/USDC:
     binance:
@@ -9,6 +22,7 @@ markets:
       quote: USDC
       base: WETH
     params:
+      oracle: onchain
       balancePercentage: 20
       defaultBidTickSpread: 30
       defaultAskTickSpread: 30
