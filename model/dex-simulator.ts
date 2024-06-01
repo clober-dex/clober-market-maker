@@ -105,16 +105,12 @@ export class DexSimulator {
       )
 
     const bidPrices = [
-      ...trades
-        .filter((trade) => trade.isTakingBidSide)
-        .map((trade) => trade.price),
+      ...trades.map((trade) => trade.price),
       previousOraclePrice.toString(),
     ].sort((a, b) => new BigNumber(a).comparedTo(new BigNumber(b)))
 
     const askPirces = [
-      ...trades
-        .filter((trade) => !trade.isTakingBidSide)
-        .map((trade) => trade.price),
+      ...trades.map((trade) => trade.price),
       previousOraclePrice.toString(),
     ].sort((a, b) => new BigNumber(a).comparedTo(new BigNumber(b)))
 
