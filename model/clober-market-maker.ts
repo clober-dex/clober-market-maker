@@ -451,15 +451,21 @@ export class CloberMarketMaker {
       currency0: quoteCurrency,
       currency1: baseCurrency,
     })
-    const meanSpread = Math.floor(
-      (Math.abs(currentEpoch.askSpread) + Math.abs(currentEpoch.bidSpread)) / 2,
-    )
     if (currentEpoch.askSpread < 0) {
+      const weight =
+        Math.abs(currentEpoch.askSpread) /
+        (Math.abs(currentEpoch.askSpread) + Math.abs(currentEpoch.bidSpread))
+      const weightedMeanSpread = Math.floor(
+        (currentEpoch.askSpread + currentEpoch.bidSpread) * weight,
+      )
       const movedOraclePrice = new BigNumber(
         getMarketPrice({
           marketQuoteCurrency: quoteCurrency,
           marketBaseCurrency: baseCurrency,
-          askTick: oraclePriceAskBookTick + BigInt(meanSpread),
+          askTick:
+            oraclePriceAskBookTick -
+            BigInt(currentEpoch.askSpread) +
+            BigInt(weightedMeanSpread),
         }),
       )
       return (
@@ -468,11 +474,20 @@ export class CloberMarketMaker {
       )
     }
     if (currentEpoch.bidSpread < 0) {
+      const weight =
+        Math.abs(currentEpoch.bidSpread) /
+        (Math.abs(currentEpoch.askSpread) + Math.abs(currentEpoch.bidSpread))
+      const weightedMeanSpread = Math.floor(
+        (currentEpoch.askSpread + currentEpoch.bidSpread) * weight,
+      )
       const movedOraclePrice = new BigNumber(
         getMarketPrice({
           marketQuoteCurrency: quoteCurrency,
           marketBaseCurrency: baseCurrency,
-          bidTick: oraclePriceBidBookTick + BigInt(meanSpread),
+          bidTick:
+            oraclePriceBidBookTick -
+            BigInt(currentEpoch.bidSpread) +
+            BigInt(weightedMeanSpread),
         }),
       )
       return (
