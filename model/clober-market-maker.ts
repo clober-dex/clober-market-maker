@@ -432,12 +432,12 @@ export class CloberMarketMaker {
     }
   }
 
-  isNewEpoch(
+  getMoveOraclePrice(
     quoteCurrency: Currency,
     baseCurrency: Currency,
     currentEpoch: Epoch,
     currentOraclePrice: BigNumber,
-  ): boolean {
+  ) {
     const {
       normal: {
         now: { tick: oraclePriceBidBookTick },
@@ -458,7 +458,7 @@ export class CloberMarketMaker {
       const weightedMeanSpread = Math.floor(
         (currentEpoch.askSpread + currentEpoch.bidSpread) * weight,
       )
-      const movedOraclePrice = new BigNumber(
+      return new BigNumber(
         getMarketPrice({
           marketQuoteCurrency: quoteCurrency,
           marketBaseCurrency: baseCurrency,
@@ -468,10 +468,6 @@ export class CloberMarketMaker {
             BigInt(weightedMeanSpread),
         }),
       )
-      return (
-        movedOraclePrice.isLessThan(currentEpoch.minPrice) ||
-        movedOraclePrice.isGreaterThan(currentEpoch.maxPrice)
-      )
     }
     if (currentEpoch.bidSpread < 0) {
       const weight =
@@ -480,7 +476,7 @@ export class CloberMarketMaker {
       const weightedMeanSpread = Math.floor(
         (currentEpoch.askSpread + currentEpoch.bidSpread) * weight,
       )
-      const movedOraclePrice = new BigNumber(
+      return new BigNumber(
         getMarketPrice({
           marketQuoteCurrency: quoteCurrency,
           marketBaseCurrency: baseCurrency,
@@ -490,14 +486,29 @@ export class CloberMarketMaker {
             BigInt(weightedMeanSpread),
         }),
       )
-      return (
-        movedOraclePrice.isLessThan(currentEpoch.minPrice) ||
-        movedOraclePrice.isGreaterThan(currentEpoch.maxPrice)
-      )
     }
+    return currentOraclePrice
+  }
+
+  isNewEpoch(
+    quoteCurrency: Currency,
+    baseCurrency: Currency,
+    currentEpoch: Epoch,
+    currentOraclePrice: BigNumber,
+  ): boolean {
     return (
-      currentOraclePrice.isLessThan(currentEpoch.minPrice) ||
-      currentOraclePrice.isGreaterThan(currentEpoch.maxPrice)
+      this.getMoveOraclePrice(
+        quoteCurrency,
+        baseCurrency,
+        currentEpoch,
+        currentOraclePrice,
+      ).isLessThan(currentEpoch.minPrice) ||
+      this.getMoveOraclePrice(
+        quoteCurrency,
+        baseCurrency,
+        currentEpoch,
+        currentOraclePrice,
+      ).isGreaterThan(currentEpoch.maxPrice)
     )
   }
 
@@ -588,6 +599,12 @@ export class CloberMarketMaker {
         minPrice,
         maxPrice,
         oraclePrice,
+        movedOraclePrice: this.getMoveOraclePrice(
+          quoteCurrency,
+          baseCurrency,
+          this.epoch[market][this.epoch[market].length - 1],
+          oraclePrice,
+        ),
         askTicks,
         askPrices,
         bidTicks,
@@ -623,6 +640,7 @@ export class CloberMarketMaker {
         minPrice,
         maxPrice,
         oraclePrice,
+        movedOraclePrice: oraclePrice,
         askTicks,
         askPrices,
         bidTicks,
