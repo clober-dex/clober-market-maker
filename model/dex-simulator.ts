@@ -247,11 +247,6 @@ export class DexSimulator {
       }
     }
 
-    const spreads = {
-      askSpread: this.params[marketId].defaultAskTickSpread,
-      bidSpread: this.params[marketId].defaultBidTickSpread,
-    }
-
     const [base, quote] = marketId.split('/')
 
     const {
@@ -296,12 +291,15 @@ export class DexSimulator {
       currency1: findCurrencyBySymbol(this.chainId, base),
     })
 
-    spreads.askSpread = Number(
-      previousOraclePriceAskBookTick - lowestAskBidBookTick,
-    )
-    spreads.bidSpread = Number(
-      previousOraclePriceBidBookTick - highestBidBidBookTick,
-    )
+    // Set default spread if no profit(0 volume was traded)
+    const spreads = {
+      askSpread: bestSpreadPair.askSideProfit.isZero()
+        ? this.params[marketId].defaultAskTickSpread
+        : Number(previousOraclePriceAskBookTick - lowestAskBidBookTick),
+      bidSpread: bestSpreadPair.bidSideProfit.isZero()
+        ? this.params[marketId].defaultBidTickSpread
+        : Number(previousOraclePriceBidBookTick - highestBidBidBookTick),
+    }
 
     return {
       askSpread: spreads.askSpread,
