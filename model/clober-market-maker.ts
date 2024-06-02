@@ -462,13 +462,22 @@ export class CloberMarketMaker {
           timestamp,
         ),
       ])
-      const { askSpread, bidSpread, profit, targetAskPrice, targetBidPrice } =
-        this.dexSimulator.findSpread(
-          market,
-          startBlock,
-          endBlock,
-          this.epoch[market][this.epoch[market].length - 1].oraclePrice,
-        )
+      const {
+        askSpread,
+        bidSpread,
+        profit,
+        askProfit,
+        bidProfit,
+        targetAskPrice,
+        targetBidPrice,
+        askVolume,
+        bidVolume,
+      } = this.dexSimulator.findSpread(
+        market,
+        startBlock,
+        endBlock,
+        this.epoch[market][this.epoch[market].length - 1].oraclePrice,
+      )
 
       logger(chalk.green, 'Simulation', {
         market,
@@ -480,10 +489,14 @@ export class CloberMarketMaker {
             this.epoch[market].length - 1
           ].oraclePrice.toString(),
         profit: profit.toString(),
+        askProfit: askProfit.toString(),
+        bidProfit: bidProfit.toString(),
         targetAskPrice: targetAskPrice.toString(),
         targetBidPrice: targetBidPrice.toString(),
         askSpread,
         bidSpread,
+        askVolume: askVolume.toString(),
+        bidVolume: bidVolume.toString(),
       })
 
       const { askTicks, askPrices, bidTicks, bidPrices, minPrice, maxPrice } =
