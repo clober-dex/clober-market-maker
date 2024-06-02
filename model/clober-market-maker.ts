@@ -109,6 +109,7 @@ export class CloberMarketMaker {
     this.dexSimulator = new DexSimulator(
       this.chainId === arbitrumSepolia.id ? base.id : this.chainId,
       _.mapValues(this.config.markets, (m) => m.clober),
+      _.mapValues(this.config.markets, (m) => m.params),
     )
 
     // set up exchanges
