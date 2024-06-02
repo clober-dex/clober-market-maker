@@ -459,8 +459,8 @@ export class CloberMarketMaker {
         }),
       )
       return (
-        movedOraclePrice.isLessThanOrEqualTo(currentEpoch.minPrice) ||
-        movedOraclePrice.isGreaterThanOrEqualTo(currentEpoch.maxPrice)
+        movedOraclePrice.isLessThan(currentEpoch.minPrice) ||
+        movedOraclePrice.isGreaterThan(currentEpoch.maxPrice)
       )
     }
     if (currentEpoch.bidSpread < 0) {
@@ -472,13 +472,13 @@ export class CloberMarketMaker {
         }),
       )
       return (
-        movedOraclePrice.isLessThanOrEqualTo(currentEpoch.minPrice) ||
-        movedOraclePrice.isGreaterThanOrEqualTo(currentEpoch.maxPrice)
+        movedOraclePrice.isLessThan(currentEpoch.minPrice) ||
+        movedOraclePrice.isGreaterThan(currentEpoch.maxPrice)
       )
     }
     return (
-      currentOraclePrice.isLessThanOrEqualTo(currentEpoch.minPrice) ||
-      currentOraclePrice.isGreaterThanOrEqualTo(currentEpoch.maxPrice)
+      currentOraclePrice.isLessThan(currentEpoch.minPrice) ||
+      currentOraclePrice.isGreaterThan(currentEpoch.maxPrice)
     )
   }
 
