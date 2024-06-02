@@ -431,6 +431,57 @@ export class CloberMarketMaker {
     }
   }
 
+  isNewEpoch(
+    quoteCurrency: Currency,
+    baseCurrency: Currency,
+    currentEpoch: Epoch,
+    currentOraclePrice: BigNumber,
+  ): boolean {
+    const {
+      normal: {
+        now: { tick: oraclePriceBidBookTick },
+      },
+      inverted: {
+        now: { tick: oraclePriceAskBookTick },
+      },
+    } = getPriceNeighborhood({
+      chainId: this.chainId,
+      price: currentOraclePrice.toString(),
+      currency0: quoteCurrency,
+      currency1: baseCurrency,
+    })
+    if (currentEpoch.askSpread < 0) {
+      const movedOraclePrice = new BigNumber(
+        getMarketPrice({
+          marketQuoteCurrency: quoteCurrency,
+          marketBaseCurrency: baseCurrency,
+          askTick: oraclePriceAskBookTick - BigInt(currentEpoch.askSpread),
+        }),
+      )
+      return (
+        movedOraclePrice.isLessThanOrEqualTo(currentEpoch.minPrice) ||
+        movedOraclePrice.isGreaterThanOrEqualTo(currentEpoch.maxPrice)
+      )
+    }
+    if (currentEpoch.bidSpread < 0) {
+      const movedOraclePrice = new BigNumber(
+        getMarketPrice({
+          marketQuoteCurrency: quoteCurrency,
+          marketBaseCurrency: baseCurrency,
+          bidTick: oraclePriceBidBookTick - BigInt(currentEpoch.bidSpread),
+        }),
+      )
+      return (
+        movedOraclePrice.isLessThanOrEqualTo(currentEpoch.minPrice) ||
+        movedOraclePrice.isGreaterThanOrEqualTo(currentEpoch.maxPrice)
+      )
+    }
+    return (
+      currentOraclePrice.isLessThanOrEqualTo(currentEpoch.minPrice) ||
+      currentOraclePrice.isGreaterThanOrEqualTo(currentEpoch.maxPrice)
+    )
+  }
+
   async marketMaking(market: string, params: Params) {
     const quoteCurrency = findCurrencyBySymbol(
       this.chainId,
@@ -444,12 +495,12 @@ export class CloberMarketMaker {
 
     if (
       this.epoch[market] &&
-      (oraclePrice.isLessThanOrEqualTo(
-        this.epoch[market][this.epoch[market].length - 1].minPrice,
-      ) ||
-        oraclePrice.isGreaterThanOrEqualTo(
-          this.epoch[market][this.epoch[market].length - 1].maxPrice,
-        ))
+      this.isNewEpoch(
+        quoteCurrency,
+        baseCurrency,
+        this.epoch[market][this.epoch[market].length - 1],
+        oraclePrice,
+      )
     ) {
       const timestamp = Math.floor(Date.now() / 1000)
       const [startBlock, endBlock] = await Promise.all([
