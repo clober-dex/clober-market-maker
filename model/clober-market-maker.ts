@@ -787,8 +787,7 @@ export class CloberMarketMaker {
       this.publicClient,
       this.config.gasMultiplier,
     )
-    const hash = await this.walletClient.writeContract({
-      chain: CHAIN_MAP[this.chainId],
+    const { request } = await this.publicClient.simulateContract({
       address: getContractAddresses({ chainId: this.chainId })!.Controller,
       abi: CONTROLLER_ABI,
       account: this.walletClient.account!,
@@ -825,9 +824,9 @@ export class CloberMarketMaker {
       value: [...bidMakeParams, ...askMakeParams]
         .filter((p) => p.isETH)
         .reduce((acc: bigint, { quoteAmount }) => acc + quoteAmount, 0n),
-      gas: 5_000_000n,
       gasPrice,
     })
+    const hash = await this.walletClient.writeContract(request)
     await waitTransaction(
       'Execute Orders',
       {
