@@ -15,7 +15,7 @@ export const slackClient =
       )
     : undefined
 
-let lokiLogger: Logger
+let lokiLogger: Logger | undefined = undefined
 
 const initializeLokiLogger = () => {
   if (lokiLogger) {
@@ -26,9 +26,7 @@ const initializeLokiLogger = () => {
     !process.env.DASHBOARD_URL ||
     !process.env.CHAIN_ID
   ) {
-    throw new Error(
-      `Missing environment variables for Loki logger DASHBOARD_PASSWORD, DASHBOARD_URL, CHAIN_ID : ${process.env.DASHBOARD_PASSWORD}, ${process.env.DASHBOARD_URL}, ${process.env.CHAIN_ID}`,
-    )
+    return
   }
   const chain = CHAIN_MAP[Number(process.env.CHAIN_ID) as CHAIN_IDS]
 
@@ -72,10 +70,12 @@ export const logger = async (
       ),
     )
 
-    lokiLogger.debug({
-      message,
-      ...value,
-    })
+    if (lokiLogger) {
+      lokiLogger.debug({
+        message,
+        ...value,
+      })
+    }
 
     if (slackClient) {
       await slackClient.log({
