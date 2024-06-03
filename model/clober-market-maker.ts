@@ -6,12 +6,12 @@ import * as yaml from 'yaml'
 import {
   approveERC20,
   CHAIN_IDS,
+  type Currency,
   getContractAddresses,
   getOpenOrders,
+  getPriceNeighborhood,
   type OpenOrder,
   setApprovalOfOpenOrdersForAll,
-  getPriceNeighborhood,
-  type Currency,
 } from '@clober/v2-sdk'
 import type { PublicClient, WalletClient } from 'viem'
 import {
@@ -312,8 +312,6 @@ export class CloberMarketMaker {
     askPrices: BigNumber[]
     bidTicks: number[]
     bidPrices: BigNumber[]
-    minPrice: BigNumber
-    maxPrice: BigNumber
   } {
     const {
       normal: {
@@ -362,12 +360,6 @@ export class CloberMarketMaker {
       askPrices,
       bidTicks: bidTicks.map((tick) => Number(tick)),
       bidPrices,
-      minPrice: bidPrices
-        .reduce((acc, price) => acc.plus(price), new BigNumber(0))
-        .div(bidPrices.length),
-      maxPrice: askPrices
-        .reduce((acc, price) => acc.plus(price), new BigNumber(0))
-        .div(askPrices.length),
     }
   }
 
@@ -490,28 +482,6 @@ export class CloberMarketMaker {
     return currentOraclePrice
   }
 
-  isNewEpoch(
-    quoteCurrency: Currency,
-    baseCurrency: Currency,
-    currentEpoch: Epoch,
-    currentOraclePrice: BigNumber,
-  ): boolean {
-    return (
-      this.getMoveOraclePrice(
-        quoteCurrency,
-        baseCurrency,
-        currentEpoch,
-        currentOraclePrice,
-      ).isLessThan(currentEpoch.minPrice) ||
-      this.getMoveOraclePrice(
-        quoteCurrency,
-        baseCurrency,
-        currentEpoch,
-        currentOraclePrice,
-      ).isGreaterThan(currentEpoch.maxPrice)
-    )
-  }
-
   async marketMaking(market: string, params: Params) {
     const quoteCurrency = findCurrencyBySymbol(
       this.chainId,
@@ -525,12 +495,12 @@ export class CloberMarketMaker {
 
     if (
       this.epoch[market] &&
-      this.isNewEpoch(
-        quoteCurrency,
-        baseCurrency,
-        this.epoch[market][this.epoch[market].length - 1],
-        oraclePrice,
-      )
+      (oraclePrice.isLessThan(
+        this.epoch[market][this.epoch[market].length - 1].minPrice,
+      ) ||
+        oraclePrice.isGreaterThan(
+          this.epoch[market][this.epoch[market].length - 1].maxPrice,
+        ))
     ) {
       const timestamp = Math.floor(Date.now() / 1000)
       const [startBlock, endBlock] = await Promise.all([
@@ -553,6 +523,7 @@ export class CloberMarketMaker {
         targetBidPrice,
         askVolume,
         bidVolume,
+        centralPrice,
       } = this.dexSimulator.findSpread(
         market,
         startBlock,
@@ -578,9 +549,10 @@ export class CloberMarketMaker {
         bidSpread,
         askVolume: askVolume.toString(),
         bidVolume: bidVolume.toString(),
+        centralPrice: centralPrice.toString(),
       })
 
-      const { askTicks, askPrices, bidTicks, bidPrices, minPrice, maxPrice } =
+      const { askTicks, askPrices, bidTicks, bidPrices } =
         this.buildTickAndPriceArray(
           baseCurrency,
           quoteCurrency,
@@ -591,6 +563,13 @@ export class CloberMarketMaker {
           params.orderGap,
         )
 
+      const { minPrice, maxPrice } = this.calculateMinMaxPrice(
+        oraclePrice,
+        centralPrice,
+        askPrices,
+        bidPrices,
+      )
+
       const newEpoch: Epoch = {
         id: this.epoch[market][this.epoch[market].length - 1].id + 1,
         startTimestamp: timestamp,
@@ -599,12 +578,6 @@ export class CloberMarketMaker {
         minPrice,
         maxPrice,
         oraclePrice,
-        movedOraclePrice: this.getMoveOraclePrice(
-          quoteCurrency,
-          baseCurrency,
-          this.epoch[market][this.epoch[market].length - 1],
-          oraclePrice,
-        ),
         askTicks,
         askPrices,
         bidTicks,
@@ -621,7 +594,7 @@ export class CloberMarketMaker {
 
     // first epoch
     else if (!this.epoch[market]) {
-      const { askTicks, askPrices, bidTicks, bidPrices, minPrice, maxPrice } =
+      const { askTicks, askPrices, bidTicks, bidPrices } =
         this.buildTickAndPriceArray(
           baseCurrency,
           quoteCurrency,
@@ -637,10 +610,13 @@ export class CloberMarketMaker {
         startTimestamp: Math.floor(Date.now() / 1000),
         askSpread: params.defaultAskTickSpread,
         bidSpread: params.defaultBidTickSpread,
-        minPrice,
-        maxPrice,
+        minPrice: bidPrices
+          .reduce((acc, price) => acc.plus(price), new BigNumber(0))
+          .div(bidPrices.length),
+        maxPrice: askPrices
+          .reduce((acc, price) => acc.plus(price), new BigNumber(0))
+          .div(askPrices.length),
         oraclePrice,
-        movedOraclePrice: oraclePrice,
         askTicks,
         askPrices,
         bidTicks,
@@ -919,5 +895,29 @@ export class CloberMarketMaker {
 
   async sleep(ms: number) {
     return new Promise((resolve) => setTimeout(resolve, ms))
+  }
+
+  calculateMinMaxPrice(
+    oraclePrice: BigNumber,
+    centralPrice: BigNumber,
+    askPrices: BigNumber[],
+    bidPrices: BigNumber[],
+  ): {
+    minPrice: BigNumber
+    maxPrice: BigNumber
+  } {
+    const meanAskPrice = askPrices
+      .reduce((acc, price) => acc.plus(price), BigNumber(0))
+      .div(askPrices.length)
+    const meanBidPrice = bidPrices
+      .reduce((acc, price) => acc.plus(price), BigNumber(0))
+      .div(bidPrices.length)
+    const maxPriceDelta = meanAskPrice.minus(centralPrice).abs()
+    const minPriceDelta = centralPrice.minus(meanBidPrice).abs()
+
+    return {
+      minPrice: oraclePrice.minus(minPriceDelta),
+      maxPrice: oraclePrice.plus(maxPriceDelta),
+    }
   }
 }

@@ -97,6 +97,7 @@ export class DexSimulator {
     targetBidPrice: BigNumber
     askVolume: BigNumber
     bidVolume: BigNumber
+    centralPrice: BigNumber
   } {
     const trades = this.trades[marketId]
       .filter(
@@ -186,6 +187,7 @@ export class DexSimulator {
       bidPrice: previousOraclePrice.toString(),
       askBaseVolume: new BigNumber(0),
       bidBaseVolume: new BigNumber(0),
+      centralPrice: new BigNumber(0),
     }
     for (const askProfit of askProfits) {
       for (const bidProfit of bidProfits) {
@@ -197,25 +199,27 @@ export class DexSimulator {
           continue
         }
 
-        const centerPrice = BigNumber(askProfit.targetAskPrice)
-          .plus(bidProfit.targetBidPrice)
-          .div(2)
+        const askBaseVolume = askProfit.baseDelta.abs()
+        const bidBaseVolume = bidProfit.baseDelta.abs()
+
+        const centralPrice = BigNumber(askProfit.targetAskPrice)
+          .times(askBaseVolume)
+          .plus(BigNumber(bidProfit.targetBidPrice).times(bidBaseVolume))
+          .div(askBaseVolume.plus(bidBaseVolume))
         const totalBaseDelta = askProfit.baseDelta.plus(bidProfit.baseDelta)
         const totalQuoteDelta = askProfit.quoteDelta.plus(bidProfit.quoteDelta)
         const totalQuoteProfit = totalQuoteDelta.plus(
-          totalBaseDelta.times(centerPrice),
+          totalBaseDelta.times(centralPrice),
         )
 
         const askSideQuoteProfit = askProfit.quoteDelta.plus(
-          askProfit.baseDelta.times(centerPrice),
+          askProfit.baseDelta.times(centralPrice),
         )
         const bidSideQuoteProfit = bidProfit.quoteDelta.plus(
-          bidProfit.baseDelta.times(centerPrice),
+          bidProfit.baseDelta.times(centralPrice),
         )
 
         // calculate entropy
-        const askBaseVolume = askProfit.baseDelta.abs()
-        const bidBaseVolume = bidProfit.baseDelta.abs()
         const totalBaseVolume = askBaseVolume.plus(bidBaseVolume)
         const askBaseVolumeRatio = askBaseVolume.div(totalBaseVolume)
         const bidBaseVolumeRatio = bidBaseVolume.div(totalBaseVolume)
@@ -243,6 +247,7 @@ export class DexSimulator {
           bestSpreadPair.bidPrice = bidProfit.targetBidPrice
           bestSpreadPair.askBaseVolume = askBaseVolume
           bestSpreadPair.bidBaseVolume = bidBaseVolume
+          bestSpreadPair.centralPrice = centralPrice
         }
       }
     }
@@ -311,6 +316,7 @@ export class DexSimulator {
       targetBidPrice: BigNumber(bestSpreadPair.bidPrice),
       askVolume: bestSpreadPair.askBaseVolume,
       bidVolume: bestSpreadPair.bidBaseVolume,
+      centralPrice: bestSpreadPair.centralPrice,
     }
   }
 }
