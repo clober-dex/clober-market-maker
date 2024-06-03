@@ -8,12 +8,16 @@ import * as yaml from 'yaml'
 import BigNumber from '../utils/bignumber.ts'
 import { DexSimulator } from '../model/dex-simulator.ts'
 import { type Market } from '../model/market.ts'
-import type { Config } from '../model/config.ts'
+import type { Config, type Params } from '../model/config.ts'
 import { type TakenTrade } from '../model/taken-trade.ts'
 
 class MockDexSimulator extends DexSimulator {
-  constructor(chainId: CHAIN_IDS, markets: { [id: string]: Market }) {
-    super(chainId, markets)
+  constructor(
+    chainId: CHAIN_IDS,
+    markets: { [id: string]: Market },
+    params: { [id: string]: Params },
+  ) {
+    super(chainId, markets, params)
   }
 
   updateTrades(trades: { [id: string]: TakenTrade[] } = {}) {
@@ -27,6 +31,7 @@ const main = async () => {
   const mockDexSimulator = new MockDexSimulator(
     arbitrumSepolia.id,
     _.mapValues(config.markets, (m) => m.clober),
+    _.mapValues(config.markets, (m) => m.params),
   )
 
   mockDexSimulator.updateTrades(trades)

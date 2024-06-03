@@ -9,9 +9,11 @@ import { findCurrencyBySymbol } from '../utils/currency.ts'
 
 import type { Market } from './market.ts'
 import type { TakenTrade } from './taken-trade.ts'
+import type { Params } from './config.ts'
 
 export class DexSimulator {
   markets: { [id: string]: Market }
+  params: { [id: string]: Params }
   chainId: CHAIN_IDS
   publicClient: PublicClient
 
@@ -19,7 +21,11 @@ export class DexSimulator {
   startBlock: bigint = 0n
   latestBlock: bigint = 0n
 
-  constructor(chainId: CHAIN_IDS, markets: { [id: string]: Market }) {
+  constructor(
+    chainId: CHAIN_IDS,
+    markets: { [id: string]: Market },
+    params: { [id: string]: Params },
+  ) {
     this.chainId = chainId
     this.publicClient = createPublicClient({
       chain: CHAIN_MAP[chainId],
@@ -30,6 +36,7 @@ export class DexSimulator {
           : http(),
     })
     this.markets = markets
+    this.params = params
   }
 
   async update() {
@@ -90,6 +97,7 @@ export class DexSimulator {
     targetBidPrice: BigNumber
     askVolume: BigNumber
     bidVolume: BigNumber
+    centralPrice: BigNumber
   } {
     const trades = this.trades[marketId]
       .filter(
@@ -179,6 +187,7 @@ export class DexSimulator {
       bidPrice: previousOraclePrice.toString(),
       askBaseVolume: new BigNumber(0),
       bidBaseVolume: new BigNumber(0),
+      centralPrice: new BigNumber(0),
     }
     for (const askProfit of askProfits) {
       for (const bidProfit of bidProfits) {
@@ -190,25 +199,27 @@ export class DexSimulator {
           continue
         }
 
-        const centerPrice = BigNumber(askProfit.targetAskPrice)
-          .plus(bidProfit.targetBidPrice)
-          .div(2)
+        const askBaseVolume = askProfit.baseDelta.abs()
+        const bidBaseVolume = bidProfit.baseDelta.abs()
+
+        const centralPrice = BigNumber(askProfit.targetAskPrice)
+          .times(askBaseVolume)
+          .plus(BigNumber(bidProfit.targetBidPrice).times(bidBaseVolume))
+          .div(askBaseVolume.plus(bidBaseVolume))
         const totalBaseDelta = askProfit.baseDelta.plus(bidProfit.baseDelta)
         const totalQuoteDelta = askProfit.quoteDelta.plus(bidProfit.quoteDelta)
         const totalQuoteProfit = totalQuoteDelta.plus(
-          totalBaseDelta.times(centerPrice),
+          totalBaseDelta.times(centralPrice),
         )
 
         const askSideQuoteProfit = askProfit.quoteDelta.plus(
-          askProfit.baseDelta.times(centerPrice),
+          askProfit.baseDelta.times(centralPrice),
         )
         const bidSideQuoteProfit = bidProfit.quoteDelta.plus(
-          bidProfit.baseDelta.times(centerPrice),
+          bidProfit.baseDelta.times(centralPrice),
         )
 
         // calculate entropy
-        const askBaseVolume = askProfit.baseDelta.abs()
-        const bidBaseVolume = bidProfit.baseDelta.abs()
         const totalBaseVolume = askBaseVolume.plus(bidBaseVolume)
         const askBaseVolumeRatio = askBaseVolume.div(totalBaseVolume)
         const bidBaseVolumeRatio = bidBaseVolume.div(totalBaseVolume)
@@ -236,13 +247,9 @@ export class DexSimulator {
           bestSpreadPair.bidPrice = bidProfit.targetBidPrice
           bestSpreadPair.askBaseVolume = askBaseVolume
           bestSpreadPair.bidBaseVolume = bidBaseVolume
+          bestSpreadPair.centralPrice = centralPrice
         }
       }
-    }
-
-    const spreads = {
-      askSpread: 0,
-      bidSpread: 0,
     }
 
     const [base, quote] = marketId.split('/')
@@ -289,12 +296,15 @@ export class DexSimulator {
       currency1: findCurrencyBySymbol(this.chainId, base),
     })
 
-    spreads.askSpread = Number(
-      previousOraclePriceAskBookTick - lowestAskBidBookTick,
-    )
-    spreads.bidSpread = Number(
-      previousOraclePriceBidBookTick - highestBidBidBookTick,
-    )
+    // Set default spread if no profit(0 volume was traded)
+    const spreads = {
+      askSpread: bestSpreadPair.askSideProfit.isZero()
+        ? this.params[marketId].defaultAskTickSpread
+        : Number(previousOraclePriceAskBookTick - lowestAskBidBookTick),
+      bidSpread: bestSpreadPair.bidSideProfit.isZero()
+        ? this.params[marketId].defaultBidTickSpread
+        : Number(previousOraclePriceBidBookTick - highestBidBidBookTick),
+    }
 
     return {
       askSpread: spreads.askSpread,
@@ -306,6 +316,7 @@ export class DexSimulator {
       targetBidPrice: BigNumber(bestSpreadPair.bidPrice),
       askVolume: bestSpreadPair.askBaseVolume,
       bidVolume: bestSpreadPair.bidBaseVolume,
+      centralPrice: bestSpreadPair.centralPrice,
     }
   }
 }
