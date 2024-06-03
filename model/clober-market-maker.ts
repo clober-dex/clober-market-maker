@@ -424,64 +424,6 @@ export class CloberMarketMaker {
     }
   }
 
-  getMoveOraclePrice(
-    quoteCurrency: Currency,
-    baseCurrency: Currency,
-    currentEpoch: Epoch,
-    currentOraclePrice: BigNumber,
-  ) {
-    const {
-      normal: {
-        now: { tick: oraclePriceBidBookTick },
-      },
-      inverted: {
-        now: { tick: oraclePriceAskBookTick },
-      },
-    } = getPriceNeighborhood({
-      chainId: this.chainId,
-      price: currentOraclePrice.toString(),
-      currency0: quoteCurrency,
-      currency1: baseCurrency,
-    })
-    if (currentEpoch.askSpread < 0) {
-      const weight =
-        Math.abs(currentEpoch.askSpread) /
-        (Math.abs(currentEpoch.askSpread) + Math.abs(currentEpoch.bidSpread))
-      const weightedMeanSpread = Math.floor(
-        (currentEpoch.askSpread + currentEpoch.bidSpread) * weight,
-      )
-      return new BigNumber(
-        getMarketPrice({
-          marketQuoteCurrency: quoteCurrency,
-          marketBaseCurrency: baseCurrency,
-          askTick:
-            oraclePriceAskBookTick -
-            BigInt(currentEpoch.askSpread) +
-            BigInt(weightedMeanSpread),
-        }),
-      )
-    }
-    if (currentEpoch.bidSpread < 0) {
-      const weight =
-        Math.abs(currentEpoch.bidSpread) /
-        (Math.abs(currentEpoch.askSpread) + Math.abs(currentEpoch.bidSpread))
-      const weightedMeanSpread = Math.floor(
-        (currentEpoch.askSpread + currentEpoch.bidSpread) * weight,
-      )
-      return new BigNumber(
-        getMarketPrice({
-          marketQuoteCurrency: quoteCurrency,
-          marketBaseCurrency: baseCurrency,
-          bidTick:
-            oraclePriceBidBookTick -
-            BigInt(currentEpoch.bidSpread) +
-            BigInt(weightedMeanSpread),
-        }),
-      )
-    }
-    return currentOraclePrice
-  }
-
   async marketMaking(market: string, params: Params) {
     const quoteCurrency = findCurrencyBySymbol(
       this.chainId,
@@ -605,17 +547,20 @@ export class CloberMarketMaker {
           params.orderGap,
         )
 
+      const { minPrice, maxPrice } = this.calculateMinMaxPrice(
+        oraclePrice,
+        oraclePrice,
+        askPrices,
+        bidPrices,
+      )
+
       const newEpoch: Epoch = {
         id: 0,
         startTimestamp: Math.floor(Date.now() / 1000),
         askSpread: params.defaultAskTickSpread,
         bidSpread: params.defaultBidTickSpread,
-        minPrice: bidPrices
-          .reduce((acc, price) => acc.plus(price), new BigNumber(0))
-          .div(bidPrices.length),
-        maxPrice: askPrices
-          .reduce((acc, price) => acc.plus(price), new BigNumber(0))
-          .div(askPrices.length),
+        minPrice,
+        maxPrice,
         oraclePrice,
         askTicks,
         askPrices,
