@@ -293,6 +293,9 @@ export class CloberMarketMaker {
             })
             .catch(() => {})
         }
+        if ((e as any).toString().includes('transaction is too low')) {
+          throw e
+        }
       }
 
       await this.sleep(this.config.fetchIntervalMilliSeconds)
@@ -822,7 +825,7 @@ export class CloberMarketMaker {
       value: [...bidMakeParams, ...askMakeParams]
         .filter((p) => p.isETH)
         .reduce((acc: bigint, { quoteAmount }) => acc + quoteAmount, 0n),
-      gas: 15_000_000n,
+      gas: 5_000_000n,
       gasPrice,
     })
     await waitTransaction(
