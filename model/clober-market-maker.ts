@@ -510,6 +510,8 @@ export class CloberMarketMaker {
         )
 
       const { minPrice, maxPrice } = this.calculateMinMaxPrice(
+        quoteCurrency,
+        baseCurrency,
         oraclePrice,
         centralPrice,
         askPrices,
@@ -553,6 +555,8 @@ export class CloberMarketMaker {
         )
 
       const { minPrice, maxPrice } = this.calculateMinMaxPrice(
+        quoteCurrency,
+        baseCurrency,
         oraclePrice,
         oraclePrice,
         askPrices,
@@ -848,6 +852,8 @@ export class CloberMarketMaker {
   }
 
   calculateMinMaxPrice(
+    quoteCurrency: Currency,
+    baseCurrency: Currency,
     oraclePrice: BigNumber,
     centralPrice: BigNumber,
     askPrices: BigNumber[],
@@ -856,18 +862,51 @@ export class CloberMarketMaker {
     minPrice: BigNumber
     maxPrice: BigNumber
   } {
-    const meanAskPrice = askPrices
-      .reduce((acc, price) => acc.plus(price), BigNumber(0))
-      .div(askPrices.length)
-    const meanBidPrice = bidPrices
-      .reduce((acc, price) => acc.plus(price), BigNumber(0))
-      .div(bidPrices.length)
-    const maxPriceDelta = meanAskPrice.minus(centralPrice).abs()
-    const minPriceDelta = centralPrice.minus(meanBidPrice).abs()
+    const [
+      oraclePriceBidBookTick,
+      centralPriceBidBookTick,
+      meanAskPriceBidBookTick,
+      meanBidPriceBidBookTick,
+    ] = [
+      oraclePrice,
+      centralPrice,
+      askPrices
+        .reduce((acc, price) => acc.plus(price), BigNumber(0))
+        .div(askPrices.length),
+      bidPrices
+        .reduce((acc, price) => acc.plus(price), BigNumber(0))
+        .div(bidPrices.length),
+    ].map((price) => {
+      const {
+        normal: {
+          now: { tick: bidBookTick },
+        },
+      } = getPriceNeighborhood({
+        chainId: this.chainId,
+        price: price.toString(),
+        currency0: quoteCurrency,
+        currency1: baseCurrency,
+      })
+      return bidBookTick
+    })
+
+    const tickDiff = -(oraclePriceBidBookTick - centralPriceBidBookTick)
 
     return {
-      minPrice: oraclePrice.minus(minPriceDelta),
-      maxPrice: oraclePrice.plus(maxPriceDelta),
+      minPrice: BigNumber(
+        getMarketPrice({
+          marketQuoteCurrency: quoteCurrency,
+          marketBaseCurrency: baseCurrency,
+          bidTick: meanBidPriceBidBookTick + tickDiff,
+        }),
+      ),
+      maxPrice: BigNumber(
+        getMarketPrice({
+          marketQuoteCurrency: quoteCurrency,
+          marketBaseCurrency: baseCurrency,
+          bidTick: meanAskPriceBidBookTick + tickDiff,
+        }),
+      ),
     }
   }
 }
