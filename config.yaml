@@ -19,10 +19,10 @@ markets:
       quote: USDC
       base: WETH
     params:
-      spongeTick: 1
+      spongeTick: 6
       balancePercentage: 20
-      defaultBidTickSpread: 10
-      defaultAskTickSpread: 10
+      defaultBidTickSpread: 6
+      defaultAskTickSpread: 6
       orderGap: 1
       orderNum: 1
       startQuoteAmount: 386300
