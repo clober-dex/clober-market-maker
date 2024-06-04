@@ -510,6 +510,7 @@ export class CloberMarketMaker {
         )
 
       const { minPrice, maxPrice } = this.calculateMinMaxPrice(
+        params.tickSponge,
         quoteCurrency,
         baseCurrency,
         oraclePrice,
@@ -555,6 +556,7 @@ export class CloberMarketMaker {
         )
 
       const { minPrice, maxPrice } = this.calculateMinMaxPrice(
+        params.tickSponge,
         quoteCurrency,
         baseCurrency,
         oraclePrice,
@@ -852,6 +854,7 @@ export class CloberMarketMaker {
   }
 
   calculateMinMaxPrice(
+    tickSponge: number,
     quoteCurrency: Currency,
     baseCurrency: Currency,
     oraclePrice: BigNumber,
@@ -897,14 +900,14 @@ export class CloberMarketMaker {
         getMarketPrice({
           marketQuoteCurrency: quoteCurrency,
           marketBaseCurrency: baseCurrency,
-          bidTick: meanBidPriceBidBookTick + tickDiff,
+          bidTick: meanBidPriceBidBookTick + tickDiff - BigInt(tickSponge),
         }),
       ),
       maxPrice: BigNumber(
         getMarketPrice({
           marketQuoteCurrency: quoteCurrency,
           marketBaseCurrency: baseCurrency,
-          bidTick: meanAskPriceBidBookTick + tickDiff,
+          bidTick: meanAskPriceBidBookTick + tickDiff + BigInt(tickSponge),
         }),
       ),
     }
