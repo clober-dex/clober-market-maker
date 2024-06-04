@@ -18,9 +18,11 @@ import {
 } from 'viem'
 import { arbitrumSepolia } from 'viem/chains'
 import * as yaml from 'yaml'
+import chalk from 'chalk'
 
 import { ERC20_PERMIT_ABI } from '../abis/@openzeppelin/erc20-permit-abi.ts'
 import { type Config } from '../model/config.ts'
+import { logger } from '../utils/logger.ts'
 
 const BASE_CURRENCY = {
   address: '0xF2e615A933825De4B39b497f6e6991418Fb31b78',
@@ -72,6 +74,10 @@ const transfer = async (
 }
 
 const main = async () => {
+  const gitHash = require('child_process')
+    .execSync('git rev-parse HEAD')
+    .toString()
+    .trim()
   const maker = privateKeyToAccount(process.env.PRIVATE_KEY as `0x${string}`)
   const taker = privateKeyToAccount(
     process.env.TAKER_PRIVATE_KEY as `0x${string}`,
@@ -181,11 +187,22 @@ const main = async () => {
       parseUnits(startBaseAmount.toString(), BASE_CURRENCY.decimals),
     )
   }
+  const [initBaseBalance, initQuoteBalance] = await Promise.all([
+    balanceOf(BASE_CURRENCY.address, maker.address),
+    balanceOf(QUOTE_CURRENCY.address, maker.address),
+  ])
   console.log(
     'Reset balances successfully',
-    `WETH: ${await balanceOf(BASE_CURRENCY.address, maker.address)}`,
-    `USDC: ${await balanceOf(QUOTE_CURRENCY.address, maker.address)}`,
+    `WETH: ${initBaseBalance}`,
+    `USDC: ${initQuoteBalance}`,
   )
+
+  logger(chalk.green, 'Reset Event', {
+    timestamp: Math.floor(Date.now() / 1000),
+    initBaseBalance: formatUnits(initBaseBalance, BASE_CURRENCY.decimals),
+    initQuoteBalance: formatUnits(initQuoteBalance, QUOTE_CURRENCY.decimals),
+    gitHash,
+  })
 }
 
 main()
