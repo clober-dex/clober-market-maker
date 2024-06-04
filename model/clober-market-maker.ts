@@ -474,6 +474,7 @@ export class CloberMarketMaker {
         startBlock,
         endBlock,
         this.epoch[market][this.epoch[market].length - 1].oraclePrice,
+        oraclePrice,
       )
 
       logger(chalk.green, 'Simulation', {
@@ -523,6 +524,7 @@ export class CloberMarketMaker {
         minPrice,
         maxPrice,
         oraclePrice,
+        centralPrice,
         askTicks,
         askPrices,
         bidTicks,
@@ -565,6 +567,7 @@ export class CloberMarketMaker {
         minPrice,
         maxPrice,
         oraclePrice,
+        centralPrice: oraclePrice,
         askTicks,
         askPrices,
         bidTicks,

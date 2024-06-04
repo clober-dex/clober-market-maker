@@ -8,7 +8,7 @@ import * as yaml from 'yaml'
 import BigNumber from '../utils/bignumber.ts'
 import { DexSimulator } from '../model/dex-simulator.ts'
 import { type Market } from '../model/market.ts'
-import type { Config, type Params } from '../model/config.ts'
+import type { Config, Params } from '../model/config.ts'
 import { type TakenTrade } from '../model/taken-trade.ts'
 
 class MockDexSimulator extends DexSimulator {
@@ -41,6 +41,7 @@ const main = async () => {
     0n,
     2n ** 256n - 1n,
     new BigNumber('3805.89145'),
+    new BigNumber('3806.89145'),
   )
   console.log(`ask spread: ${askSpread}`, `bid spread: ${bidSpread}`)
 }

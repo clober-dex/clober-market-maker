@@ -87,6 +87,7 @@ export class DexSimulator {
     startBlock: bigint,
     endBlock: bigint,
     previousOraclePrice: BigNumber,
+    currentOraclePrice: BigNumber,
   ): {
     askSpread: number
     bidSpread: number
@@ -202,10 +203,12 @@ export class DexSimulator {
         const askBaseVolume = askProfit.baseDelta.abs()
         const bidBaseVolume = bidProfit.baseDelta.abs()
 
-        const centralPrice = BigNumber(askProfit.targetAskPrice)
-          .times(askBaseVolume)
-          .plus(BigNumber(bidProfit.targetBidPrice).times(bidBaseVolume))
-          .div(askBaseVolume.plus(bidBaseVolume))
+        const centralPrice = askBaseVolume.plus(bidBaseVolume).isZero()
+          ? currentOraclePrice
+          : BigNumber(askProfit.targetAskPrice)
+              .times(askBaseVolume)
+              .plus(BigNumber(bidProfit.targetBidPrice).times(bidBaseVolume))
+              .div(askBaseVolume.plus(bidBaseVolume))
         const totalBaseDelta = askProfit.baseDelta.plus(bidProfit.baseDelta)
         const totalQuoteDelta = askProfit.quoteDelta.plus(bidProfit.quoteDelta)
         const totalQuoteProfit = totalQuoteDelta.plus(
