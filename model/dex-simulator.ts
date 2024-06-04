@@ -224,13 +224,22 @@ export class DexSimulator {
 
         // calculate entropy
         const totalBaseVolume = askBaseVolume.plus(bidBaseVolume)
-        const askBaseVolumeRatio = askBaseVolume.div(totalBaseVolume)
-        const bidBaseVolumeRatio = bidBaseVolume.div(totalBaseVolume)
+        const askBaseVolumeRatio = totalBaseVolume.isZero()
+          ? new BigNumber(0)
+          : askBaseVolume.div(totalBaseVolume)
+        const bidBaseVolumeRatio = totalBaseVolume.isZero()
+          ? new BigNumber(0)
+          : bidBaseVolume.div(totalBaseVolume)
+        const askBaseVolumeRatioLog2 = askBaseVolumeRatio.isZero()
+          ? new BigNumber(0)
+          : Math.log2(askBaseVolumeRatio.toNumber())
+        const bidBaseVolumeRatioLog2 = bidBaseVolumeRatio.isZero()
+          ? new BigNumber(0)
+          : Math.log2(bidBaseVolumeRatio.toNumber())
+
         const entropy = askBaseVolumeRatio
-          .times(Math.log2(askBaseVolumeRatio.toNumber()))
-          .plus(
-            bidBaseVolumeRatio.times(Math.log2(bidBaseVolumeRatio.toNumber())),
-          )
+          .times(askBaseVolumeRatioLog2)
+          .plus(bidBaseVolumeRatio.times(bidBaseVolumeRatioLog2))
           .negated()
 
         // calculate score
