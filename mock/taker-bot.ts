@@ -202,6 +202,7 @@ const fetchTradeFromHashes = async (
     let cloberBidVolume = 0n
     let cloberAskVolume = 0n
     let cloberVolume = 0n
+    const cloberTakenTrades = []
     if (trades.length > 0) {
       for (const trade of trades) {
         const isBid = trade.type === 'bid'
@@ -241,6 +242,7 @@ const fetchTradeFromHashes = async (
         )
 
         if (actualAmountOut < expectedAmountOut) {
+          cloberTakenTrades.push(trade)
           numberOfMarketOrders += 1
           cloberBidVolume += expectedAmountOut
           cloberAskVolume += parseUnits(amountIn, spent.currency.decimals)
@@ -308,6 +310,28 @@ const fetchTradeFromHashes = async (
       cloberBidVolume: formatUnits(cloberBidVolume, BASE_CURRENCY.decimals),
       cloberAskVolume: formatUnits(cloberAskVolume, BASE_CURRENCY.decimals),
       cloberVolume: formatUnits(cloberVolume, BASE_CURRENCY.decimals),
+      cloberHighestBidPrice:
+        cloberTakenTrades
+          .filter((trade) => trade.type === 'ask')
+          .map((trade) =>
+            new BigNumber(
+              formatUnits(abs(trade.quoteAmount), QUOTE_CURRENCY.decimals),
+            )
+              .div(formatUnits(abs(trade.baseAmount), BASE_CURRENCY.decimals))
+              .toFixed(4),
+          )
+          .sort((a, b) => Number(a) - Number(b))[0] ?? '-',
+      cloberLowestAskPrice:
+        cloberTakenTrades
+          .filter((trade) => trade.type === 'bid')
+          .map((trade) =>
+            new BigNumber(
+              formatUnits(abs(trade.quoteAmount), QUOTE_CURRENCY.decimals),
+            )
+              .div(formatUnits(abs(trade.baseAmount), BASE_CURRENCY.decimals))
+              .toFixed(4),
+          )
+          .sort((a, b) => Number(b) - Number(a))[0] ?? '-',
       askTradesLength: trades.filter((trade) => trade.type === 'ask').length,
       bidTradesLength: trades.filter((trade) => trade.type === 'bid').length,
       numberOfMarketOrders,
