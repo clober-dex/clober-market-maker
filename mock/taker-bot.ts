@@ -32,6 +32,7 @@ import { logger } from '../utils/logger.ts'
 import { WHITELIST_DEX } from '../constants/dex.ts'
 import { Binance } from '../model/oracle/binance.ts'
 import { type Config } from '../model/config.ts'
+import { Clober } from '../model/exchange/clober.ts'
 
 const BASE_CURRENCY = {
   address: '0xF2e615A933825De4B39b497f6e6991418Fb31b78',
@@ -148,6 +149,10 @@ const fetchTradeFromHashes = async (
   const binance = new Binance(
     _.mapValues(config.oracles, (m) => m.binance as any),
   )
+  const clober = new Clober(
+    arbitrumSepolia.id,
+    _.mapValues(config.markets, (m) => m.clober),
+  )
   await sendSlackMessage({
     message: 'Taker bot started',
     account: account.address,
@@ -179,6 +184,7 @@ const fetchTradeFromHashes = async (
     const [latestBlock] = await Promise.all([
       mainnetPublicClient.getBlockNumber(),
       binance.update(),
+      clober.update(),
     ])
     const hashes = await fetchHashesFromSwapEvent(startBlock, latestBlock)
     const trades = await fetchTradeFromHashes(hashes)
@@ -310,28 +316,8 @@ const fetchTradeFromHashes = async (
       cloberBidVolume: formatUnits(cloberBidVolume, BASE_CURRENCY.decimals),
       cloberAskVolume: formatUnits(cloberAskVolume, BASE_CURRENCY.decimals),
       cloberVolume: formatUnits(cloberVolume, BASE_CURRENCY.decimals),
-      cloberHighestBidPrice:
-        cloberTakenTrades
-          .filter((trade) => trade.type === 'ask')
-          .map((trade) =>
-            new BigNumber(
-              formatUnits(abs(trade.quoteAmount), QUOTE_CURRENCY.decimals),
-            )
-              .div(formatUnits(abs(trade.baseAmount), BASE_CURRENCY.decimals))
-              .toFixed(4),
-          )
-          .sort((a, b) => Number(a) - Number(b))[0] ?? '-',
-      cloberLowestAskPrice:
-        cloberTakenTrades
-          .filter((trade) => trade.type === 'bid')
-          .map((trade) =>
-            new BigNumber(
-              formatUnits(abs(trade.quoteAmount), QUOTE_CURRENCY.decimals),
-            )
-              .div(formatUnits(abs(trade.baseAmount), BASE_CURRENCY.decimals))
-              .toFixed(4),
-          )
-          .sort((a, b) => Number(b) - Number(a))[0] ?? '-',
+      cloberHighestBidPrice: clober.highestBid('WETH/USDC').toFixed(4) ?? '-',
+      cloberLowestAskPrice: clober.lowestAsk('WETH/USDC').toFixed(4) ?? '-',
       askTradesLength: trades.filter((trade) => trade.type === 'ask').length,
       bidTradesLength: trades.filter((trade) => trade.type === 'bid').length,
       numberOfMarketOrders,
