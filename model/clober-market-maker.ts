@@ -893,7 +893,7 @@ export class CloberMarketMaker {
       return bidBookTick
     })
 
-    const tickDiff = -(oraclePriceBidBookTick - centralPriceBidBookTick)
+    const tickDiff = oraclePriceBidBookTick - centralPriceBidBookTick
 
     return {
       minPrice: BigNumber(
