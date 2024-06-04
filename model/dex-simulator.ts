@@ -309,14 +309,21 @@ export class DexSimulator {
     })
 
     // Set default spread if no profit(0 volume was traded)
-    const spreads = {
-      askSpread: bestSpreadPair.askSideProfit.isZero()
-        ? this.params[marketId].defaultAskTickSpread
-        : Number(previousOraclePriceAskBookTick - lowestAskBidBookTick),
-      bidSpread: bestSpreadPair.bidSideProfit.isZero()
-        ? this.params[marketId].defaultBidTickSpread
-        : Number(previousOraclePriceBidBookTick - highestBidBidBookTick),
-    }
+    const spreads =
+      bestSpreadPair.askSideProfit.isZero() ||
+      bestSpreadPair.bidSideProfit.isZero()
+        ? {
+            askSpread: this.params[marketId].defaultAskTickSpread,
+            bidSpread: this.params[marketId].defaultBidTickSpread,
+          }
+        : {
+            askSpread: Number(
+              previousOraclePriceAskBookTick - lowestAskBidBookTick,
+            ),
+            bidSpread: Number(
+              previousOraclePriceBidBookTick - highestBidBidBookTick,
+            ),
+          }
 
     return {
       askSpread: spreads.askSpread,
