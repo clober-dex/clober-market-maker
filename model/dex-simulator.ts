@@ -203,12 +203,10 @@ export class DexSimulator {
         const askBaseVolume = askProfit.baseDelta.abs()
         const bidBaseVolume = bidProfit.baseDelta.abs()
 
-        const centralPrice = askBaseVolume.plus(bidBaseVolume).isZero()
-          ? currentOraclePrice
-          : BigNumber(askProfit.targetAskPrice)
-              .times(askBaseVolume)
-              .plus(BigNumber(bidProfit.targetBidPrice).times(bidBaseVolume))
-              .div(askBaseVolume.plus(bidBaseVolume))
+        const centralPrice = BigNumber(askProfit.targetAskPrice)
+          .times(askBaseVolume)
+          .plus(BigNumber(bidProfit.targetBidPrice).times(bidBaseVolume))
+          .div(askBaseVolume.plus(bidBaseVolume))
         const totalBaseDelta = askProfit.baseDelta.plus(bidProfit.baseDelta)
         const totalQuoteDelta = askProfit.quoteDelta.plus(bidProfit.quoteDelta)
         const totalQuoteProfit = totalQuoteDelta.plus(
@@ -319,7 +317,9 @@ export class DexSimulator {
       targetBidPrice: BigNumber(bestSpreadPair.bidPrice),
       askVolume: bestSpreadPair.askBaseVolume,
       bidVolume: bestSpreadPair.bidBaseVolume,
-      centralPrice: bestSpreadPair.centralPrice,
+      centralPrice: bestSpreadPair.centralPrice.isZero()
+        ? currentOraclePrice
+        : bestSpreadPair.centralPrice,
     }
   }
 }
