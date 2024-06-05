@@ -154,7 +154,7 @@
             "properties": [
               {
                 "id": "custom.spanNulls",
-                "value": true
+                "value": false
               },
               {
                 "id": "color",
@@ -162,6 +162,14 @@
                   "fixedColor": "text",
                   "mode": "fixed"
                 }
+              },
+              {
+                "id": "custom.lineInterpolation",
+                "value": "stepAfter"
+              },
+              {
+                "id": "custom.spanNulls",
+                "value": true
               }
             ]
           },
@@ -241,6 +249,10 @@
               {
                 "id": "custom.spanNulls",
                 "value": true
+              },
+              {
+                "id": "custom.lineInterpolation",
+                "value": "stepAfter"
               }
             ]
           }
@@ -283,12 +295,12 @@
             "uid": "bdmk67audh3b4a"
           },
           "editorMode": "code",
-          "expr": "sum (\n  sum_over_time(\n    {app=\"clober-mm-Arbitrum Sepolia\"} | json | message = `New Epoch` | unwrap minPrice\n  [1s]) \n)",
+          "expr": "avg (\n  avg_over_time(\n    {app=\"clober-mm-Arbitrum Sepolia\"} | json | message = `New Epoch` | unwrap minPrice\n  [1m]) \n)",
           "hide": false,
           "legendFormat": "minPrice",
           "queryType": "range",
           "refId": "B",
-          "step": "1s"
+          "step": "1m"
         },
         {
           "datasource": {
@@ -296,15 +308,15 @@
             "uid": "bdmk67audh3b4a"
           },
           "editorMode": "code",
-          "expr": "sum (\n  sum_over_time(\n    {app=\"clober-mm-Arbitrum Sepolia\"} | json | message = `New Epoch` | unwrap maxPrice\n  [1s]) \n)",
+          "expr": "avg (\n  avg_over_time(\n    {app=\"clober-mm-Arbitrum Sepolia\"} | json | message = `New Epoch` | unwrap maxPrice\n  [1m]) \n)",
           "hide": false,
           "legendFormat": "maxPrice",
           "queryType": "range",
           "refId": "C",
-          "step": "1s"
+          "step": "1m"
         }
       ],
-      "title": "Uniswap Taken Price",
+      "title": "Summary",
       "transformations": [
         {
           "id": "extractFields",
@@ -442,7 +454,53 @@
             ]
           }
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Clober Volume(Bid)"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "dark-green",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Clober Volume(Ask)"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "dark-red",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Uni Volume(Ask)"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "blue",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
       },
       "gridPos": {
         "h": 11,
@@ -544,6 +602,6 @@
   "timezone": "browser",
   "title": "Taker",
   "uid": "edmgolfu2nncwe",
-  "version": 43,
+  "version": 49,
   "weekStart": ""
 }

@@ -117,12 +117,12 @@
                 "path": "profit"
               },
               {
-                "alias": "targetAskPrice",
-                "path": "targetAskPrice"
+                "alias": "fromEpochId",
+                "path": "fromEpochId"
               },
               {
-                "alias": "oraclePrice",
-                "path": "oraclePrice"
+                "alias": "targetAskPrice",
+                "path": "targetAskPrice"
               },
               {
                 "alias": "targetBidPrice",
@@ -257,6 +257,10 @@
                 "path": "tickDiff"
               },
               {
+                "alias": "spongeTick",
+                "path": "spongeTick"
+              },
+              {
                 "alias": "minPrice",
                 "path": "minPrice"
               },
@@ -298,6 +302,7 @@
       "type": "table"
     }
   ],
+  "refresh": "30s",
   "schemaVersion": 39,
   "tags": [],
   "templating": {
@@ -311,6 +316,6 @@
   "timezone": "browser",
   "title": "New Epoch",
   "uid": "edmyjl3nzicqof",
-  "version": 26,
+  "version": 28,
   "weekStart": ""
 }
