@@ -468,13 +468,12 @@ export class CloberMarketMaker {
         targetBidPrice,
         askVolume,
         bidVolume,
-        centralPrice,
+        tickDiff,
       } = this.dexSimulator.findSpread(
         market,
         startBlock,
         endBlock,
         this.epoch[market][this.epoch[market].length - 1].oraclePrice,
-        oraclePrice,
       )
 
       logger(chalk.green, 'Simulation', {
@@ -495,7 +494,7 @@ export class CloberMarketMaker {
         bidSpread,
         askVolume: askVolume.toString(),
         bidVolume: bidVolume.toString(),
-        centralPrice: centralPrice.toString(),
+        tickDiff: tickDiff.toString(),
       })
 
       const { askTicks, askPrices, bidTicks, bidPrices } =
@@ -510,11 +509,10 @@ export class CloberMarketMaker {
         )
 
       const { minPrice, maxPrice } = this.calculateMinMaxPrice(
+        tickDiff,
         params.spongeTick,
         quoteCurrency,
         baseCurrency,
-        oraclePrice,
-        centralPrice,
         askPrices,
         bidPrices,
       )
@@ -527,7 +525,7 @@ export class CloberMarketMaker {
         minPrice,
         maxPrice,
         oraclePrice,
-        centralPrice,
+        tickDiff,
         askTicks,
         askPrices,
         bidTicks,
@@ -556,11 +554,10 @@ export class CloberMarketMaker {
         )
 
       const { minPrice, maxPrice } = this.calculateMinMaxPrice(
+        0,
         params.spongeTick,
         quoteCurrency,
         baseCurrency,
-        oraclePrice,
-        oraclePrice,
         askPrices,
         bidPrices,
       )
@@ -573,7 +570,7 @@ export class CloberMarketMaker {
         minPrice,
         maxPrice,
         oraclePrice,
-        centralPrice: oraclePrice,
+        tickDiff: 0,
         askTicks,
         askPrices,
         bidTicks,
@@ -854,25 +851,17 @@ export class CloberMarketMaker {
   }
 
   calculateMinMaxPrice(
+    tickDiff: number,
     spongeTick: number,
     quoteCurrency: Currency,
     baseCurrency: Currency,
-    oraclePrice: BigNumber,
-    centralPrice: BigNumber,
     askPrices: BigNumber[],
     bidPrices: BigNumber[],
   ): {
     minPrice: BigNumber
     maxPrice: BigNumber
   } {
-    const [
-      oraclePriceBidBookTick,
-      centralPriceBidBookTick,
-      meanAskPriceBidBookTick,
-      meanBidPriceBidBookTick,
-    ] = [
-      oraclePrice,
-      centralPrice,
+    const [meanAskPriceBidBookTick, meanBidPriceBidBookTick] = [
       askPrices
         .reduce((acc, price) => acc.plus(price), BigNumber(0))
         .div(askPrices.length),
@@ -893,21 +882,21 @@ export class CloberMarketMaker {
       return bidBookTick
     })
 
-    const tickDiff = oraclePriceBidBookTick - centralPriceBidBookTick
-
     return {
       minPrice: BigNumber(
         getMarketPrice({
           marketQuoteCurrency: quoteCurrency,
           marketBaseCurrency: baseCurrency,
-          bidTick: meanBidPriceBidBookTick + tickDiff - BigInt(spongeTick),
+          bidTick:
+            meanBidPriceBidBookTick + BigInt(tickDiff) - BigInt(spongeTick),
         }),
       ),
       maxPrice: BigNumber(
         getMarketPrice({
           marketQuoteCurrency: quoteCurrency,
           marketBaseCurrency: baseCurrency,
-          bidTick: meanAskPriceBidBookTick + tickDiff + BigInt(spongeTick),
+          bidTick:
+            meanAskPriceBidBookTick + BigInt(tickDiff) + BigInt(spongeTick),
         }),
       ),
     }
