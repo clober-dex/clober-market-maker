@@ -87,7 +87,6 @@ export class DexSimulator {
     startBlock: bigint,
     endBlock: bigint,
     previousOraclePrice: BigNumber,
-    currentOraclePrice: BigNumber,
   ): {
     askSpread: number
     bidSpread: number
@@ -98,7 +97,7 @@ export class DexSimulator {
     targetBidPrice: BigNumber
     askVolume: BigNumber
     bidVolume: BigNumber
-    centralPrice: BigNumber
+    tickDiff: number
   } {
     const trades = this.trades[marketId]
       .filter(
@@ -204,7 +203,7 @@ export class DexSimulator {
         const bidBaseVolume = bidProfit.baseDelta.abs()
 
         const centralPrice = askBaseVolume.plus(bidBaseVolume).isZero()
-          ? currentOraclePrice
+          ? previousOraclePrice
           : BigNumber(askProfit.targetAskPrice)
               .times(askBaseVolume)
               .plus(BigNumber(bidProfit.targetBidPrice).times(bidBaseVolume))
@@ -325,6 +324,20 @@ export class DexSimulator {
             ),
           }
 
+    const centralPrice = bestSpreadPair.centralPrice.isZero()
+      ? previousOraclePrice
+      : bestSpreadPair.centralPrice
+    const {
+      normal: {
+        now: { tick: centralPriceBidBookTick },
+      },
+    } = getPriceNeighborhood({
+      chainId: this.chainId,
+      price: centralPrice.toString(),
+      currency0: findCurrencyBySymbol(this.chainId, quote),
+      currency1: findCurrencyBySymbol(this.chainId, base),
+    })
+
     return {
       askSpread: spreads.askSpread,
       bidSpread: spreads.bidSpread,
@@ -335,9 +348,9 @@ export class DexSimulator {
       targetBidPrice: BigNumber(bestSpreadPair.bidPrice),
       askVolume: bestSpreadPair.askBaseVolume,
       bidVolume: bestSpreadPair.bidBaseVolume,
-      centralPrice: bestSpreadPair.centralPrice.isZero()
-        ? currentOraclePrice
-        : bestSpreadPair.centralPrice,
+      tickDiff: Number(
+        previousOraclePriceBidBookTick - centralPriceBidBookTick,
+      ),
     }
   }
 }
