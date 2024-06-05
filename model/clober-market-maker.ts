@@ -447,6 +447,10 @@ export class CloberMarketMaker {
       cancelableQuote,
     } = this.getBalances(baseCurrency, quoteCurrency)
     const oraclePrice = this.oracle.price(market)
+    const onHold = oraclePrice
+      .times(params.startBaseAmount)
+      .plus(params.startQuoteAmount)
+    const onCurrent = oraclePrice.times(totalBase).plus(totalQuote)
     const currentTimestamp = Math.floor(Date.now() / 1000)
 
     if (
@@ -531,7 +535,6 @@ export class CloberMarketMaker {
         )
       }
 
-      const dollarValue = oraclePrice.times(totalBase).plus(totalQuote)
       const newEpoch: Epoch = {
         id: this.epoch[market][this.epoch[market].length - 1].id + 1,
         startTimestamp: currentTimestamp,
@@ -546,10 +549,15 @@ export class CloberMarketMaker {
         bidTicks,
         bidPrices,
         spongeTick,
-        dollarValue,
-        pnl: dollarValue.minus(
-          this.epoch[market][this.epoch[market].length - 1].dollarValue,
-        ),
+        onHold,
+        onCurrent,
+        pnl: onCurrent
+          .minus(onHold)
+          .minus(
+            this.epoch[market][this.epoch[market].length - 1].onCurrent.minus(
+              this.epoch[market][this.epoch[market].length - 1].onHold,
+            ),
+          ),
       }
 
       this.epoch[market].push(newEpoch)
@@ -588,7 +596,8 @@ export class CloberMarketMaker {
         bidTicks,
         bidPrices,
         spongeTick: 0,
-        dollarValue: oraclePrice.times(totalBase).plus(totalQuote),
+        onHold,
+        onCurrent,
         pnl: new BigNumber(0),
       }
 
