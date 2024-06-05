@@ -451,17 +451,9 @@ export class CloberMarketMaker {
           params.maxEpochDurationSeconds <=
           currentTimestamp)
     ) {
-      const [startBlock, endBlock] = await Promise.all([
-        convertTimestampToBlockNumber(
-          this.chainId === arbitrumSepolia.id ? base.id : this.chainId,
-          this.epoch[market][this.epoch[market].length - 1].startTimestamp,
-        ),
-        convertTimestampToBlockNumber(
-          this.chainId === arbitrumSepolia.id ? base.id : this.chainId,
-          currentTimestamp,
-        ),
-      ])
       const {
+        startBlock,
+        endBlock,
         askSpread,
         bidSpread,
         profit,
@@ -472,22 +464,15 @@ export class CloberMarketMaker {
         askVolume,
         bidVolume,
         tickDiff,
-      } = this.dexSimulator.findSpread(
-        market,
-        startBlock,
-        endBlock,
-        this.epoch[market][this.epoch[market].length - 1].oraclePrice,
-      )
+        fromEpochId,
+      } = await this.spreadSimulation(market)
 
       logger(chalk.green, 'Simulation', {
         market,
         startBlock: Number(startBlock),
         endBlock: Number(endBlock),
-        epoch: this.epoch[market][this.epoch[market].length - 1].id,
-        oraclePrice:
-          this.epoch[market][
-            this.epoch[market].length - 1
-          ].oraclePrice.toString(),
+        epoch: this.epoch[market][this.epoch[market].length - 1].id + 1,
+        fromEpochId,
         profit: profit.toString(),
         askProfit: askProfit.toString(),
         bidProfit: bidProfit.toString(),
@@ -940,5 +925,71 @@ export class CloberMarketMaker {
         (maxSpongeTick - minSpongeTick) *
           Math.min(previousEpochDuration / maxEpochDurationSeconds, 1),
     )
+  }
+
+  async spreadSimulation(market: string): Promise<{
+    startBlock: bigint
+    endBlock: bigint
+    askSpread: number
+    bidSpread: number
+    profit: BigNumber
+    askProfit: BigNumber
+    bidProfit: BigNumber
+    targetAskPrice: BigNumber
+    targetBidPrice: BigNumber
+    askVolume: BigNumber
+    bidVolume: BigNumber
+    tickDiff: number
+    fromEpochId: number
+  }> {
+    const endTimestamp = Math.floor(Date.now() / 1000)
+    for (let i = this.epoch[market].length - 1; i >= 0; i--) {
+      const [startBlock, endBlock] = await Promise.all([
+        convertTimestampToBlockNumber(
+          this.chainId === arbitrumSepolia.id ? base.id : this.chainId,
+          this.epoch[market][i].startTimestamp,
+        ),
+        convertTimestampToBlockNumber(
+          this.chainId === arbitrumSepolia.id ? base.id : this.chainId,
+          endTimestamp,
+        ),
+      ])
+      const {
+        askSpread,
+        bidSpread,
+        profit,
+        askProfit,
+        bidProfit,
+        targetAskPrice,
+        targetBidPrice,
+        askVolume,
+        bidVolume,
+        tickDiff,
+      } = this.dexSimulator.findSpread(
+        market,
+        startBlock,
+        endBlock,
+        this.epoch[market][i].oraclePrice,
+      )
+
+      if (profit.isGreaterThan(0) || i === 0) {
+        return {
+          startBlock,
+          endBlock,
+          askSpread,
+          bidSpread,
+          profit,
+          askProfit,
+          bidProfit,
+          targetAskPrice,
+          targetBidPrice,
+          askVolume,
+          bidVolume,
+          tickDiff,
+          fromEpochId: this.epoch[market][i].id,
+        }
+      }
+    }
+    throw new Error('Should not reach here')
   }
 }
