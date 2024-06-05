@@ -187,7 +187,7 @@ export class DexSimulator {
       bidPrice: previousOraclePrice.toString(),
       askBaseVolume: new BigNumber(0),
       bidBaseVolume: new BigNumber(0),
-      centralPrice: new BigNumber(0),
+      centralPrice: previousOraclePrice,
     }
     for (const askProfit of askProfits) {
       for (const bidProfit of bidProfits) {
@@ -324,16 +324,13 @@ export class DexSimulator {
             ),
           }
 
-    const centralPrice = bestSpreadPair.centralPrice.isZero()
-      ? previousOraclePrice
-      : bestSpreadPair.centralPrice
     const {
       normal: {
         now: { tick: centralPriceBidBookTick },
       },
     } = getPriceNeighborhood({
       chainId: this.chainId,
-      price: centralPrice.toString(),
+      price: bestSpreadPair.centralPrice.toString(),
       currency0: findCurrencyBySymbol(this.chainId, quote),
       currency1: findCurrencyBySymbol(this.chainId, base),
     })
