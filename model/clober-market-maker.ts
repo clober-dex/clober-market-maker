@@ -448,7 +448,7 @@ export class CloberMarketMaker {
           this.epoch[market][this.epoch[market].length - 1].maxPrice,
         ) ||
         this.epoch[market][this.epoch[market].length - 1].startTimestamp +
-          params.maxEpochDuration <=
+          params.maxEpochDurationSeconds <=
           currentTimestamp)
     ) {
       const [startBlock, endBlock] = await Promise.all([
@@ -514,7 +514,7 @@ export class CloberMarketMaker {
       const spongeTick = this.calculateSpongeTick(
         currentTimestamp -
           this.epoch[market][this.epoch[market].length - 1].startTimestamp,
-        params.maxEpochDuration,
+        params.maxEpochDurationSeconds,
         params.minSpongeTick,
         params.maxSpongeTick,
       )
@@ -931,14 +931,14 @@ export class CloberMarketMaker {
 
   calculateSpongeTick(
     previousEpochDuration: number,
-    maxEpochDuration: number,
+    maxEpochDurationSeconds: number,
     minSpongeTick: number,
     maxSpongeTick: number,
   ): number {
     return Math.floor(
       minSpongeTick +
         (maxSpongeTick - minSpongeTick) *
-          Math.min(previousEpochDuration / maxEpochDuration, 1),
+          Math.min(previousEpochDuration / maxEpochDurationSeconds, 1),
     )
   }
 }
