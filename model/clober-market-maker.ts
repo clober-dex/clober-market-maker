@@ -516,6 +516,14 @@ export class CloberMarketMaker {
         askPrices,
         bidPrices,
       )
+      if (
+        oraclePrice.isLessThan(minPrice) ||
+        oraclePrice.isGreaterThan(maxPrice)
+      ) {
+        throw new Error(
+          `Oracle price ${oraclePrice.toString()} is not in the range of minPrice ${minPrice.toString()} and maxPrice ${maxPrice.toString()}`,
+        )
+      }
 
       const newEpoch: Epoch = {
         id: this.epoch[market][this.epoch[market].length - 1].id + 1,
@@ -553,22 +561,14 @@ export class CloberMarketMaker {
           params.orderGap,
         )
 
-      const { minPrice, maxPrice } = this.calculateMinMaxPrice(
-        0,
-        params.spongeTick,
-        quoteCurrency,
-        baseCurrency,
-        askPrices,
-        bidPrices,
-      )
-
+      const { askPrice, bidPrice } = this.getProposedPrice(askPrices, bidPrices)
       const newEpoch: Epoch = {
         id: 0,
         startTimestamp: Math.floor(Date.now() / 1000),
         askSpread: params.defaultAskTickSpread,
         bidSpread: params.defaultBidTickSpread,
-        minPrice,
-        maxPrice,
+        minPrice: bidPrice,
+        maxPrice: askPrice,
         oraclePrice,
         tickDiff: 0,
         askTicks,
@@ -850,6 +850,23 @@ export class CloberMarketMaker {
     return new Promise((resolve) => setTimeout(resolve, ms))
   }
 
+  getProposedPrice(
+    askPrices: BigNumber[],
+    bidPrices: BigNumber[],
+  ): {
+    askPrice: BigNumber
+    bidPrice: BigNumber
+  } {
+    return {
+      askPrice: askPrices
+        .reduce((acc, price) => acc.plus(price), BigNumber(0))
+        .div(askPrices.length),
+      bidPrice: bidPrices
+        .reduce((acc, price) => acc.plus(price), BigNumber(0))
+        .div(bidPrices.length),
+    }
+  }
+
   calculateMinMaxPrice(
     tickDiff: number,
     spongeTick: number,
@@ -861,13 +878,10 @@ export class CloberMarketMaker {
     minPrice: BigNumber
     maxPrice: BigNumber
   } {
+    const { askPrice, bidPrice } = this.getProposedPrice(askPrices, bidPrices)
     const [meanAskPriceBidBookTick, meanBidPriceBidBookTick] = [
-      askPrices
-        .reduce((acc, price) => acc.plus(price), BigNumber(0))
-        .div(askPrices.length),
-      bidPrices
-        .reduce((acc, price) => acc.plus(price), BigNumber(0))
-        .div(bidPrices.length),
+      askPrice,
+      bidPrice,
     ].map((price) => {
       const {
         normal: {
