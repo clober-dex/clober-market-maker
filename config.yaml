@@ -26,6 +26,6 @@ markets:
       orderNum: 1
       startQuoteAmount: 386300
       startBaseAmount: 100
-      maxEpochDurationSeconds: 300
+      maxEpochDurationSeconds: 60
       minSpongeTick: 0
       maxSpongeTick: 6
