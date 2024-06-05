@@ -437,6 +437,7 @@ export class CloberMarketMaker {
       market.split('/')[0],
     )
     const oraclePrice = this.oracle.price(market)
+    const currentTimestamp = Math.floor(Date.now() / 1000)
 
     if (
       this.epoch[market] &&
@@ -445,9 +446,11 @@ export class CloberMarketMaker {
       ) ||
         oraclePrice.isGreaterThan(
           this.epoch[market][this.epoch[market].length - 1].maxPrice,
-        ))
+        ) ||
+        this.epoch[market][this.epoch[market].length - 1].startTimestamp +
+          params.maxEpochDurationSeconds <=
+          currentTimestamp)
     ) {
-      const timestamp = Math.floor(Date.now() / 1000)
       const [startBlock, endBlock] = await Promise.all([
         convertTimestampToBlockNumber(
           this.chainId === arbitrumSepolia.id ? base.id : this.chainId,
@@ -455,7 +458,7 @@ export class CloberMarketMaker {
         ),
         convertTimestampToBlockNumber(
           this.chainId === arbitrumSepolia.id ? base.id : this.chainId,
-          timestamp,
+          currentTimestamp,
         ),
       ])
       const {
@@ -508,9 +511,17 @@ export class CloberMarketMaker {
           params.orderGap,
         )
 
+      const spongeTick = this.calculateSpongeTick(
+        currentTimestamp -
+          this.epoch[market][this.epoch[market].length - 1].startTimestamp,
+        params.maxEpochDurationSeconds,
+        params.minSpongeTick,
+        params.maxSpongeTick,
+      )
+
       const { minPrice, maxPrice } = this.calculateMinMaxPrice(
         tickDiff,
-        params.spongeTick,
+        spongeTick,
         quoteCurrency,
         baseCurrency,
         askPrices,
@@ -527,7 +538,7 @@ export class CloberMarketMaker {
 
       const newEpoch: Epoch = {
         id: this.epoch[market][this.epoch[market].length - 1].id + 1,
-        startTimestamp: timestamp,
+        startTimestamp: currentTimestamp,
         askSpread,
         bidSpread,
         minPrice,
@@ -538,6 +549,7 @@ export class CloberMarketMaker {
         askPrices,
         bidTicks,
         bidPrices,
+        spongeTick,
       }
 
       this.epoch[market].push(newEpoch)
@@ -564,7 +576,7 @@ export class CloberMarketMaker {
       const { askPrice, bidPrice } = this.getProposedPrice(askPrices, bidPrices)
       const newEpoch: Epoch = {
         id: 0,
-        startTimestamp: Math.floor(Date.now() / 1000),
+        startTimestamp: currentTimestamp,
         askSpread: params.defaultAskTickSpread,
         bidSpread: params.defaultBidTickSpread,
         minPrice: bidPrice,
@@ -575,6 +587,7 @@ export class CloberMarketMaker {
         askPrices,
         bidTicks,
         bidPrices,
+        spongeTick: 0,
       }
 
       this.epoch[market] = [newEpoch]
@@ -914,5 +927,18 @@ export class CloberMarketMaker {
         }),
       ),
     }
+  }
+
+  calculateSpongeTick(
+    previousEpochDuration: number,
+    maxEpochDurationSeconds: number,
+    minSpongeTick: number,
+    maxSpongeTick: number,
+  ): number {
+    return Math.floor(
+      minSpongeTick +
+        (maxSpongeTick - minSpongeTick) *
+          Math.min(previousEpochDuration / maxEpochDurationSeconds, 1),
+    )
   }
 }

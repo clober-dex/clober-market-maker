@@ -7,10 +7,12 @@ import type { Market } from './market.ts'
  * @property {number} defaultAskTickSpread - The default spread for ask orders.
  * @property {number} orderGap - The order gap for trading.
  * @property {number} orderNum - The number of orders for trading.
- * @property {number} spongeTick - The tick sponge for trading.
  * @property {number} balancePercentage - The balance percentage for trading.
  * @property {number} startQuoteAmount - The starting quote amount for trading.
  * @property {number} startBaseAmount - The starting base amount for trading.
+ * @property {number} maxEpochDurationSeconds - The maximum epoch duration in seconds.
+ * @property {number} minSpongeTick - The minimum sponge tick for trading.
+ * @property {number} maxSpongeTick - The maximum sponge tick for trading.
  */
 
 export type Params = {
@@ -18,10 +20,12 @@ export type Params = {
   defaultAskTickSpread: number
   orderGap: number
   orderNum: number
-  spongeTick: number
   balancePercentage: number
   startQuoteAmount: number
   startBaseAmount: number
+  maxEpochDurationSeconds: number
+  minSpongeTick: number
+  maxSpongeTick: number
 }
 
 export type Config = {
