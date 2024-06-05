@@ -27,3 +27,4 @@ markets:
       orderNum: 1
       startQuoteAmount: 386300
       startBaseAmount: 100
+      maxEpochDuration: 300
