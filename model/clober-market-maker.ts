@@ -549,6 +549,7 @@ export class CloberMarketMaker {
         askPrices,
         bidTicks,
         bidPrices,
+        spongeTick,
       }
 
       this.epoch[market].push(newEpoch)
@@ -586,6 +587,7 @@ export class CloberMarketMaker {
         askPrices,
         bidTicks,
         bidPrices,
+        spongeTick: 0,
       }
 
       this.epoch[market] = [newEpoch]
