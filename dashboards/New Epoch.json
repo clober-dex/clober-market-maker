@@ -1,0 +1,316 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": 8,
+  "links": [],
+  "panels": [
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "bdmk67audh3b4a"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 23,
+        "x": 0,
+        "y": 0
+      },
+      "id": 2,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": true,
+            "displayName": "Time"
+          }
+        ]
+      },
+      "pluginVersion": "10.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "bdmk67audh3b4a"
+          },
+          "editorMode": "builder",
+          "expr": "{app=\"clober-mm-Arbitrum Sepolia\"} | json | message = `Simulation`",
+          "queryType": "range",
+          "refId": "A"
+        }
+      ],
+      "title": "Taker Simulator Logger",
+      "transformations": [
+        {
+          "id": "extractFields",
+          "options": {
+            "format": "json",
+            "jsonPaths": [
+              {
+                "alias": "id",
+                "path": "epoch"
+              },
+              {
+                "alias": "askSpread",
+                "path": "askSpread"
+              },
+              {
+                "alias": "bidSpread",
+                "path": "bidSpread"
+              },
+              {
+                "alias": "profit",
+                "path": "profit"
+              },
+              {
+                "alias": "targetAskPrice",
+                "path": "targetAskPrice"
+              },
+              {
+                "alias": "oraclePrice",
+                "path": "oraclePrice"
+              },
+              {
+                "alias": "targetBidPrice",
+                "path": "targetBidPrice"
+              },
+              {
+                "alias": "startBlock",
+                "path": "startBlock"
+              },
+              {
+                "alias": "endBlock",
+                "path": "endBlock"
+              },
+              {
+                "alias": "askProfit",
+                "path": "askProfit"
+              },
+              {
+                "alias": "bidProfit",
+                "path": "bidProfit"
+              },
+              {
+                "alias": "askVolume",
+                "path": "askVolume"
+              },
+              {
+                "alias": "bidVolume",
+                "path": "bidVolume"
+              }
+            ],
+            "keepTime": true,
+            "replace": true,
+            "source": "labels"
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "bdmk67audh3b4a"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 11,
+        "w": 23,
+        "x": 0,
+        "y": 8
+      },
+      "id": 1,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": true,
+            "displayName": "Time"
+          }
+        ]
+      },
+      "pluginVersion": "10.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "bdmk67audh3b4a"
+          },
+          "editorMode": "builder",
+          "expr": "{app=\"clober-mm-Arbitrum Sepolia\"} | json | message = `New Epoch`",
+          "queryType": "range",
+          "refId": "A"
+        }
+      ],
+      "title": "Epoch",
+      "transformations": [
+        {
+          "id": "extractFields",
+          "options": {
+            "format": "json",
+            "jsonPaths": [
+              {
+                "alias": "Id",
+                "path": "id"
+              },
+              {
+                "alias": "askSpread",
+                "path": "askSpread"
+              },
+              {
+                "alias": "bidSpread",
+                "path": "bidSpread"
+              },
+              {
+                "alias": "tickDiff",
+                "path": "tickDiff"
+              },
+              {
+                "alias": "minPrice",
+                "path": "minPrice"
+              },
+              {
+                "alias": "maxPrice",
+                "path": "maxPrice"
+              },
+              {
+                "alias": "oraclePrice",
+                "path": "oraclePrice"
+              },
+              {
+                "alias": "askPrices",
+                "path": "askPrices"
+              },
+              {
+                "alias": "bidPrices",
+                "path": "bidPrices"
+              }
+            ],
+            "keepTime": true,
+            "replace": true,
+            "source": "Line"
+          }
+        },
+        {
+          "id": "convertFieldType",
+          "options": {
+            "conversions": [
+              {
+                "destinationType": "number",
+                "targetField": "Id"
+              }
+            ],
+            "fields": {}
+          }
+        }
+      ],
+      "type": "table"
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": [],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "New Epoch",
+  "uid": "edmyjl3nzicqof",
+  "version": 26,
+  "weekStart": ""
+}

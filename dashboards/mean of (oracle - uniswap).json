@@ -1,0 +1,207 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": 10,
+  "links": [],
+  "panels": [
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "bdmk67audh3b4a"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "bars",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 15,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 2,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "10.4.3",
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "bdmk67audh3b4a"
+          },
+          "editorMode": "code",
+          "expr": "avg(avg_over_time({app=\"clober-mm-Arbitrum Sepolia\"} | json | message = `Swap Event` | uniswapHighestBidPrice != `-` | uniswapLowestAskPrice != `-` | unwrap uniswapHighestBidPrice [30m]))",
+          "legendFormat": "bid",
+          "queryType": "range",
+          "refId": "A",
+          "step": "30m"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "bdmk67audh3b4a"
+          },
+          "editorMode": "code",
+          "expr": "avg(avg_over_time({app=\"clober-mm-Arbitrum Sepolia\"} | json | message = `Swap Event` | uniswapHighestBidPrice != `-` | uniswapLowestAskPrice != `-` | unwrap uniswapLowestAskPrice [30m]))",
+          "hide": false,
+          "legendFormat": "ask",
+          "queryType": "range",
+          "refId": "B",
+          "step": "30m"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "bdmk67audh3b4a"
+          },
+          "editorMode": "code",
+          "expr": "avg(avg_over_time({app=\"clober-mm-Arbitrum Sepolia\"} | json | message = `Swap Event` | uniswapHighestBidPrice != `-` | uniswapLowestAskPrice != `-` | unwrap oraclePrice [30m]))",
+          "hide": false,
+          "legendFormat": "oracle",
+          "queryType": "range",
+          "refId": "C",
+          "step": "30m"
+        }
+      ],
+      "title": "Diff of oracle - onchain",
+      "transformations": [
+        {
+          "id": "calculateField",
+          "options": {
+            "alias": "sum",
+            "binary": {
+              "left": "bid",
+              "right": "ask"
+            },
+            "mode": "binary",
+            "reduce": {
+              "reducer": "sum"
+            }
+          }
+        },
+        {
+          "id": "calculateField",
+          "options": {
+            "alias": "mean",
+            "binary": {
+              "left": "sum",
+              "operator": "/",
+              "right": "2"
+            },
+            "mode": "binary",
+            "reduce": {
+              "reducer": "sum"
+            }
+          }
+        },
+        {
+          "id": "calculateField",
+          "options": {
+            "binary": {
+              "left": "oracle",
+              "operator": "-",
+              "right": "mean"
+            },
+            "mode": "binary",
+            "reduce": {
+              "reducer": "sum"
+            },
+            "replaceFields": true
+          }
+        }
+      ],
+      "type": "timeseries"
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": [],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "mean of (oracle - uniswap)",
+  "uid": "ddntjviqa20aod",
+  "version": 3,
+  "weekStart": ""
+}

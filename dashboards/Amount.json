@@ -24,7 +24,7 @@
     {
       "datasource": {
         "type": "loki",
-        "uid": "ddmgklxwgdipsb"
+        "uid": "bdmk67audh3b4a"
       },
       "fieldConfig": {
         "defaults": {
@@ -70,50 +70,15 @@
               {
                 "color": "green",
                 "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
               }
             ]
           }
         },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Quote Net"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "dark-green",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "PnL in Quote"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "yellow",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          }
-        ]
+        "overrides": []
       },
       "gridPos": {
-        "h": 12,
-        "w": 23,
+        "h": 11,
+        "w": 22,
         "x": 0,
         "y": 0
       },
@@ -137,12 +102,13 @@
             "uid": "admc3w818idc0e"
           },
           "editorMode": "builder",
-          "expr": "{app=\"clober-mm-Arbitrum Sepolia\"} | json | message = `PnL`",
+          "expr": "{app=\"clober-mm-Arbitrum Sepolia\"} | json | message = `Balance`",
+          "legendFormat": "",
           "queryType": "range",
           "refId": "A"
         }
       ],
-      "title": "PnL",
+      "title": "Base Amount",
       "transformations": [
         {
           "id": "extractFields",
@@ -150,17 +116,25 @@
             "format": "json",
             "jsonPaths": [
               {
-                "alias": "onHold",
-                "path": "onHold"
+                "alias": "Total",
+                "path": "totalBase"
               },
               {
-                "alias": "onCurrent",
-                "path": "onCurrent"
+                "alias": "Free",
+                "path": "freeBase"
+              },
+              {
+                "alias": "Claimable",
+                "path": "claimableBase"
+              },
+              {
+                "alias": "Open",
+                "path": "cancelableBase"
               }
             ],
             "keepTime": true,
             "replace": true,
-            "source": "Line"
+            "source": "labels"
           }
         },
         {
@@ -169,11 +143,19 @@
             "conversions": [
               {
                 "destinationType": "number",
-                "targetField": "onHold"
+                "targetField": "Total"
               },
               {
                 "destinationType": "number",
-                "targetField": "onCurrent"
+                "targetField": "Free"
+              },
+              {
+                "destinationType": "number",
+                "targetField": "Claimable"
+              },
+              {
+                "destinationType": "number",
+                "targetField": "Open"
               }
             ],
             "fields": {}
@@ -185,7 +167,7 @@
     {
       "datasource": {
         "type": "loki",
-        "uid": "ddmgklxwgdipsb"
+        "uid": "bdmk67audh3b4a"
       },
       "fieldConfig": {
         "defaults": {
@@ -231,10 +213,6 @@
               {
                 "color": "green",
                 "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
               }
             ]
           }
@@ -243,9 +221,9 @@
       },
       "gridPos": {
         "h": 11,
-        "w": 23,
+        "w": 22,
         "x": 0,
-        "y": 12
+        "y": 11
       },
       "id": 3,
       "options": {
@@ -260,23 +238,44 @@
           "sort": "none"
         }
       },
+      "pluginVersion": "10.4.3",
       "targets": [
         {
           "datasource": {
             "type": "loki",
-            "uid": "ddmgklxwgdipsb"
+            "uid": "admc3w818idc0e"
           },
           "editorMode": "builder",
-          "expr": "{app=\"clober-mm-Arbitrum Sepolia\"} | json | message = `PnL`",
+          "expr": "{app=\"clober-mm-Arbitrum Sepolia\"} | json | message = `Balance`",
+          "legendFormat": "",
           "queryType": "range",
           "refId": "A"
         }
       ],
-      "title": "Delta (obHold - onCurrent)",
+      "title": "Quote Amount",
       "transformations": [
         {
           "id": "extractFields",
           "options": {
+            "format": "json",
+            "jsonPaths": [
+              {
+                "alias": "Total",
+                "path": "totalQuote"
+              },
+              {
+                "alias": "Free",
+                "path": "freeQuote"
+              },
+              {
+                "alias": "Claimable",
+                "path": "claimableQuote"
+              },
+              {
+                "alias": "Open",
+                "path": "cancelableQuote"
+              }
+            ],
             "keepTime": true,
             "replace": true,
             "source": "labels"
@@ -288,28 +287,10 @@
             "conversions": [
               {
                 "destinationType": "number",
-                "targetField": "onHold"
-              },
-              {
-                "destinationType": "number",
-                "targetField": "onCurrent"
+                "targetField": "Total"
               }
             ],
             "fields": {}
-          }
-        },
-        {
-          "id": "calculateField",
-          "options": {
-            "mode": "reduceRow",
-            "reduce": {
-              "include": [
-                "onHold",
-                "onCurrent"
-              ],
-              "reducer": "delta"
-            },
-            "replaceFields": true
           }
         }
       ],
@@ -327,8 +308,8 @@
   },
   "timepicker": {},
   "timezone": "browser",
-  "title": "PnL",
-  "uid": "fdmgoi36ppmo0c",
-  "version": 4,
+  "title": "Amount",
+  "uid": "cdmgoxs5yxla8a",
+  "version": 5,
   "weekStart": ""
 }

@@ -18,13 +18,13 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": 8,
+  "id": 6,
   "links": [],
   "panels": [
     {
       "datasource": {
         "type": "loki",
-        "uid": "ddmgklxwgdipsb"
+        "uid": "bdmk67audh3b4a"
       },
       "fieldConfig": {
         "defaults": {
@@ -81,8 +81,8 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 8,
-        "w": 12,
+        "h": 14,
+        "w": 21,
         "x": 0,
         "y": 0
       },
@@ -150,128 +150,6 @@
         }
       ],
       "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "loki",
-        "uid": "ddmgklxwgdipsb"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "drawStyle": "line",
-            "fillOpacity": 0,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "insertNulls": false,
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "auto",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 9,
-        "x": 0,
-        "y": 8
-      },
-      "id": 2,
-      "options": {
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "single",
-          "sort": "none"
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "loki",
-            "uid": "admc3w818idc0e"
-          },
-          "editorMode": "builder",
-          "expr": "{app=\"clober-mm-Arbitrum Sepolia\"} | json | message = `Execute Detail`",
-          "queryType": "range",
-          "refId": "A"
-        }
-      ],
-      "title": "Skew",
-      "transformations": [
-        {
-          "id": "extractFields",
-          "options": {
-            "format": "json",
-            "jsonPaths": [
-              {
-                "alias": "Skew",
-                "path": "skew"
-              }
-            ],
-            "keepTime": true,
-            "replace": true,
-            "source": "Line"
-          }
-        },
-        {
-          "id": "convertFieldType",
-          "options": {
-            "conversions": [
-              {
-                "destinationType": "number",
-                "targetField": "Skew"
-              }
-            ],
-            "fields": {}
-          }
-        }
-      ],
-      "type": "timeseries"
     }
   ],
   "schemaVersion": 39,
@@ -287,6 +165,6 @@
   "timezone": "browser",
   "title": "Spread",
   "uid": "bdmjxth7p46psb",
-  "version": 5,
+  "version": 4,
   "weekStart": ""
 }

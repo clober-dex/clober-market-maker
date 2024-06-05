@@ -18,7 +18,7 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": 7,
+  "id": 4,
   "links": [],
   "panels": [
     {
@@ -38,16 +38,27 @@
             "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
-            "fillOpacity": 80,
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
             "gradientMode": "none",
             "hideFrom": {
               "legend": false,
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
             "lineWidth": 1,
+            "pointSize": 5,
             "scaleDistribution": {
               "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
             },
             "thresholdsStyle": {
               "mode": "off"
@@ -71,33 +82,23 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 11,
-        "w": 20,
+        "h": 13,
+        "w": 23,
         "x": 0,
         "y": 0
       },
-      "id": 3,
-      "interval": "1h",
+      "id": 2,
       "options": {
-        "barRadius": 0,
-        "barWidth": 0.97,
-        "fullHighlight": false,
-        "groupWidth": 0.7,
         "legend": {
           "calcs": [],
           "displayMode": "list",
           "placement": "bottom",
           "showLegend": true
         },
-        "orientation": "auto",
-        "showValue": "auto",
-        "stacking": "none",
         "tooltip": {
           "mode": "single",
           "sort": "none"
-        },
-        "xTickLabelRotation": 0,
-        "xTickLabelSpacing": 0
+        }
       },
       "targets": [
         {
@@ -105,29 +106,59 @@
             "type": "loki",
             "uid": "admc3w818idc0e"
           },
-          "editorMode": "code",
-          "expr": "sum (\n  sum_over_time(\n    {app=\"clober-mm-Arbitrum Sepolia\"} | json | message = `Swap Event` | unwrap uniswapVolume\n  [1h]) \n)",
-          "legendFormat": "Uni Volume",
+          "editorMode": "builder",
+          "expr": "{app=\"clober-mm-Arbitrum Sepolia\"} | json | message = `Execute Detail`",
           "queryType": "range",
-          "refId": "A",
-          "step": "1h"
-        },
-        {
-          "datasource": {
-            "type": "loki",
-            "uid": "bdmk67audh3b4a"
-          },
-          "editorMode": "code",
-          "expr": "sum (\n  sum_over_time(\n    {app=\"clober-mm-Arbitrum Sepolia\"} | json | message = `Swap Event` | unwrap cloberVolume\n  [1h]) \n)",
-          "hide": false,
-          "legendFormat": "Clober Volume",
-          "queryType": "range",
-          "refId": "B",
-          "step": "1h"
+          "refId": "A"
         }
       ],
-      "title": "Volume of Swap Event",
-      "type": "barchart"
+      "title": "Targeting Order",
+      "transformations": [
+        {
+          "id": "extractFields",
+          "options": {
+            "format": "json",
+            "jsonPaths": [
+              {
+                "alias": "Binance",
+                "path": "oraclePrice"
+              },
+              {
+                "alias": "Target Lowest Ask",
+                "path": "lowestAsk"
+              },
+              {
+                "alias": "Target highest Bid",
+                "path": "highestBid"
+              }
+            ],
+            "keepTime": true,
+            "replace": true,
+            "source": "Line"
+          }
+        },
+        {
+          "id": "convertFieldType",
+          "options": {
+            "conversions": [
+              {
+                "destinationType": "number",
+                "targetField": "Binance"
+              },
+              {
+                "destinationType": "number",
+                "targetField": "Target Lowest Ask"
+              },
+              {
+                "destinationType": "number",
+                "targetField": "Target highest Bid"
+              }
+            ],
+            "fields": {}
+          }
+        }
+      ],
+      "type": "timeseries"
     },
     {
       "datasource": {
@@ -145,16 +176,27 @@
             "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
-            "fillOpacity": 80,
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
             "gradientMode": "none",
             "hideFrom": {
               "legend": false,
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
             "lineWidth": 1,
+            "pointSize": 5,
             "scaleDistribution": {
               "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
             },
             "thresholdsStyle": {
               "mode": "off"
@@ -178,33 +220,25 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 12,
-        "w": 20,
+        "h": 10,
+        "w": 21,
         "x": 0,
-        "y": 11
+        "y": 13
       },
-      "id": 2,
+      "id": 4,
       "options": {
-        "barRadius": 0,
-        "barWidth": 0.97,
-        "fullHighlight": false,
-        "groupWidth": 0.7,
         "legend": {
           "calcs": [],
           "displayMode": "list",
           "placement": "bottom",
           "showLegend": true
         },
-        "orientation": "auto",
-        "showValue": "auto",
-        "stacking": "none",
         "tooltip": {
           "mode": "single",
           "sort": "none"
-        },
-        "xTickLabelRotation": 0,
-        "xTickLabelSpacing": 0
+        }
       },
+      "pluginVersion": "10.4.3",
       "targets": [
         {
           "datasource": {
@@ -212,9 +246,9 @@
             "uid": "bdmk67audh3b4a"
           },
           "editorMode": "code",
-          "expr": "sum (\n  sum_over_time(\n    {app=\"clober-mm-Arbitrum Sepolia\"} | json | message = `Swap Event` | unwrap hashesLength\n  [1h]) \n)",
+          "expr": "sum (\n  sum_over_time(\n    {app=\"clober-mm-Arbitrum Sepolia\"} | json | message = `Execute Detail` | unwrap targetAskOrderLength\n  [1h]) \n)",
           "hide": false,
-          "legendFormat": "Odos Swap",
+          "legendFormat": "Ask",
           "queryType": "range",
           "refId": "A",
           "step": "1h"
@@ -225,29 +259,16 @@
             "uid": "bdmk67audh3b4a"
           },
           "editorMode": "code",
-          "expr": "sum (\n  sum_over_time(\n    {app=\"clober-mm-Arbitrum Sepolia\"} | json | message = `Swap Event` | unwrap tradesLength\n  [1h]) \n)",
+          "expr": "sum (\n  sum_over_time(\n    {app=\"clober-mm-Arbitrum Sepolia\"} | json | message = `Execute Detail` | unwrap targetBidOrderLength\n  [1h]) \n)",
           "hide": false,
-          "legendFormat": "Uni Swap",
+          "legendFormat": "Bid",
           "queryType": "range",
           "refId": "B",
           "step": "1h"
-        },
-        {
-          "datasource": {
-            "type": "loki",
-            "uid": "bdmk67audh3b4a"
-          },
-          "editorMode": "code",
-          "expr": "sum (\n  sum_over_time(\n    {app=\"clober-mm-Arbitrum Sepolia\"} | json | message = `Swap Event` | unwrap numberOfMarketOrders\n  [1h]) \n)",
-          "hide": false,
-          "legendFormat": "Clober Swap",
-          "queryType": "range",
-          "refId": "C",
-          "step": "1h"
         }
       ],
-      "title": "Number of Swap Event",
-      "type": "barchart"
+      "title": "Number of Order(Make)",
+      "type": "timeseries"
     }
   ],
   "schemaVersion": 39,
@@ -256,13 +277,13 @@
     "list": []
   },
   "time": {
-    "from": "now-24h",
+    "from": "now-6h",
     "to": "now"
   },
   "timepicker": {},
   "timezone": "browser",
-  "title": "Taker",
-  "uid": "edmgolfu2nncwe",
+  "title": "Order Targeting",
+  "uid": "edmgotrro8o3ke",
   "version": 7,
   "weekStart": ""
 }
