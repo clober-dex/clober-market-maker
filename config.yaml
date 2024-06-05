@@ -28,4 +28,4 @@ markets:
       startBaseAmount: 100
       maxEpochDurationSeconds: 60
       minSpongeTick: 0
-      maxSpongeTick: 6
+      maxSpongeTick: 2
