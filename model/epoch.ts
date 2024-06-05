@@ -15,4 +15,6 @@ export type Epoch = {
   bidTicks: number[] // toTick(oraclePrice) - bidSpread
   bidPrices: BigNumber[]
   spongeTick: number
+  dollarValue: BigNumber
+  pnl: BigNumber
 }

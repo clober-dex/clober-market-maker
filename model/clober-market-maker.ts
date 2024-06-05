@@ -436,6 +436,16 @@ export class CloberMarketMaker {
       this.chainId,
       market.split('/')[0],
     )
+    const {
+      totalBase,
+      freeBase,
+      claimableBase,
+      cancelableBase,
+      totalQuote,
+      freeQuote,
+      claimableQuote,
+      cancelableQuote,
+    } = this.getBalances(baseCurrency, quoteCurrency)
     const oraclePrice = this.oracle.price(market)
     const currentTimestamp = Math.floor(Date.now() / 1000)
 
@@ -521,6 +531,7 @@ export class CloberMarketMaker {
         )
       }
 
+      const dollarValue = oraclePrice.times(totalBase).plus(totalQuote)
       const newEpoch: Epoch = {
         id: this.epoch[market][this.epoch[market].length - 1].id + 1,
         startTimestamp: currentTimestamp,
@@ -535,6 +546,10 @@ export class CloberMarketMaker {
         bidTicks,
         bidPrices,
         spongeTick,
+        dollarValue,
+        pnl: dollarValue.minus(
+          this.epoch[market][this.epoch[market].length - 1].dollarValue,
+        ),
       }
 
       this.epoch[market].push(newEpoch)
@@ -573,6 +588,8 @@ export class CloberMarketMaker {
         bidTicks,
         bidPrices,
         spongeTick: 0,
+        dollarValue: oraclePrice.times(totalBase).plus(totalQuote),
+        pnl: new BigNumber(0),
       }
 
       this.epoch[market] = [newEpoch]
@@ -584,16 +601,6 @@ export class CloberMarketMaker {
     }
 
     const openOrders = this.getOpenOrders(baseCurrency, quoteCurrency)
-    const {
-      totalBase,
-      freeBase,
-      claimableBase,
-      cancelableBase,
-      totalQuote,
-      freeQuote,
-      claimableQuote,
-      cancelableQuote,
-    } = this.getBalances(baseCurrency, quoteCurrency)
 
     await logger(chalk.redBright, 'Balance', {
       market,
