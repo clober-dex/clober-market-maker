@@ -19,7 +19,6 @@ markets:
       quote: USDC
       base: WETH
     params:
-      spongeTick: 6
       balancePercentage: 20
       defaultBidTickSpread: 6
       defaultAskTickSpread: 6
@@ -28,3 +27,5 @@ markets:
       startQuoteAmount: 386300
       startBaseAmount: 100
       maxEpochDuration: 300
+      minSpongeTick: 0
+      maxSpongeTick: 6

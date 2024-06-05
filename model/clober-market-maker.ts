@@ -511,9 +511,17 @@ export class CloberMarketMaker {
           params.orderGap,
         )
 
+      const spongeTick = this.calculateSpongeTick(
+        currentTimestamp -
+          this.epoch[market][this.epoch[market].length - 1].startTimestamp,
+        params.maxEpochDuration,
+        params.minSpongeTick,
+        params.maxSpongeTick,
+      )
+
       const { minPrice, maxPrice } = this.calculateMinMaxPrice(
         tickDiff,
-        params.spongeTick,
+        spongeTick,
         quoteCurrency,
         baseCurrency,
         askPrices,
@@ -917,5 +925,18 @@ export class CloberMarketMaker {
         }),
       ),
     }
+  }
+
+  calculateSpongeTick(
+    previousEpochDuration: number,
+    maxEpochDuration: number,
+    minSpongeTick: number,
+    maxSpongeTick: number,
+  ): number {
+    return Math.floor(
+      minSpongeTick +
+        (maxSpongeTick - minSpongeTick) *
+          Math.min(previousEpochDuration / maxEpochDuration, 1),
+    )
   }
 }
