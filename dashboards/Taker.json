@@ -588,7 +588,7 @@
       "type": "barchart"
     }
   ],
-  "refresh": "5s",
+  "refresh": "",
   "schemaVersion": 39,
   "tags": [],
   "templating": {
@@ -602,6 +602,6 @@
   "timezone": "browser",
   "title": "Taker",
   "uid": "edmgolfu2nncwe",
-  "version": 49,
+  "version": 50,
   "weekStart": ""
 }

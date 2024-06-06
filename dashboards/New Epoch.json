@@ -245,6 +245,10 @@
                 "path": "id"
               },
               {
+                "alias": "pnl",
+                "path": "pnl"
+              },
+              {
                 "alias": "askSpread",
                 "path": "askSpread"
               },
@@ -316,6 +320,6 @@
   "timezone": "browser",
   "title": "New Epoch",
   "uid": "edmyjl3nzicqof",
-  "version": 28,
+  "version": 29,
   "weekStart": ""
 }
