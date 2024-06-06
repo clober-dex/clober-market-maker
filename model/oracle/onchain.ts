@@ -1,5 +1,6 @@
 import { CHAIN_IDS } from '@clober/v2-sdk'
 import chalk from 'chalk'
+import { formatUnits, getAddress, parseUnits } from 'viem'
 
 import { logger } from '../../utils/logger.ts'
 import BigNumber from '../../utils/bignumber.ts'
@@ -28,13 +29,42 @@ export class OnChain implements Oracle {
     const start = performance.now()
     for (const [id] of Object.entries(this.markets)) {
       const baseCurrency = findCurrencyBySymbol(this.chainId, id.split('/')[0])
+      const quoteCurrency = findCurrencyBySymbol(this.chainId, id.split('/')[1])
       fetchQueue.push(
-        fetch(
-          `https://api.odos.xyz/pricing/token/${this.chainId}/${baseCurrency.address}`,
-        )
-          .then((res) => res.json() as unknown as { price: string })
-          .then(({ price }) => {
-            this.prices[id] = new BigNumber(price)
+        fetch(`https://api.odos.xyz/sor/quote/v2`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            chainId: this.chainId,
+            inputTokens: [
+              {
+                tokenAddress: getAddress(baseCurrency.address),
+                amount: parseUnits('1', baseCurrency.decimals).toString(),
+              },
+            ],
+            outputTokens: [
+              {
+                tokenAddress: getAddress(quoteCurrency.address),
+                proportion: 1,
+              },
+            ],
+            slippageLimitPercent: 0.3,
+            disableRFQs: false,
+            compact: true,
+          }),
+        })
+          .then(
+            (res) =>
+              res.json() as unknown as {
+                outAmounts: string[]
+              },
+          )
+          .then(({ outAmounts }) => {
+            this.prices[id] = new BigNumber(
+              formatUnits(BigInt(outAmounts[0]), quoteCurrency.decimals),
+            )
           }),
       )
     }
