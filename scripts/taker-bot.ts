@@ -33,6 +33,7 @@ import { WHITELIST_DEX } from '../constants/dex.ts'
 import { Binance } from '../model/oracle/binance.ts'
 import { type Config } from '../model/config.ts'
 import { Clober } from '../model/exchange/clober.ts'
+import { OnChain } from '../model/oracle/onchain.ts'
 
 const BASE_CURRENCY = {
   address: '0xF2e615A933825De4B39b497f6e6991418Fb31b78',
@@ -146,6 +147,10 @@ const fetchTradeFromHashes = async (
 
 ;(async () => {
   const config = YAML.parse(fs.readFileSync('config.yaml', 'utf8')) as Config
+  const onchainOracle = new OnChain(
+    base.id,
+    _.mapValues(config.oracles, (m) => m.onchain as any),
+  )
   const binance = new Binance(
     _.mapValues(config.oracles, (m) => m.binance as any),
   )
@@ -183,6 +188,7 @@ const fetchTradeFromHashes = async (
   while (true) {
     const [latestBlock] = await Promise.all([
       mainnetPublicClient.getBlockNumber(),
+      onchainOracle.update(),
       binance.update(),
       clober.update(),
     ])
@@ -299,6 +305,7 @@ const fetchTradeFromHashes = async (
           )
           .sort((a, b) => Number(b) - Number(a))[0] ?? '-',
       oraclePrice: binance.price('WETH/USDC').toString(),
+      onchainPrice: onchainOracle.price('WETH/USDC').toString(),
       uniswapLowestAskPrice:
         trades
           .filter((trade) => trade.type === 'bid')
