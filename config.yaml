@@ -20,12 +20,12 @@ markets:
       base: WETH
     params:
       balancePercentage: 20
-      defaultBidTickSpread: 6
-      defaultAskTickSpread: 6
+      defaultBidTickSpread: 20
+      defaultAskTickSpread: 20
       orderGap: 1
       orderNum: 1
       startQuoteAmount: 386300
       startBaseAmount: 100
-      maxEpochDurationSeconds: 60
+      maxEpochDurationSeconds: 3600
       minSpongeTick: 0
-      maxSpongeTick: 2
+      maxSpongeTick: 0
