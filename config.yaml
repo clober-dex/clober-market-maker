@@ -27,5 +27,4 @@ markets:
       startQuoteAmount: 386300
       startBaseAmount: 100
       maxEpochDurationSeconds: 3600
-      minSpongeTick: 0
-      maxSpongeTick: 0
+      spongeTick: 2

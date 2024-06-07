@@ -48,11 +48,7 @@ import {
   MAKE_ORDER_PARAMS_ABI,
 } from '../abis/core/params-abi.ts'
 import { CONTROLLER_ABI } from '../abis/core/controller-abi.ts'
-import {
-  buildTickAndPriceArray,
-  getMarketPrice,
-  calculateSpongeTick,
-} from '../utils/tick.ts'
+import { buildTickAndPriceArray, getMarketPrice } from '../utils/tick.ts'
 import BigNumber from '../utils/bignumber.ts'
 import { calculateMinMaxPrice, getProposedPrice } from '../utils/price.ts'
 import { isNewEpoch } from '../utils/epoch.ts'
@@ -418,7 +414,6 @@ export class CloberMarketMaker {
         targetBidPrice,
         askVolume,
         bidVolume,
-        tickDiff,
         fromEpochId,
       } = await this.spreadSimulation(market)
 
@@ -437,7 +432,6 @@ export class CloberMarketMaker {
         bidSpread,
         askVolume: askVolume.toString(),
         bidVolume: bidVolume.toString(),
-        tickDiff: tickDiff.toString(),
       })
 
       const { askTicks, askPrices, bidTicks, bidPrices } =
@@ -452,19 +446,9 @@ export class CloberMarketMaker {
           orderGap: params.orderGap,
         })
 
-      const spongeTick = calculateSpongeTick({
-        previousEpochDuration:
-          currentTimestamp -
-          this.epoch[market][this.epoch[market].length - 1].startTimestamp,
-        maxEpochDurationSeconds: params.maxEpochDurationSeconds,
-        minSpongeTick: params.minSpongeTick,
-        maxSpongeTick: params.maxSpongeTick,
-      })
-
       const { minPrice, maxPrice } = calculateMinMaxPrice({
         chainId: this.chainId,
-        tickDiff,
-        spongeTick,
+        spongeTick: params.spongeTick,
         quoteCurrency,
         baseCurrency,
         askPrices,
@@ -487,12 +471,10 @@ export class CloberMarketMaker {
         minPrice,
         maxPrice,
         oraclePrice,
-        tickDiff,
         askTicks,
         askPrices,
         bidTicks,
         bidPrices,
-        spongeTick,
         onHold,
         onCurrent,
         pnl: onCurrent
@@ -535,12 +517,10 @@ export class CloberMarketMaker {
         minPrice: bidPrice,
         maxPrice: askPrice,
         oraclePrice,
-        tickDiff: 0,
         askTicks,
         askPrices,
         bidTicks,
         bidPrices,
-        spongeTick: 0,
         onHold,
         onCurrent,
         pnl: new BigNumber(0),
@@ -821,7 +801,6 @@ export class CloberMarketMaker {
     targetBidPrice: BigNumber
     askVolume: BigNumber
     bidVolume: BigNumber
-    tickDiff: number
     fromEpochId: number
   }> {
     const endTimestamp = Math.floor(Date.now() / 1000)
@@ -846,7 +825,6 @@ export class CloberMarketMaker {
         targetBidPrice,
         askVolume,
         bidVolume,
-        tickDiff,
       } = this.dexSimulator.findSpread(
         market,
         startBlock,
@@ -867,7 +845,6 @@ export class CloberMarketMaker {
           targetBidPrice,
           askVolume,
           bidVolume,
-          tickDiff,
           fromEpochId: this.epoch[market][i].id,
         }
       }

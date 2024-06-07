@@ -97,7 +97,6 @@ export class DexSimulator {
     targetBidPrice: BigNumber
     askVolume: BigNumber
     bidVolume: BigNumber
-    tickDiff: number
   } {
     const trades = this.trades[marketId]
       .filter(
@@ -115,28 +114,42 @@ export class DexSimulator {
     const bidPrices = [
       ...trades.map((trade) => trade.price),
       previousOraclePrice.toString(),
-    ].sort((a, b) => new BigNumber(a).comparedTo(new BigNumber(b)))
+    ]
+      .sort((a, b) => new BigNumber(a).comparedTo(new BigNumber(b)))
+      .filter(
+        (price) => new BigNumber(price).comparedTo(previousOraclePrice) <= 0,
+      )
 
     const askPirces = [
       ...trades.map((trade) => trade.price),
       previousOraclePrice.toString(),
-    ].sort((a, b) => new BigNumber(a).comparedTo(new BigNumber(b)))
+    ]
+      .sort((a, b) => new BigNumber(a).comparedTo(new BigNumber(b)))
+      .filter(
+        (price) => new BigNumber(price).comparedTo(previousOraclePrice) >= 0,
+      )
 
     const askProfits: {
+      baseVolume: BigNumber
+      quoteProfit: BigNumber
       targetAskPrice: string
-      baseDelta: BigNumber
-      quoteDelta: BigNumber
     }[] = []
     const bidProfits: {
+      baseVolume: BigNumber
+      quoteProfit: BigNumber
       targetBidPrice: string
-      baseDelta: BigNumber
-      quoteDelta: BigNumber
     }[] = []
     for (const targetAskPrice of askPirces) {
+      let baseVolume = new BigNumber(0)
       let baseAmount = new BigNumber(0)
       let quoteAmount = new BigNumber(0)
 
-      for (const { isTakingBidSide, amountIn, price: takenPrice } of trades) {
+      for (const {
+        isTakingBidSide,
+        amountIn,
+        amountOut,
+        price: takenPrice,
+      } of trades) {
         // simulate trade
         if (
           !isTakingBidSide &&
@@ -145,13 +158,17 @@ export class DexSimulator {
           const cloberAmountOut = new BigNumber(amountIn).div(targetAskPrice)
           baseAmount = baseAmount.minus(cloberAmountOut)
           quoteAmount = quoteAmount.plus(amountIn)
+          baseVolume = baseVolume.plus(amountOut)
         }
       }
+      const quoteProfit = quoteAmount.plus(
+        baseAmount.times(previousOraclePrice),
+      )
 
       askProfits.push({
+        baseVolume,
+        quoteProfit,
         targetAskPrice,
-        baseDelta: baseAmount,
-        quoteDelta: quoteAmount,
       })
     }
     for (const targetBidPrice of bidPrices) {
@@ -169,191 +186,117 @@ export class DexSimulator {
           quoteAmount = quoteAmount.minus(cloberAmountOut)
         }
       }
+      const quoteProfit = quoteAmount.plus(
+        baseAmount.times(previousOraclePrice),
+      )
 
       bidProfits.push({
+        baseVolume: baseAmount,
+        quoteProfit,
         targetBidPrice,
-        baseDelta: baseAmount,
-        quoteDelta: quoteAmount,
       })
     }
 
-    const bestSpreadPair = {
-      profit: new BigNumber(0),
-      askSideProfit: new BigNumber(0),
-      bidSideProfit: new BigNumber(0),
-      entropy: new BigNumber(0),
-      score: new BigNumber(0), // entropy * profit
-      askPrice: previousOraclePrice.toString(),
-      bidPrice: previousOraclePrice.toString(),
-      askBaseVolume: new BigNumber(0),
-      bidBaseVolume: new BigNumber(0),
-      centralPrice: previousOraclePrice,
-    }
-    for (const askProfit of askProfits) {
-      for (const bidProfit of bidProfits) {
-        if (
-          BigNumber(askProfit.targetAskPrice).isLessThan(
-            bidProfit.targetBidPrice,
-          )
-        ) {
-          continue
-        }
+    const sortedAskProfits = askProfits
+      .filter((profit) => profit.quoteProfit.gt(0))
+      .sort((a, b) => b.quoteProfit.comparedTo(a.quoteProfit))
 
-        const askBaseVolume = askProfit.baseDelta.abs()
-        const bidBaseVolume = bidProfit.baseDelta.abs()
+    const sortedBidProfits = bidProfits
+      .filter((profit) => profit.quoteProfit.gt(0))
+      .sort((a, b) => b.quoteProfit.comparedTo(a.quoteProfit))
 
-        const centralPrice = askBaseVolume.plus(bidBaseVolume).isZero()
-          ? previousOraclePrice
-          : BigNumber(askProfit.targetAskPrice)
-              .times(askBaseVolume)
-              .plus(BigNumber(bidProfit.targetBidPrice).times(bidBaseVolume))
-              .div(askBaseVolume.plus(bidBaseVolume))
-        const totalBaseDelta = askProfit.baseDelta.plus(bidProfit.baseDelta)
-        const totalQuoteDelta = askProfit.quoteDelta.plus(bidProfit.quoteDelta)
-        const totalQuoteProfit = totalQuoteDelta.plus(
-          totalBaseDelta.times(centralPrice),
-        )
+    const askProfit =
+      sortedAskProfits.length > 0
+        ? sortedAskProfits[0].quoteProfit
+        : new BigNumber(0)
+    const bidProfit =
+      sortedBidProfits.length > 0
+        ? sortedBidProfits[0].quoteProfit
+        : new BigNumber(0)
 
-        const askSideQuoteProfit = askProfit.quoteDelta.plus(
-          askProfit.baseDelta.times(centralPrice),
-        )
-        const bidSideQuoteProfit = bidProfit.quoteDelta.plus(
-          bidProfit.baseDelta.times(centralPrice),
-        )
-
-        // calculate entropy
-        const totalBaseVolume = askBaseVolume.plus(bidBaseVolume)
-        const askBaseVolumeRatio = totalBaseVolume.isZero()
-          ? new BigNumber(0)
-          : askBaseVolume.div(totalBaseVolume)
-        const bidBaseVolumeRatio = totalBaseVolume.isZero()
-          ? new BigNumber(0)
-          : bidBaseVolume.div(totalBaseVolume)
-        const askBaseVolumeRatioLog2 = askBaseVolumeRatio.isZero()
-          ? new BigNumber(0)
-          : Math.log2(askBaseVolumeRatio.toNumber())
-        const bidBaseVolumeRatioLog2 = bidBaseVolumeRatio.isZero()
-          ? new BigNumber(0)
-          : Math.log2(bidBaseVolumeRatio.toNumber())
-
-        const entropy = askBaseVolumeRatio
-          .times(askBaseVolumeRatioLog2)
-          .plus(bidBaseVolumeRatio.times(bidBaseVolumeRatioLog2))
-          .negated()
-
-        // calculate score
-        const score = entropy.times(totalQuoteProfit)
-
-        if (
-          score.comparedTo(bestSpreadPair.score) > 0 ||
-          (score.eq(bestSpreadPair.score) &&
-            totalQuoteProfit.comparedTo(bestSpreadPair.profit) > 0)
-        ) {
-          bestSpreadPair.profit = totalQuoteProfit
-          bestSpreadPair.askSideProfit = askSideQuoteProfit
-          bestSpreadPair.bidSideProfit = bidSideQuoteProfit
-          bestSpreadPair.entropy = entropy
-          bestSpreadPair.score = score
-          bestSpreadPair.askPrice = askProfit.targetAskPrice
-          bestSpreadPair.bidPrice = bidProfit.targetBidPrice
-          bestSpreadPair.askBaseVolume = askBaseVolume
-          bestSpreadPair.bidBaseVolume = bidBaseVolume
-          bestSpreadPair.centralPrice = centralPrice
-        }
-      }
+    const spreads = {
+      askSpread: this.params[marketId].defaultAskTickSpread,
+      bidSpread: this.params[marketId].defaultBidTickSpread,
     }
 
     const [base, quote] = marketId.split('/')
+    if (askProfit.gt(0)) {
+      const {
+        inverted: {
+          now: { tick: previousOraclePriceAskBookTick },
+        },
+      } = getPriceNeighborhood({
+        chainId: this.chainId,
+        price: previousOraclePrice.toString(),
+        currency0: findCurrencyBySymbol(this.chainId, quote),
+        currency1: findCurrencyBySymbol(this.chainId, base),
+      })
+      const {
+        inverted: {
+          now: { tick: lowestAskBidBookTick },
+        },
+      } = getPriceNeighborhood({
+        chainId: this.chainId,
+        price: sortedAskProfits[0].targetAskPrice.toString(),
+        currency0: findCurrencyBySymbol(this.chainId, quote),
+        currency1: findCurrencyBySymbol(this.chainId, base),
+      })
 
-    const {
-      inverted: {
-        now: { tick: previousOraclePriceAskBookTick },
-      },
-    } = getPriceNeighborhood({
-      chainId: this.chainId,
-      price: previousOraclePrice.toString(),
-      currency0: findCurrencyBySymbol(this.chainId, quote),
-      currency1: findCurrencyBySymbol(this.chainId, base),
-    })
-    const {
-      normal: {
-        now: { tick: previousOraclePriceBidBookTick },
-      },
-    } = getPriceNeighborhood({
-      chainId: this.chainId,
-      price: previousOraclePrice.toString(),
-      currency0: findCurrencyBySymbol(this.chainId, quote),
-      currency1: findCurrencyBySymbol(this.chainId, base),
-    })
-
-    const {
-      inverted: {
-        now: { tick: lowestAskBidBookTick },
-      },
-    } = getPriceNeighborhood({
-      chainId: this.chainId,
-      price: bestSpreadPair.askPrice.toString(),
-      currency0: findCurrencyBySymbol(this.chainId, quote),
-      currency1: findCurrencyBySymbol(this.chainId, base),
-    })
-    const {
-      normal: {
-        now: { tick: highestBidBidBookTick },
-      },
-    } = getPriceNeighborhood({
-      chainId: this.chainId,
-      price: bestSpreadPair.bidPrice.toString(),
-      currency0: findCurrencyBySymbol(this.chainId, quote),
-      currency1: findCurrencyBySymbol(this.chainId, base),
-    })
-
-    if (
-      bestSpreadPair.askSideProfit.isZero() ||
-      bestSpreadPair.bidSideProfit.isZero()
-    ) {
-      return {
-        askSpread: this.params[marketId].defaultAskTickSpread,
-        bidSpread: this.params[marketId].defaultBidTickSpread,
-        profit: BigNumber(0),
-        askProfit: BigNumber(0),
-        bidProfit: BigNumber(0),
-        targetAskPrice: previousOraclePrice,
-        targetBidPrice: previousOraclePrice,
-        askVolume: BigNumber(0),
-        bidVolume: BigNumber(0),
-        tickDiff: 0,
-      }
+      spreads.askSpread = Number(
+        previousOraclePriceAskBookTick - lowestAskBidBookTick,
+      )
     }
+    if (bidProfit.gt(0)) {
+      const {
+        normal: {
+          now: { tick: previousOraclePriceBidBookTick },
+        },
+      } = getPriceNeighborhood({
+        chainId: this.chainId,
+        price: previousOraclePrice.toString(),
+        currency0: findCurrencyBySymbol(this.chainId, quote),
+        currency1: findCurrencyBySymbol(this.chainId, base),
+      })
+      const {
+        normal: {
+          now: { tick: highestBidBidBookTick },
+        },
+      } = getPriceNeighborhood({
+        chainId: this.chainId,
+        price: sortedBidProfits[0].targetBidPrice.toString(),
+        currency0: findCurrencyBySymbol(this.chainId, quote),
+        currency1: findCurrencyBySymbol(this.chainId, base),
+      })
 
-    const spreads = {
-      askSpread: Number(previousOraclePriceAskBookTick - lowestAskBidBookTick),
-      bidSpread: Number(previousOraclePriceBidBookTick - highestBidBidBookTick),
+      spreads.bidSpread = Number(
+        previousOraclePriceBidBookTick - highestBidBidBookTick,
+      )
     }
-
-    const {
-      normal: {
-        now: { tick: centralPriceBidBookTick },
-      },
-    } = getPriceNeighborhood({
-      chainId: this.chainId,
-      price: bestSpreadPair.centralPrice.toString(),
-      currency0: findCurrencyBySymbol(this.chainId, quote),
-      currency1: findCurrencyBySymbol(this.chainId, base),
-    })
 
     return {
       askSpread: spreads.askSpread,
       bidSpread: spreads.bidSpread,
-      profit: bestSpreadPair.profit,
-      askProfit: bestSpreadPair.askSideProfit,
-      bidProfit: bestSpreadPair.bidSideProfit,
-      targetAskPrice: BigNumber(bestSpreadPair.askPrice),
-      targetBidPrice: BigNumber(bestSpreadPair.bidPrice),
-      askVolume: bestSpreadPair.askBaseVolume,
-      bidVolume: bestSpreadPair.bidBaseVolume,
-      tickDiff: Number(
-        previousOraclePriceBidBookTick - centralPriceBidBookTick,
+      profit: askProfit.plus(bidProfit),
+      askProfit,
+      bidProfit,
+      targetAskPrice: new BigNumber(
+        sortedAskProfits.length > 0
+          ? sortedAskProfits[0].targetAskPrice
+          : previousOraclePrice.toString(),
       ),
+      targetBidPrice: new BigNumber(
+        sortedBidProfits.length > 0
+          ? sortedBidProfits[0].targetBidPrice
+          : previousOraclePrice.toString(),
+      ),
+      askVolume:
+        sortedAskProfits.length > 0
+          ? sortedAskProfits[0].baseVolume
+          : new BigNumber(0),
+      bidVolume:
+        sortedBidProfits.length > 0
+          ? sortedBidProfits[0].baseVolume
+          : new BigNumber(0),
     }
   }
 }
