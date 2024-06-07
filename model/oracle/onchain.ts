@@ -9,13 +9,18 @@ import { findCurrencyBySymbol } from '../../utils/currency.ts'
 
 import type { Oracle } from './index.ts'
 
+export type OnChainMarket = Market & {
+  quoteAmount: number
+  baseAmount: number
+}
+
 export class OnChain implements Oracle {
-  markets: { [p: string]: Market }
+  markets: { [p: string]: OnChainMarket }
   prices: { [p: string]: BigNumber } = {}
 
   chainId: CHAIN_IDS
 
-  constructor(chainId: CHAIN_IDS, markets: { [id: string]: Market }) {
+  constructor(chainId: CHAIN_IDS, markets: { [id: string]: OnChainMarket }) {
     this.chainId = chainId
     this.markets = markets
   }
@@ -27,7 +32,9 @@ export class OnChain implements Oracle {
   async update() {
     const fetchQueue: Promise<void>[] = []
     const start = performance.now()
+    const price: { [id: string]: [BigNumber, BigNumber] } = {}
     for (const [id] of Object.entries(this.markets)) {
+      price[id] = [new BigNumber(0), new BigNumber(0)]
       const baseCurrency = findCurrencyBySymbol(this.chainId, id.split('/')[0])
       const quoteCurrency = findCurrencyBySymbol(this.chainId, id.split('/')[1])
       fetchQueue.push(
@@ -41,7 +48,10 @@ export class OnChain implements Oracle {
             inputTokens: [
               {
                 tokenAddress: getAddress(baseCurrency.address),
-                amount: parseUnits('1', baseCurrency.decimals).toString(),
+                amount: parseUnits(
+                  this.markets[id].baseAmount.toString(),
+                  baseCurrency.decimals,
+                ).toString(),
               },
             ],
             outputTokens: [
@@ -51,7 +61,7 @@ export class OnChain implements Oracle {
               },
             ],
             slippageLimitPercent: 0.3,
-            disableRFQs: false,
+            disableRFQs: true,
             compact: true,
           }),
         })
@@ -62,14 +72,57 @@ export class OnChain implements Oracle {
               },
           )
           .then(({ outAmounts }) => {
-            this.prices[id] = new BigNumber(
+            price[id][0] = new BigNumber(
               formatUnits(BigInt(outAmounts[0]), quoteCurrency.decimals),
+            ).div(this.markets[id].baseAmount)
+          }),
+      )
+      fetchQueue.push(
+        fetch(`https://api.odos.xyz/sor/quote/v2`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            chainId: this.chainId,
+            inputTokens: [
+              {
+                tokenAddress: getAddress(quoteCurrency.address),
+                amount: parseUnits(
+                  this.markets[id].quoteAmount.toString(),
+                  quoteCurrency.decimals,
+                ).toString(),
+              },
+            ],
+            outputTokens: [
+              {
+                tokenAddress: getAddress(baseCurrency.address),
+                proportion: 1,
+              },
+            ],
+            slippageLimitPercent: 0.3,
+            disableRFQs: true,
+            compact: true,
+          }),
+        })
+          .then(
+            (res) =>
+              res.json() as unknown as {
+                outAmounts: string[]
+              },
+          )
+          .then(({ outAmounts }) => {
+            price[id][1] = new BigNumber(this.markets[id].quoteAmount).div(
+              formatUnits(BigInt(outAmounts[0]), baseCurrency.decimals),
             )
           }),
       )
     }
 
     await Promise.all(fetchQueue)
+    for (const [id] of Object.entries(this.markets)) {
+      this.prices[id] = price[id][0].plus(price[id][1]).div(2)
+    }
     const end = performance.now()
 
     await logger(chalk.yellow, 'OnChain updated', {
