@@ -11,7 +11,9 @@ oracles:
       quote: USDC
       base: ETH
     onchain:
+      quoteAmount: 400000
       quote: USDC
+      baseAmount: 100
       base: WETH
 markets:
   WETH/USDC:
