@@ -60,6 +60,7 @@ import type { Epoch } from './epoch.ts'
 import { DexSimulator } from './dex-simulator.ts'
 import { Binance } from './oracle/binance.ts'
 import type { Oracle } from './oracle'
+import { OnChain } from './oracle/onchain.ts'
 
 const BID = 0
 const ASK = 1
@@ -74,7 +75,8 @@ export class CloberMarketMaker {
   erc20Tokens: `0x${string}`[] = []
   dexSimulator: DexSimulator
   // define exchanges
-  oracle: Oracle
+  offChainOracle: Oracle
+  onChainOracle: Oracle
   clober: Clober
   // mutable state
   openOrders: OpenOrder[] = []
@@ -114,8 +116,12 @@ export class CloberMarketMaker {
     )
 
     // set up exchanges
-    this.oracle = new Binance(
+    this.offChainOracle = new Binance(
       _.mapValues(this.config.oracles, (m) => m.binance as any),
+    )
+    this.onChainOracle = new OnChain(
+      this.chainId === arbitrumSepolia.id ? base.id : this.chainId,
+      _.mapValues(this.config.oracles, (m) => m.onchain as any),
     )
     this.clober = new Clober(
       this.chainId,
@@ -270,7 +276,8 @@ export class CloberMarketMaker {
       try {
         await Promise.all([
           this.dexSimulator.update(),
-          this.oracle.update(),
+          this.offChainOracle.update(),
+          this.onChainOracle.update(),
           this.clober.update(),
           this.update(),
         ])
@@ -383,7 +390,7 @@ export class CloberMarketMaker {
       claimableQuote,
       cancelableQuote,
     } = this.getBalances(baseCurrency, quoteCurrency)
-    const oraclePrice = this.oracle.price(market)
+    const oraclePrice = this.offChainOracle.price(market)
     const onHold = oraclePrice
       .times(params.startBaseAmount)
       .plus(params.startQuoteAmount)
@@ -434,17 +441,24 @@ export class CloberMarketMaker {
         bidVolume: bidVolume.toString(),
       })
 
-      const { askTicks, askPrices, bidTicks, bidPrices } =
-        buildTickAndPriceArray({
-          chainId: this.chainId,
-          baseCurrency,
-          quoteCurrency,
-          oraclePrice,
-          askSpread,
-          bidSpread,
-          orderNum: params.orderNum,
-          orderGap: params.orderGap,
-        })
+      const {
+        askTicks,
+        askPrices,
+        bidTicks,
+        bidPrices,
+        askTickPremium,
+        bidTickPremium,
+      } = buildTickAndPriceArray({
+        chainId: this.chainId,
+        baseCurrency,
+        quoteCurrency,
+        oraclePrice,
+        onChainOraclePrice: this.onChainOracle.price(market),
+        askSpread,
+        bidSpread,
+        orderNum: params.orderNum,
+        orderGap: params.orderGap,
+      })
 
       const { minPrice, maxPrice } = calculateMinMaxPrice({
         chainId: this.chainId,
@@ -468,9 +482,12 @@ export class CloberMarketMaker {
         startTimestamp: currentTimestamp,
         askSpread,
         bidSpread,
+        askTickPremium,
+        bidTickPremium,
         minPrice,
         maxPrice,
         oraclePrice,
+        onChainOraclePrice: this.onChainOracle.price(market),
         askTicks,
         askPrices,
         bidTicks,
@@ -502,6 +519,7 @@ export class CloberMarketMaker {
           baseCurrency,
           quoteCurrency,
           oraclePrice,
+          onChainOraclePrice: this.onChainOracle.price(market),
           askSpread: params.defaultAskTickSpread,
           bidSpread: params.defaultBidTickSpread,
           orderNum: params.orderNum,
@@ -514,9 +532,12 @@ export class CloberMarketMaker {
         startTimestamp: currentTimestamp,
         askSpread: params.defaultAskTickSpread,
         bidSpread: params.defaultBidTickSpread,
+        askTickPremium: 0,
+        bidTickPremium: 0,
         minPrice: bidPrice,
         maxPrice: askPrice,
         oraclePrice,
+        onChainOraclePrice: this.onChainOracle.price(market),
         askTicks,
         askPrices,
         bidTicks,
