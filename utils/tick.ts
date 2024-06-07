@@ -36,8 +36,6 @@ export const buildTickAndPriceArray = ({
   bidSpread,
   orderNum,
   orderGap,
-  useBidPremium,
-  useAskPremium,
 }: {
   chainId: CHAIN_IDS
   baseCurrency: Currency
@@ -48,8 +46,6 @@ export const buildTickAndPriceArray = ({
   bidSpread: number
   orderNum: number
   orderGap: number
-  useBidPremium: boolean
-  useAskPremium: boolean
 }): {
   askTicks: number[]
   askPrices: BigNumber[]
@@ -91,11 +87,7 @@ export const buildTickAndPriceArray = ({
   )
   let askTickPremium = 0n
   const lowestAskTick = askTicks.sort((a, b) => Number(a) - Number(b))[0]
-  if (
-    useAskPremium &&
-    lowestAskTick &&
-    lowestAskTick > onChainOraclePriceAskBookTick
-  ) {
+  if (lowestAskTick && lowestAskTick > onChainOraclePriceAskBookTick) {
     askTickPremium = lowestAskTick - onChainOraclePriceAskBookTick + 1n // TODO: Set as parameter
     askTicks = askTicks.map((tick) => tick - askTickPremium)
   }
@@ -106,11 +98,7 @@ export const buildTickAndPriceArray = ({
   )
   let bidTickPremium = 0n
   const highestBidTick = bidTicks.sort((a, b) => Number(b) - Number(a))[0]
-  if (
-    useBidPremium &&
-    highestBidTick &&
-    highestBidTick < onChainOraclePriceBidBookTick
-  ) {
+  if (highestBidTick && highestBidTick < onChainOraclePriceBidBookTick) {
     bidTickPremium = onChainOraclePriceBidBookTick - highestBidTick + 1n // TODO: Set as parameter
     bidTicks = bidTicks.map((tick) => tick - bidTickPremium)
   }

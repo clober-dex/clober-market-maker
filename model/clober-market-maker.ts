@@ -457,8 +457,6 @@ export class CloberMarketMaker {
         bidSpread,
         orderNum: params.orderNum,
         orderGap: params.orderGap,
-        useBidPremium: bidProfit.isGreaterThan(0),
-        useAskPremium: askProfit.isGreaterThan(0),
       })
 
       const { minPrice, maxPrice } = calculateMinMaxPrice({
@@ -525,8 +523,6 @@ export class CloberMarketMaker {
           bidSpread: params.defaultBidTickSpread,
           orderNum: params.orderNum,
           orderGap: params.orderGap,
-          useBidPremium: false,
-          useAskPremium: false,
         })
 
       const { askPrice, bidPrice } = getProposedPrice({ askPrices, bidPrices })
