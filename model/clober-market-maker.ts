@@ -112,7 +112,6 @@ export class CloberMarketMaker {
     this.dexSimulator = new DexSimulator(
       this.chainId === arbitrumSepolia.id ? base.id : this.chainId,
       _.mapValues(this.config.markets, (m) => m.clober),
-      _.mapValues(this.config.markets, (m) => m.params),
     )
 
     // set up exchanges
@@ -458,6 +457,8 @@ export class CloberMarketMaker {
         bidSpread,
         orderNum: params.orderNum,
         orderGap: params.orderGap,
+        useBidPremium: bidProfit.isGreaterThan(0),
+        useAskPremium: askProfit.isGreaterThan(0),
       })
 
       const { minPrice, maxPrice } = calculateMinMaxPrice({
@@ -524,6 +525,8 @@ export class CloberMarketMaker {
           bidSpread: params.defaultBidTickSpread,
           orderNum: params.orderNum,
           orderGap: params.orderGap,
+          useBidPremium: false,
+          useAskPremium: false,
         })
 
       const { askPrice, bidPrice } = getProposedPrice({ askPrices, bidPrices })
