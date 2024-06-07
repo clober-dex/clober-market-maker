@@ -9,7 +9,6 @@ import {
   type Currency,
   getContractAddresses,
   getOpenOrders,
-  getPriceNeighborhood,
   type OpenOrder,
   setApprovalOfOpenOrdersForAll,
 } from '@clober/v2-sdk'
@@ -49,8 +48,14 @@ import {
   MAKE_ORDER_PARAMS_ABI,
 } from '../abis/core/params-abi.ts'
 import { CONTROLLER_ABI } from '../abis/core/controller-abi.ts'
-import { getMarketPrice } from '../utils/tick.ts'
+import {
+  buildTickAndPriceArray,
+  getMarketPrice,
+  calculateSpongeTick,
+} from '../utils/tick.ts'
 import BigNumber from '../utils/bignumber.ts'
+import { calculateMinMaxPrice, getProposedPrice } from '../utils/price.ts'
+import { isNewEpoch } from '../utils/epoch.ts'
 
 import { Clober } from './exchange/clober.ts'
 import type { Config, Params } from './config.ts'
@@ -302,70 +307,6 @@ export class CloberMarketMaker {
     }
   }
 
-  buildTickAndPriceArray(
-    baseCurrency: Currency,
-    quoteCurrency: Currency,
-    oraclePrice: BigNumber,
-    askSpread: number,
-    bidSpread: number,
-    orderNum: number,
-    orderGap: number,
-  ): {
-    askTicks: number[]
-    askPrices: BigNumber[]
-    bidTicks: number[]
-    bidPrices: BigNumber[]
-  } {
-    const {
-      normal: {
-        now: { tick: oraclePriceBidBookTick },
-      },
-      inverted: {
-        now: { tick: oraclePriceAskBookTick },
-      },
-    } = getPriceNeighborhood({
-      chainId: this.chainId,
-      price: oraclePrice.toString(),
-      currency0: quoteCurrency,
-      currency1: baseCurrency,
-    })
-
-    const askTicks = Array.from(
-      { length: orderNum },
-      (_, i) => oraclePriceAskBookTick - BigInt(askSpread + orderGap * i),
-    )
-    const askPrices = askTicks
-      .map((tick) =>
-        getMarketPrice({
-          marketQuoteCurrency: quoteCurrency,
-          marketBaseCurrency: baseCurrency,
-          askTick: tick,
-        }),
-      )
-      .map((price) => new BigNumber(price))
-
-    const bidTicks = Array.from(
-      { length: orderNum },
-      (_, i) => oraclePriceBidBookTick - BigInt(bidSpread + orderGap * i),
-    )
-    const bidPrices = bidTicks
-      .map((tick) =>
-        getMarketPrice({
-          marketQuoteCurrency: quoteCurrency,
-          marketBaseCurrency: baseCurrency,
-          bidTick: tick,
-        }),
-      )
-      .map((price) => new BigNumber(price))
-
-    return {
-      askTicks: askTicks.map((tick) => Number(tick)),
-      askPrices,
-      bidTicks: bidTicks.map((tick) => Number(tick)),
-      bidPrices,
-    }
-  }
-
   getOpenOrders(baseCurrency: Currency, quoteCurrency: Currency): OpenOrder[] {
     return this.openOrders.filter(
       (order) =>
@@ -455,15 +396,15 @@ export class CloberMarketMaker {
 
     if (
       this.epoch[market] &&
-      (oraclePrice.isLessThan(
-        this.epoch[market][this.epoch[market].length - 1].minPrice,
-      ) ||
-        oraclePrice.isGreaterThan(
-          this.epoch[market][this.epoch[market].length - 1].maxPrice,
-        ) ||
-        this.epoch[market][this.epoch[market].length - 1].startTimestamp +
-          params.maxEpochDurationSeconds <=
-          currentTimestamp)
+      isNewEpoch({
+        oraclePrice,
+        minPrice: this.epoch[market][this.epoch[market].length - 1].minPrice,
+        maxPrice: this.epoch[market][this.epoch[market].length - 1].maxPrice,
+        startTimestamp:
+          this.epoch[market][this.epoch[market].length - 1].startTimestamp,
+        currentTimestamp,
+        maxEpochDurationSeconds: params.maxEpochDurationSeconds,
+      })
     ) {
       const {
         startBlock,
@@ -500,32 +441,35 @@ export class CloberMarketMaker {
       })
 
       const { askTicks, askPrices, bidTicks, bidPrices } =
-        this.buildTickAndPriceArray(
+        buildTickAndPriceArray({
+          chainId: this.chainId,
           baseCurrency,
           quoteCurrency,
           oraclePrice,
           askSpread,
           bidSpread,
-          params.orderNum,
-          params.orderGap,
-        )
+          orderNum: params.orderNum,
+          orderGap: params.orderGap,
+        })
 
-      const spongeTick = this.calculateSpongeTick(
-        currentTimestamp -
+      const spongeTick = calculateSpongeTick({
+        previousEpochDuration:
+          currentTimestamp -
           this.epoch[market][this.epoch[market].length - 1].startTimestamp,
-        params.maxEpochDurationSeconds,
-        params.minSpongeTick,
-        params.maxSpongeTick,
-      )
+        maxEpochDurationSeconds: params.maxEpochDurationSeconds,
+        minSpongeTick: params.minSpongeTick,
+        maxSpongeTick: params.maxSpongeTick,
+      })
 
-      const { minPrice, maxPrice } = this.calculateMinMaxPrice(
+      const { minPrice, maxPrice } = calculateMinMaxPrice({
+        chainId: this.chainId,
         tickDiff,
         spongeTick,
         quoteCurrency,
         baseCurrency,
         askPrices,
         bidPrices,
-      )
+      })
       if (
         oraclePrice.isLessThan(minPrice) ||
         oraclePrice.isGreaterThan(maxPrice)
@@ -571,17 +515,18 @@ export class CloberMarketMaker {
     // first epoch
     else if (!this.epoch[market]) {
       const { askTicks, askPrices, bidTicks, bidPrices } =
-        this.buildTickAndPriceArray(
+        buildTickAndPriceArray({
+          chainId: this.chainId,
           baseCurrency,
           quoteCurrency,
           oraclePrice,
-          params.defaultAskTickSpread,
-          params.defaultBidTickSpread,
-          params.orderNum,
-          params.orderGap,
-        )
+          askSpread: params.defaultAskTickSpread,
+          bidSpread: params.defaultBidTickSpread,
+          orderNum: params.orderNum,
+          orderGap: params.orderGap,
+        })
 
-      const { askPrice, bidPrice } = this.getProposedPrice(askPrices, bidPrices)
+      const { askPrice, bidPrice } = getProposedPrice({ askPrices, bidPrices })
       const newEpoch: Epoch = {
         id: 0,
         startTimestamp: currentTimestamp,
@@ -862,85 +807,6 @@ export class CloberMarketMaker {
 
   async sleep(ms: number) {
     return new Promise((resolve) => setTimeout(resolve, ms))
-  }
-
-  getProposedPrice(
-    askPrices: BigNumber[],
-    bidPrices: BigNumber[],
-  ): {
-    askPrice: BigNumber
-    bidPrice: BigNumber
-  } {
-    return {
-      askPrice: askPrices
-        .reduce((acc, price) => acc.plus(price), BigNumber(0))
-        .div(askPrices.length),
-      bidPrice: bidPrices
-        .reduce((acc, price) => acc.plus(price), BigNumber(0))
-        .div(bidPrices.length),
-    }
-  }
-
-  calculateMinMaxPrice(
-    tickDiff: number,
-    spongeTick: number,
-    quoteCurrency: Currency,
-    baseCurrency: Currency,
-    askPrices: BigNumber[],
-    bidPrices: BigNumber[],
-  ): {
-    minPrice: BigNumber
-    maxPrice: BigNumber
-  } {
-    const { askPrice, bidPrice } = this.getProposedPrice(askPrices, bidPrices)
-    const [meanAskPriceBidBookTick, meanBidPriceBidBookTick] = [
-      askPrice,
-      bidPrice,
-    ].map((price) => {
-      const {
-        normal: {
-          now: { tick: bidBookTick },
-        },
-      } = getPriceNeighborhood({
-        chainId: this.chainId,
-        price: price.toString(),
-        currency0: quoteCurrency,
-        currency1: baseCurrency,
-      })
-      return bidBookTick
-    })
-
-    return {
-      minPrice: BigNumber(
-        getMarketPrice({
-          marketQuoteCurrency: quoteCurrency,
-          marketBaseCurrency: baseCurrency,
-          bidTick:
-            meanBidPriceBidBookTick + BigInt(tickDiff) - BigInt(spongeTick),
-        }),
-      ),
-      maxPrice: BigNumber(
-        getMarketPrice({
-          marketQuoteCurrency: quoteCurrency,
-          marketBaseCurrency: baseCurrency,
-          bidTick:
-            meanAskPriceBidBookTick + BigInt(tickDiff) + BigInt(spongeTick),
-        }),
-      ),
-    }
-  }
-
-  calculateSpongeTick(
-    previousEpochDuration: number,
-    maxEpochDurationSeconds: number,
-    minSpongeTick: number,
-    maxSpongeTick: number,
-  ): number {
-    return Math.floor(
-      minSpongeTick +
-        (maxSpongeTick - minSpongeTick) *
-          Math.min(previousEpochDuration / maxEpochDurationSeconds, 1),
-    )
   }
 
   async spreadSimulation(market: string): Promise<{
