@@ -28,5 +28,6 @@ markets:
       orderNum: 1
       startQuoteAmount: 386300
       startBaseAmount: 100
+      startPrice: 3808.892
       maxEpochDurationSeconds: 3600
       spongeTick: 2

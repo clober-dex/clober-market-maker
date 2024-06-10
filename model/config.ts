@@ -10,6 +10,7 @@ import type { Market } from './market.ts'
  * @property {number} balancePercentage - The balance percentage for trading.
  * @property {number} startQuoteAmount - The starting quote amount for trading.
  * @property {number} startBaseAmount - The starting base amount for trading.
+ * @property {number} startPrice - The starting price for trading.
  * @property {number} maxEpochDurationSeconds - The maximum epoch duration in seconds.
  * @property {number} spongeTick - The sponge tick for trading.
  */
@@ -22,6 +23,7 @@ export type Params = {
   balancePercentage: number
   startQuoteAmount: number
   startBaseAmount: number
+  startPrice: number
   maxEpochDurationSeconds: number
   spongeTick: number
 }

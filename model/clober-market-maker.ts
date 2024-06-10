@@ -52,6 +52,7 @@ import { buildTickAndPriceArray, getMarketPrice } from '../utils/tick.ts'
 import BigNumber from '../utils/bignumber.ts'
 import { calculateMinMaxPrice, getProposedPrice } from '../utils/price.ts'
 import { isNewEpoch } from '../utils/epoch.ts'
+import { calculateUniV2ImpermanentLoss } from '../utils/uni-v2.ts'
 
 import { Clober } from './exchange/clober.ts'
 import type { Config, Params } from './config.ts'
@@ -576,6 +577,12 @@ export class CloberMarketMaker {
         .plus(params.startQuoteAmount)
         .toString(),
       onCurrent: oraclePrice.times(totalBase).plus(totalQuote).toString(),
+      onUniV2: calculateUniV2ImpermanentLoss({
+        currentPrice: oraclePrice,
+        startPrice: new BigNumber(params.startPrice),
+        startBaseAmount: new BigNumber(params.startBaseAmount),
+        startQuoteAmount: new BigNumber(params.startQuoteAmount),
+      }),
       basePnL: totalBase
         .minus(params.startBaseAmount)
         .plus(totalQuote.minus(params.startQuoteAmount).div(oraclePrice))
