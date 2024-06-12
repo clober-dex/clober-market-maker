@@ -48,14 +48,11 @@ import {
   MAKE_ORDER_PARAMS_ABI,
 } from '../abis/core/params-abi.ts'
 import { CONTROLLER_ABI } from '../abis/core/controller-abi.ts'
-import {
-  buildTickAndPriceArray,
-  getMarketPrice,
-  calculateSpongeTick,
-} from '../utils/tick.ts'
+import { buildTickAndPriceArray, getMarketPrice } from '../utils/tick.ts'
 import BigNumber from '../utils/bignumber.ts'
 import { calculateMinMaxPrice, getProposedPrice } from '../utils/price.ts'
 import { isNewEpoch } from '../utils/epoch.ts'
+import { calculateUniV2ImpermanentLoss } from '../utils/uni-v2.ts'
 
 import { Clober } from './exchange/clober.ts'
 import type { Config, Params } from './config.ts'
@@ -64,6 +61,7 @@ import type { Epoch } from './epoch.ts'
 import { DexSimulator } from './dex-simulator.ts'
 import { Binance } from './oracle/binance.ts'
 import type { Oracle } from './oracle'
+import { OnChain } from './oracle/onchain.ts'
 
 const BID = 0
 const ASK = 1
@@ -78,7 +76,8 @@ export class CloberMarketMaker {
   erc20Tokens: `0x${string}`[] = []
   dexSimulator: DexSimulator
   // define exchanges
-  oracle: Oracle
+  offChainOracle: Oracle
+  onChainOracle: Oracle
   clober: Clober
   // mutable state
   openOrders: OpenOrder[] = []
@@ -114,12 +113,15 @@ export class CloberMarketMaker {
     this.dexSimulator = new DexSimulator(
       this.chainId === arbitrumSepolia.id ? base.id : this.chainId,
       _.mapValues(this.config.markets, (m) => m.clober),
-      _.mapValues(this.config.markets, (m) => m.params),
     )
 
     // set up exchanges
-    this.oracle = new Binance(
+    this.offChainOracle = new Binance(
       _.mapValues(this.config.oracles, (m) => m.binance as any),
+    )
+    this.onChainOracle = new OnChain(
+      this.chainId === arbitrumSepolia.id ? base.id : this.chainId,
+      _.mapValues(this.config.oracles, (m) => m.onchain as any),
     )
     this.clober = new Clober(
       this.chainId,
@@ -274,7 +276,8 @@ export class CloberMarketMaker {
       try {
         await Promise.all([
           this.dexSimulator.update(),
-          this.oracle.update(),
+          this.offChainOracle.update(),
+          this.onChainOracle.update(),
           this.clober.update(),
           this.update(),
         ])
@@ -387,7 +390,7 @@ export class CloberMarketMaker {
       claimableQuote,
       cancelableQuote,
     } = this.getBalances(baseCurrency, quoteCurrency)
-    const oraclePrice = this.oracle.price(market)
+    const oraclePrice = this.offChainOracle.price(market)
     const onHold = oraclePrice
       .times(params.startBaseAmount)
       .plus(params.startQuoteAmount)
@@ -418,7 +421,6 @@ export class CloberMarketMaker {
         targetBidPrice,
         askVolume,
         bidVolume,
-        tickDiff,
         fromEpochId,
       } = await this.spreadSimulation(market)
 
@@ -437,34 +439,30 @@ export class CloberMarketMaker {
         bidSpread,
         askVolume: askVolume.toString(),
         bidVolume: bidVolume.toString(),
-        tickDiff: tickDiff.toString(),
       })
 
-      const { askTicks, askPrices, bidTicks, bidPrices } =
-        buildTickAndPriceArray({
-          chainId: this.chainId,
-          baseCurrency,
-          quoteCurrency,
-          oraclePrice,
-          askSpread,
-          bidSpread,
-          orderNum: params.orderNum,
-          orderGap: params.orderGap,
-        })
-
-      const spongeTick = calculateSpongeTick({
-        previousEpochDuration:
-          currentTimestamp -
-          this.epoch[market][this.epoch[market].length - 1].startTimestamp,
-        maxEpochDurationSeconds: params.maxEpochDurationSeconds,
-        minSpongeTick: params.minSpongeTick,
-        maxSpongeTick: params.maxSpongeTick,
+      const {
+        askTicks,
+        askPrices,
+        bidTicks,
+        bidPrices,
+        askTickPremium,
+        bidTickPremium,
+      } = buildTickAndPriceArray({
+        chainId: this.chainId,
+        baseCurrency,
+        quoteCurrency,
+        oraclePrice,
+        onChainOraclePrice: this.onChainOracle.price(market),
+        askSpread,
+        bidSpread,
+        orderNum: params.orderNum,
+        orderGap: params.orderGap,
       })
 
       const { minPrice, maxPrice } = calculateMinMaxPrice({
         chainId: this.chainId,
-        tickDiff,
-        spongeTick,
+        spongeTick: params.spongeTick,
         quoteCurrency,
         baseCurrency,
         askPrices,
@@ -484,15 +482,16 @@ export class CloberMarketMaker {
         startTimestamp: currentTimestamp,
         askSpread,
         bidSpread,
+        askTickPremium,
+        bidTickPremium,
         minPrice,
         maxPrice,
         oraclePrice,
-        tickDiff,
+        onChainOraclePrice: this.onChainOracle.price(market),
         askTicks,
         askPrices,
         bidTicks,
         bidPrices,
-        spongeTick,
         onHold,
         onCurrent,
         pnl: onCurrent
@@ -520,6 +519,7 @@ export class CloberMarketMaker {
           baseCurrency,
           quoteCurrency,
           oraclePrice,
+          onChainOraclePrice: this.onChainOracle.price(market),
           askSpread: params.defaultAskTickSpread,
           bidSpread: params.defaultBidTickSpread,
           orderNum: params.orderNum,
@@ -532,15 +532,16 @@ export class CloberMarketMaker {
         startTimestamp: currentTimestamp,
         askSpread: params.defaultAskTickSpread,
         bidSpread: params.defaultBidTickSpread,
+        askTickPremium: 0,
+        bidTickPremium: 0,
         minPrice: bidPrice,
         maxPrice: askPrice,
         oraclePrice,
-        tickDiff: 0,
+        onChainOraclePrice: this.onChainOracle.price(market),
         askTicks,
         askPrices,
         bidTicks,
         bidPrices,
-        spongeTick: 0,
         onHold,
         onCurrent,
         pnl: new BigNumber(0),
@@ -576,6 +577,12 @@ export class CloberMarketMaker {
         .plus(params.startQuoteAmount)
         .toString(),
       onCurrent: oraclePrice.times(totalBase).plus(totalQuote).toString(),
+      onUniV2: calculateUniV2ImpermanentLoss({
+        currentPrice: oraclePrice,
+        startPrice: new BigNumber(params.startPrice),
+        startBaseAmount: new BigNumber(params.startBaseAmount),
+        startQuoteAmount: new BigNumber(params.startQuoteAmount),
+      }),
       basePnL: totalBase
         .minus(params.startBaseAmount)
         .plus(totalQuote.minus(params.startQuoteAmount).div(oraclePrice))
@@ -821,7 +828,6 @@ export class CloberMarketMaker {
     targetBidPrice: BigNumber
     askVolume: BigNumber
     bidVolume: BigNumber
-    tickDiff: number
     fromEpochId: number
   }> {
     const endTimestamp = Math.floor(Date.now() / 1000)
@@ -846,7 +852,6 @@ export class CloberMarketMaker {
         targetBidPrice,
         askVolume,
         bidVolume,
-        tickDiff,
       } = this.dexSimulator.findSpread(
         market,
         startBlock,
@@ -867,7 +872,6 @@ export class CloberMarketMaker {
           targetBidPrice,
           askVolume,
           bidVolume,
-          tickDiff,
           fromEpochId: this.epoch[market][i].id,
         }
       }

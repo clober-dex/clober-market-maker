@@ -31,6 +31,7 @@ export const buildTickAndPriceArray = ({
   baseCurrency,
   quoteCurrency,
   oraclePrice,
+  onChainOraclePrice,
   askSpread,
   bidSpread,
   orderNum,
@@ -40,6 +41,7 @@ export const buildTickAndPriceArray = ({
   baseCurrency: Currency
   quoteCurrency: Currency
   oraclePrice: BigNumber
+  onChainOraclePrice: BigNumber
   askSpread: number
   bidSpread: number
   orderNum: number
@@ -49,6 +51,8 @@ export const buildTickAndPriceArray = ({
   askPrices: BigNumber[]
   bidTicks: number[]
   bidPrices: BigNumber[]
+  askTickPremium: number
+  bidTickPremium: number
 } => {
   const {
     normal: {
@@ -63,40 +67,65 @@ export const buildTickAndPriceArray = ({
     currency0: quoteCurrency,
     currency1: baseCurrency,
   })
+  const {
+    normal: {
+      now: { tick: onChainOraclePriceBidBookTick },
+    },
+    inverted: {
+      now: { tick: onChainOraclePriceAskBookTick },
+    },
+  } = getPriceNeighborhood({
+    chainId,
+    price: onChainOraclePrice.toString(),
+    currency0: quoteCurrency,
+    currency1: baseCurrency,
+  })
 
-  const askTicks = Array.from(
+  let askTicks = Array.from(
     { length: orderNum },
     (_, i) => oraclePriceAskBookTick - BigInt(askSpread + orderGap * i),
   )
-  const askPrices = askTicks
-    .map((tick) =>
-      getMarketPrice({
-        marketQuoteCurrency: quoteCurrency,
-        marketBaseCurrency: baseCurrency,
-        askTick: tick,
-      }),
-    )
-    .map((price) => new BigNumber(price))
+  let askTickPremium = 0n
+  const lowestAskTick = askTicks.sort((a, b) => Number(a) - Number(b))[0]
+  if (lowestAskTick && lowestAskTick > onChainOraclePriceAskBookTick) {
+    askTickPremium = lowestAskTick - onChainOraclePriceAskBookTick + 1n // TODO: Set as parameter
+    askTicks = askTicks.map((tick) => tick - askTickPremium)
+  }
 
-  const bidTicks = Array.from(
+  let bidTicks = Array.from(
     { length: orderNum },
     (_, i) => oraclePriceBidBookTick - BigInt(bidSpread + orderGap * i),
   )
-  const bidPrices = bidTicks
-    .map((tick) =>
-      getMarketPrice({
-        marketQuoteCurrency: quoteCurrency,
-        marketBaseCurrency: baseCurrency,
-        bidTick: tick,
-      }),
-    )
-    .map((price) => new BigNumber(price))
+  let bidTickPremium = 0n
+  const highestBidTick = bidTicks.sort((a, b) => Number(b) - Number(a))[0]
+  if (highestBidTick && highestBidTick < onChainOraclePriceBidBookTick) {
+    bidTickPremium = onChainOraclePriceBidBookTick - highestBidTick + 1n // TODO: Set as parameter
+    bidTicks = bidTicks.map((tick) => tick - bidTickPremium)
+  }
 
   return {
     askTicks: askTicks.map((tick) => Number(tick)),
-    askPrices,
+    askPrices: askTicks
+      .map((tick) =>
+        getMarketPrice({
+          marketQuoteCurrency: quoteCurrency,
+          marketBaseCurrency: baseCurrency,
+          askTick: tick,
+        }),
+      )
+      .map((price) => new BigNumber(price)),
     bidTicks: bidTicks.map((tick) => Number(tick)),
-    bidPrices,
+    bidPrices: bidTicks
+      .map((tick) =>
+        getMarketPrice({
+          marketQuoteCurrency: quoteCurrency,
+          marketBaseCurrency: baseCurrency,
+          bidTick: tick,
+        }),
+      )
+      .map((price) => new BigNumber(price)),
+    askTickPremium: Number(askTickPremium),
+    bidTickPremium: Number(bidTickPremium),
   }
 }
 
