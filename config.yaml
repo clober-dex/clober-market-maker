@@ -26,6 +26,7 @@ markets:
       defaultAskTickSpread: 20
       orderGap: 1
       orderNum: 1
-      startQuoteAmount: 386300
+      startQuoteAmount: 354109
       startBaseAmount: 100
+      startPrice: 3541.09
       maxEpochDurationSeconds: 3600
