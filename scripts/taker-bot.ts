@@ -18,6 +18,7 @@ import { arbitrumSepolia, base } from 'viem/chains'
 import {
   approveERC20,
   marketOrder,
+  getExpectedInput,
   type Currency,
   CHAIN_IDS,
 } from '@clober/v2-sdk'
@@ -219,9 +220,24 @@ const fetchTradeFromHashes = async (
       for (const trade of trades) {
         const isBid = trade.type === 'bid'
         const actualAmountOut = isBid ? trade.baseAmount : trade.quoteAmount
-        const amountIn = isBid
+        const { spentAmount: maxAmountIn } = await getExpectedInput({
+          chainId: arbitrumSepolia.id,
+          inputToken: isBid ? QUOTE_CURRENCY.address : BASE_CURRENCY.address,
+          outputToken: isBid ? BASE_CURRENCY.address : QUOTE_CURRENCY.address,
+          amountOut: isBid
+            ? formatUnits(trade.baseAmount, BASE_CURRENCY.decimals)
+            : formatUnits(trade.quoteAmount, QUOTE_CURRENCY.decimals),
+          options: process.env.RPC_URL
+            ? {
+                rpcUrl: process.env.RPC_URL,
+                useSubgraph: false,
+              }
+            : {},
+        })
+        let amountIn = isBid
           ? formatUnits(trade.quoteAmount, QUOTE_CURRENCY.decimals)
           : formatUnits(trade.baseAmount, BASE_CURRENCY.decimals)
+        amountIn = Math.min(Number(amountIn), Number(maxAmountIn)).toString()
         const {
           transaction,
           result: { taken, spent },
