@@ -19,7 +19,9 @@ markets:
       quote: USDC
       base: WETH
     params:
-      balancePercentage: 20
+      balancePercentage: 1
+      minBalancePercentage: 0.3
+      minEntropy: 0.1
       defaultBidTickSpread: 20
       defaultAskTickSpread: 20
       orderGap: 1

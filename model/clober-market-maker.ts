@@ -56,6 +56,7 @@ import {
 import BigNumber from '../utils/bignumber.ts'
 import { calculateMinMaxPrice, getProposedPrice } from '../utils/price.ts'
 import { isNewEpoch } from '../utils/epoch.ts'
+import { calculateOrderSize } from '../utils/order.ts'
 
 import { Clober } from './exchange/clober.ts'
 import type { Config, Params } from './config.ts'
@@ -420,6 +421,7 @@ export class CloberMarketMaker {
         bidVolume,
         tickDiff,
         fromEpochId,
+        entropy,
       } = await this.spreadSimulation(market)
 
       logger(chalk.green, 'Simulation', {
@@ -487,6 +489,7 @@ export class CloberMarketMaker {
         minPrice,
         maxPrice,
         oraclePrice,
+        entropy,
         tickDiff,
         askTicks,
         askPrices,
@@ -535,6 +538,7 @@ export class CloberMarketMaker {
         minPrice: bidPrice,
         maxPrice: askPrice,
         oraclePrice,
+        entropy: new BigNumber(params.minEntropy),
         tickDiff: 0,
         askTicks,
         askPrices,
@@ -589,10 +593,16 @@ export class CloberMarketMaker {
 
     const currentEpoch: Epoch =
       this.epoch[market][this.epoch[market].length - 1]
-    const bidSize = totalQuote
-      .times(params.balancePercentage / 100)
-      .div(params.orderNum)
-      .toFixed()
+    const { askOrderSizeInBase, bidOrderSizeInQuote } = calculateOrderSize({
+      totalBase,
+      totalQuote,
+      oraclePrice,
+      entropy: currentEpoch.entropy,
+      minEntropy: new BigNumber(params.minEntropy),
+      balancePercentage: params.balancePercentage,
+      minBalancePercentage: params.minBalancePercentage,
+    })
+    const bidSize = bidOrderSizeInQuote.div(params.orderNum).toFixed()
     const bidMakeParams: MakeParam[] = currentEpoch.bidTicks
       .map((tick) => ({
         id: BigInt(this.clober.bookIds[market][BID]),
@@ -610,10 +620,7 @@ export class CloberMarketMaker {
             .find((o) => o.tick === params.tick) === undefined,
       )
 
-    const askSize = totalBase
-      .times(params.balancePercentage / 100)
-      .div(params.orderNum)
-      .toFixed()
+    const askSize = askOrderSizeInBase.div(params.orderNum).toFixed()
     const askMakeParams: MakeParam[] = currentEpoch.askTicks
       .map((tick) => ({
         id: BigInt(this.clober.bookIds[market][ASK]),
@@ -823,6 +830,7 @@ export class CloberMarketMaker {
     bidVolume: BigNumber
     tickDiff: number
     fromEpochId: number
+    entropy: BigNumber
   }> {
     const endTimestamp = Math.floor(Date.now() / 1000)
     for (let i = this.epoch[market].length - 1; i >= 0; i--) {
@@ -847,6 +855,7 @@ export class CloberMarketMaker {
         askVolume,
         bidVolume,
         tickDiff,
+        entropy,
       } = this.dexSimulator.findSpread(
         market,
         startBlock,
@@ -869,6 +878,7 @@ export class CloberMarketMaker {
           bidVolume,
           tickDiff,
           fromEpochId: this.epoch[market][i].id,
+          entropy,
         }
       }
     }
