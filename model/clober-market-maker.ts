@@ -48,11 +48,7 @@ import {
   MAKE_ORDER_PARAMS_ABI,
 } from '../abis/core/params-abi.ts'
 import { CONTROLLER_ABI } from '../abis/core/controller-abi.ts'
-import {
-  buildTickAndPriceArray,
-  getMarketPrice,
-  calculateSpongeTick,
-} from '../utils/tick.ts'
+import { buildTickAndPriceArray, getMarketPrice } from '../utils/tick.ts'
 import BigNumber from '../utils/bignumber.ts'
 import { calculateMinMaxPrice, getProposedPrice } from '../utils/price.ts'
 import { isNewEpoch } from '../utils/epoch.ts'
@@ -454,19 +450,9 @@ export class CloberMarketMaker {
           orderGap: params.orderGap,
         })
 
-      const spongeTick = calculateSpongeTick({
-        previousEpochDuration:
-          currentTimestamp -
-          this.epoch[market][this.epoch[market].length - 1].startTimestamp,
-        maxEpochDurationSeconds: params.maxEpochDurationSeconds,
-        minSpongeTick: params.minSpongeTick,
-        maxSpongeTick: params.maxSpongeTick,
-      })
-
       const { minPrice, maxPrice } = calculateMinMaxPrice({
         chainId: this.chainId,
         tickDiff,
-        spongeTick,
         quoteCurrency,
         baseCurrency,
         askPrices,
@@ -495,7 +481,6 @@ export class CloberMarketMaker {
         askPrices,
         bidTicks,
         bidPrices,
-        spongeTick,
         onHold,
         onCurrent,
         pnl: onCurrent
@@ -544,7 +529,6 @@ export class CloberMarketMaker {
         askPrices,
         bidTicks,
         bidPrices,
-        spongeTick: 0,
         onHold,
         onCurrent,
         pnl: new BigNumber(0),
