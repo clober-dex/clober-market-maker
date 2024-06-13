@@ -14,6 +14,7 @@ import type { Market } from './market.ts'
  * @property {number} startBaseAmount - The starting base amount for trading.
  * @property {number} startPrice - The starting price for trading.
  * @property {number} maxEpochDurationSeconds - The maximum epoch duration in seconds.
+ * @property {number} spongeTick - The sponge tick for trading.
  */
 
 export type Params = {
@@ -28,6 +29,7 @@ export type Params = {
   startBaseAmount: number
   startPrice: number
   maxEpochDurationSeconds: number
+  spongeTick: number
 }
 
 export type Config = {

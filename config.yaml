@@ -32,3 +32,4 @@ markets:
       startBaseAmount: 100
       startPrice: 3541.09
       maxEpochDurationSeconds: 3600
+      spongeTick: 3

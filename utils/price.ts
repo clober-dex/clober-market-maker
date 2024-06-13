@@ -6,6 +6,7 @@ import { getMarketPrice } from './tick.ts'
 export const calculateMinMaxPrice = ({
   chainId,
   tickDiff,
+  spongeTick,
   quoteCurrency,
   baseCurrency,
   askPrices,
@@ -13,6 +14,7 @@ export const calculateMinMaxPrice = ({
 }: {
   chainId: CHAIN_IDS
   tickDiff: number
+  spongeTick: number
   quoteCurrency: Currency
   baseCurrency: Currency
   askPrices: BigNumber[]
@@ -44,14 +46,16 @@ export const calculateMinMaxPrice = ({
       getMarketPrice({
         marketQuoteCurrency: quoteCurrency,
         marketBaseCurrency: baseCurrency,
-        bidTick: meanBidPriceBidBookTick + BigInt(tickDiff),
+        bidTick:
+          meanBidPriceBidBookTick + BigInt(tickDiff) - BigInt(spongeTick),
       }),
     ),
     maxPrice: BigNumber(
       getMarketPrice({
         marketQuoteCurrency: quoteCurrency,
         marketBaseCurrency: baseCurrency,
-        bidTick: meanAskPriceBidBookTick + BigInt(tickDiff),
+        bidTick:
+          meanAskPriceBidBookTick + BigInt(tickDiff) + BigInt(spongeTick),
       }),
     ),
   }
