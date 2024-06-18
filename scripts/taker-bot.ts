@@ -111,6 +111,7 @@ const fetchTradeFromHashes = async (
     quoteAmount: bigint
     poolAddress: `0x${string}`
     blockNumber: bigint
+    price: string
   }[]
 > => {
   const trades = (
@@ -142,6 +143,15 @@ const fetchTradeFromHashes = async (
       quoteAmount: abs(amount1),
       poolAddress: log.address,
       blockNumber: BigInt(log.blockNumber),
+      price: new BigNumber(log.args.sqrtPriceX96.toString())
+        .div(new BigNumber(2).pow(96))
+        .pow(2)
+        .times(
+          new BigNumber(10).pow(
+            BASE_CURRENCY.decimals - QUOTE_CURRENCY.decimals,
+          ),
+        )
+        .toFixed(),
     }
   })
 }
@@ -258,18 +268,21 @@ const fetchTradeFromHashes = async (
           taken.amount,
           taken.currency.decimals,
         )
+        const uniswapPrice = new BigNumber(trade.price)
+        const cloberPrice = isBid
+          ? new BigNumber(spent.amount).div(taken.amount)
+          : new BigNumber(taken.amount).div(spent.amount)
+        const success =
+          (isBid && cloberPrice.lt(uniswapPrice)) ||
+          (!isBid && cloberPrice.gt(uniswapPrice))
 
         console.log(
-          `[${actualAmountOut < expectedAmountOut ? 'Succeed' : 'Failed'}][Trade] ${trade.type} ${amountIn} ${spent.currency.symbol}`,
+          `[${success ? 'Succeed' : 'Failed'}][Trade] market ${trade.type} ${amountIn} ${spent.currency.symbol}`,
         )
-        console.log(
-          `  Actual amount out: ${formatUnits(actualAmountOut, taken.currency.decimals)} ${taken.currency.symbol}`,
-        )
-        console.log(
-          `  Expected amount out: ${formatUnits(expectedAmountOut, taken.currency.decimals)} ${taken.currency.symbol}`,
-        )
+        console.log(`  Uniswap Price: ${uniswapPrice.toFixed(4)}`)
+        console.log(`  Clober Price: ${cloberPrice.toFixed(4)}`)
 
-        if (actualAmountOut < expectedAmountOut) {
+        if (success) {
           cloberTakenTrades.push(trade)
           numberOfMarketOrders += 1
           cloberBidVolume += expectedAmountOut
