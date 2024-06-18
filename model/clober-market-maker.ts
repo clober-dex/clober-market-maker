@@ -512,7 +512,7 @@ export class CloberMarketMaker {
         minPrice: bidPrice,
         maxPrice: askPrice,
         oraclePrice,
-        entropy: new BigNumber(params.minEntropy),
+        entropy: new BigNumber(1),
         tickDiff: 0,
         askTicks,
         askPrices,
@@ -570,12 +570,7 @@ export class CloberMarketMaker {
 
     const currentEpoch: Epoch =
       this.epoch[market][this.epoch[market].length - 1]
-    const {
-      askOrderSizeInBase,
-      minimumAskOrderSizeInBase,
-      bidOrderSizeInQuote,
-      minimumBidOrderSizeInQuote,
-    } = calculateOrderSize({
+    const { askOrderSizeInBase, bidOrderSizeInQuote } = calculateOrderSize({
       totalBase,
       totalQuote,
       oraclePrice,
@@ -596,11 +591,33 @@ export class CloberMarketMaker {
       }))
       // filter out the open order is smaller than the minimum order size
       .filter((params) =>
-        minimumBidOrderSizeInQuote.gt(
-          openOrders.filter((o) => o.isBid).find((o) => o.tick === params.tick)
-            ?.cancelable.value ?? '0',
-        ),
+        new BigNumber(bidSize)
+          .times(0.5)
+          .gt(
+            openOrders
+              .filter((o) => o.isBid && o.tick === params.tick)
+              .reduce(
+                (acc, o) => acc.plus(o.cancelable.value),
+                new BigNumber(0),
+              ),
+          ),
       )
+      .map((params) => ({
+        ...params,
+        quoteAmount: parseUnits(
+          new BigNumber(bidSize)
+            .minus(
+              openOrders
+                .filter((o) => o.isBid && o.tick === params.tick)
+                .reduce(
+                  (acc, o) => acc.plus(o.cancelable.value),
+                  new BigNumber(0),
+                ),
+            )
+            .toFixed(),
+          quoteCurrency.decimals,
+        ),
+      }))
 
     const askSize = askOrderSizeInBase.div(params.orderNum).toFixed()
     const askMakeParams: MakeParam[] = currentEpoch.askTicks
@@ -614,11 +631,33 @@ export class CloberMarketMaker {
       }))
       // filter out the open order is smaller than the minimum order size
       .filter((params) =>
-        minimumAskOrderSizeInBase.gt(
-          openOrders.filter((o) => !o.isBid).find((o) => o.tick === params.tick)
-            ?.cancelable.value ?? '0',
-        ),
+        new BigNumber(askSize)
+          .times(0.5)
+          .gt(
+            openOrders
+              .filter((o) => !o.isBid && o.tick === params.tick)
+              .reduce(
+                (acc, o) => acc.plus(o.cancelable.value),
+                new BigNumber(0),
+              ),
+          ),
       )
+      .map((params) => ({
+        ...params,
+        quoteAmount: parseUnits(
+          new BigNumber(askSize)
+            .minus(
+              openOrders
+                .filter((o) => !o.isBid && o.tick === params.tick)
+                .reduce(
+                  (acc, o) => acc.plus(o.cancelable.value),
+                  new BigNumber(0),
+                ),
+            )
+            .toFixed(),
+          baseCurrency.decimals,
+        ),
+      }))
 
     const bidOrderIdsToClaim = openOrders
       .filter((order) => order.isBid && Number(order.claimable.value) > 0)
@@ -710,6 +749,8 @@ export class CloberMarketMaker {
         humanReadableTargetOrders.bid.sort(
           (a, b) => Number(b[0]) - Number(a[0]),
         )[0]?.[0] || '-',
+      askOrderSizeInBase,
+      bidOrderSizeInQuote,
     })
 
     await this.execute(
