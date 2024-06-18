@@ -16,7 +16,10 @@ export const calculateOrderSize = ({
   minEntropy: BigNumber
   balancePercentage: number
   minBalancePercentage: number
-}): { askOrderSizeInBase: BigNumber; bidOrderSizeInQuote: BigNumber } => {
+}): {
+  askOrderSizeInBase: BigNumber
+  bidOrderSizeInQuote: BigNumber
+} => {
   const [askOrderSizeInBase, bidOrderSizeInBase] = [
     totalBase.times(balancePercentage / 100),
     totalQuote.times(balancePercentage / 100).div(oraclePrice),

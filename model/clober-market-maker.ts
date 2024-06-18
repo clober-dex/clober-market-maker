@@ -32,10 +32,7 @@ import { arbitrumSepolia, base } from 'viem/chains'
 import { logger, slackClient } from '../utils/logger.ts'
 import { CHAIN_MAP } from '../constants/chain.ts'
 import { ERC20_PERMIT_ABI } from '../abis/@openzeppelin/erc20-permit-abi.ts'
-import {
-  findCurrencyByAddress,
-  findCurrencyBySymbol,
-} from '../utils/currency.ts'
+import { findCurrencyBySymbol } from '../utils/currency.ts'
 import { getGasPrice, waitTransaction } from '../utils/transaction.ts'
 import {
   convertTimestampToBlockNumber,
@@ -79,8 +76,6 @@ export class CloberMarketMaker {
   oracle: Oracle
   clober: Clober
   // mutable state
-  openOrders: OpenOrder[] = []
-  balances: { [address: `0x${string}`]: bigint } = {}
   epoch: { [market: string]: Epoch[] } = {}
   private initialized = false
 
@@ -197,71 +192,6 @@ export class CloberMarketMaker {
     this.initialized = true
   }
 
-  async update() {
-    const fetchQueue: Promise<void>[] = []
-    const start = performance.now()
-
-    // get open orders
-    fetchQueue.push(
-      getOpenOrders({
-        chainId: this.chainId,
-        userAddress: this.userAddress,
-      }).then((openOrder) => {
-        this.openOrders = openOrder
-      }),
-    )
-
-    // get balances
-    fetchQueue.push(
-      this.publicClient
-        .multicall({
-          contracts: this.erc20Tokens.map((address) => ({
-            address,
-            abi: ERC20_PERMIT_ABI,
-            functionName: 'balanceOf',
-            args: [this.userAddress],
-          })),
-        })
-        .then((results) => {
-          this.balances = results.reduce(
-            (acc: {}, { result }, index: number) => {
-              const address = this.erc20Tokens[index]
-              return {
-                ...acc,
-                [getAddress(address)]: result ?? 0n,
-              }
-            },
-            this.balances,
-          )
-        }),
-    )
-
-    // get eth balance
-    fetchQueue.push(
-      this.publicClient
-        .getBalance({
-          address: this.userAddress,
-        })
-        .then((balance) => {
-          this.balances[zeroAddress] = balance
-        }),
-    )
-    await Promise.all(fetchQueue)
-    const end = performance.now()
-
-    await logger(chalk.magenta, 'market maker updated', {
-      second: ((end - start) / 1000).toFixed(2),
-      openOrders: this.openOrders.length,
-      balance: Object.entries(this.balances).map(([address, balance]) => ({
-        address,
-        balance: formatUnits(
-          balance,
-          findCurrencyByAddress(this.chainId, getAddress(address)).decimals,
-        ),
-      })),
-    })
-  }
-
   async run() {
     if (!this.initialized) {
       throw new Error('MarketMaker is not initialized')
@@ -274,7 +204,6 @@ export class CloberMarketMaker {
           this.dexSimulator.update(),
           this.oracle.update(),
           this.clober.update(),
-          this.update(),
         ])
       } catch (e) {
         console.error('Error in update', e)
@@ -305,8 +234,15 @@ export class CloberMarketMaker {
     }
   }
 
-  getOpenOrders(baseCurrency: Currency, quoteCurrency: Currency): OpenOrder[] {
-    return this.openOrders.filter(
+  async getOpenOrders(
+    baseCurrency: Currency,
+    quoteCurrency: Currency,
+  ): Promise<OpenOrder[]> {
+    const openOrders = await getOpenOrders({
+      chainId: this.chainId,
+      userAddress: this.userAddress,
+    })
+    return openOrders.filter(
       (order) =>
         (isAddressEqual(order.inputCurrency.address, baseCurrency.address) &&
           isAddressEqual(
@@ -318,17 +254,67 @@ export class CloberMarketMaker {
     )
   }
 
-  getBalances(baseCurrency: Currency, quoteCurrency: Currency) {
-    const openOrders = this.getOpenOrders(baseCurrency, quoteCurrency)
+  async getBalances(
+    baseCurrency: Currency,
+    quoteCurrency: Currency,
+    openOrders: OpenOrder[],
+  ): Promise<{
+    claimableBase: BigNumber
+    cancelableBase: BigNumber
+    claimableQuote: BigNumber
+    freeQuote: BigNumber
+    totalQuote: BigNumber
+    cancelableQuote: BigNumber
+    totalBase: BigNumber
+    freeBase: BigNumber
+  }> {
+    let balances: { [address: `0x${string}`]: bigint } = {}
+
+    const fetchQueue: Promise<void>[] = []
+
+    // get balances
+    fetchQueue.push(
+      this.publicClient
+        .multicall({
+          contracts: this.erc20Tokens.map((address) => ({
+            address,
+            abi: ERC20_PERMIT_ABI,
+            functionName: 'balanceOf',
+            args: [this.userAddress],
+          })),
+        })
+        .then((results) => {
+          balances = results.reduce((acc: {}, { result }, index: number) => {
+            const address = this.erc20Tokens[index]
+            return {
+              ...acc,
+              [getAddress(address)]: result ?? 0n,
+            }
+          }, balances)
+        }),
+    )
+
+    // get eth balance
+    fetchQueue.push(
+      this.publicClient
+        .getBalance({
+          address: this.userAddress,
+        })
+        .then((balance) => {
+          balances[zeroAddress] = balance
+        }),
+    )
+    await Promise.all(fetchQueue)
+
     const freeBase = new BigNumber(
       formatUnits(
-        this.balances[getAddress(baseCurrency.address)],
+        balances[getAddress(baseCurrency.address)],
         baseCurrency.decimals,
       ),
     )
     const freeQuote = new BigNumber(
       formatUnits(
-        this.balances[getAddress(quoteCurrency.address)],
+        balances[getAddress(quoteCurrency.address)],
         quoteCurrency.decimals,
       ),
     )
@@ -375,6 +361,7 @@ export class CloberMarketMaker {
       this.chainId,
       market.split('/')[0],
     )
+    const openOrders = await this.getOpenOrders(baseCurrency, quoteCurrency)
     const {
       totalBase,
       freeBase,
@@ -384,7 +371,7 @@ export class CloberMarketMaker {
       freeQuote,
       claimableQuote,
       cancelableQuote,
-    } = this.getBalances(baseCurrency, quoteCurrency)
+    } = await this.getBalances(baseCurrency, quoteCurrency, openOrders)
     const oraclePrice = this.oracle.price(market)
     const onHold = oraclePrice
       .times(params.startBaseAmount)
@@ -525,7 +512,7 @@ export class CloberMarketMaker {
         minPrice: bidPrice,
         maxPrice: askPrice,
         oraclePrice,
-        entropy: new BigNumber(params.minEntropy),
+        entropy: new BigNumber(1),
         tickDiff: 0,
         askTicks,
         askPrices,
@@ -543,8 +530,6 @@ export class CloberMarketMaker {
         ...newEpoch,
       })
     }
-
-    const openOrders = this.getOpenOrders(baseCurrency, quoteCurrency)
 
     await logger(chalk.redBright, 'Balance', {
       market,
@@ -604,13 +589,35 @@ export class CloberMarketMaker {
         isBid: true,
         isETH: isAddressEqual(quoteCurrency.address, zeroAddress),
       }))
-      // filter out the tick that already has open orders
-      .filter(
-        (params) =>
-          openOrders
-            .filter((o) => o.isBid)
-            .find((o) => o.tick === params.tick) === undefined,
+      // filter out the open order is smaller than the minimum order size
+      .filter((params) =>
+        new BigNumber(bidSize)
+          .times(0.5)
+          .gt(
+            openOrders
+              .filter((o) => o.isBid && o.tick === params.tick)
+              .reduce(
+                (acc, o) => acc.plus(o.cancelable.value),
+                new BigNumber(0),
+              ),
+          ),
       )
+      .map((params) => ({
+        ...params,
+        quoteAmount: parseUnits(
+          new BigNumber(bidSize)
+            .minus(
+              openOrders
+                .filter((o) => o.isBid && o.tick === params.tick)
+                .reduce(
+                  (acc, o) => acc.plus(o.cancelable.value),
+                  new BigNumber(0),
+                ),
+            )
+            .toFixed(),
+          quoteCurrency.decimals,
+        ),
+      }))
 
     const askSize = askOrderSizeInBase.div(params.orderNum).toFixed()
     const askMakeParams: MakeParam[] = currentEpoch.askTicks
@@ -622,13 +629,35 @@ export class CloberMarketMaker {
         isBid: false,
         isETH: isAddressEqual(baseCurrency.address, zeroAddress),
       }))
-      // filter out the tick that already has open orders
-      .filter(
-        (params) =>
-          openOrders
-            .filter((o) => !o.isBid)
-            .find((o) => o.tick === params.tick) === undefined,
+      // filter out the open order is smaller than the minimum order size
+      .filter((params) =>
+        new BigNumber(askSize)
+          .times(0.5)
+          .gt(
+            openOrders
+              .filter((o) => !o.isBid && o.tick === params.tick)
+              .reduce(
+                (acc, o) => acc.plus(o.cancelable.value),
+                new BigNumber(0),
+              ),
+          ),
       )
+      .map((params) => ({
+        ...params,
+        quoteAmount: parseUnits(
+          new BigNumber(askSize)
+            .minus(
+              openOrders
+                .filter((o) => !o.isBid && o.tick === params.tick)
+                .reduce(
+                  (acc, o) => acc.plus(o.cancelable.value),
+                  new BigNumber(0),
+                ),
+            )
+            .toFixed(),
+          baseCurrency.decimals,
+        ),
+      }))
 
     const bidOrderIdsToClaim = openOrders
       .filter((order) => order.isBid && Number(order.claimable.value) > 0)
@@ -720,6 +749,8 @@ export class CloberMarketMaker {
         humanReadableTargetOrders.bid.sort(
           (a, b) => Number(b[0]) - Number(a[0]),
         )[0]?.[0] || '-',
+      askOrderSizeInBase,
+      bidOrderSizeInQuote,
     })
 
     await this.execute(
