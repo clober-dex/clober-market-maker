@@ -255,6 +255,21 @@
                 "value": "stepAfter"
               }
             ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "onchainPrice"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "dark-purple",
+                  "mode": "fixed"
+                }
+              }
+            ]
           }
         ]
       },
@@ -342,6 +357,10 @@
               {
                 "alias": "cloberHighestBidPrice",
                 "path": "cloberHighestBidPrice"
+              },
+              {
+                "alias": "onchainPrice",
+                "path": "onchainPrice"
               }
             ],
             "keepTime": true,
@@ -372,6 +391,10 @@
               {
                 "destinationType": "number",
                 "targetField": "cloberHighestBidPrice"
+              },
+              {
+                "destinationType": "number",
+                "targetField": "onchainPrice"
               }
             ],
             "fields": {}
@@ -402,6 +425,33 @@
             ],
             "match": "all",
             "type": "include"
+          }
+        },
+        {
+          "id": "filterByValue",
+          "options": {
+            "filters": [
+              {
+                "config": {
+                  "id": "lower",
+                  "options": {
+                    "value": 3500
+                  }
+                },
+                "fieldName": "uniswapLowestAskPrice"
+              },
+              {
+                "config": {
+                  "id": "lower",
+                  "options": {
+                    "value": 3500
+                  }
+                },
+                "fieldName": "uniswapHighestBidPrice"
+              }
+            ],
+            "match": "all",
+            "type": "exclude"
           }
         }
       ],
@@ -588,7 +638,7 @@
       "type": "barchart"
     }
   ],
-  "refresh": "",
+  "refresh": "5s",
   "schemaVersion": 39,
   "tags": [],
   "templating": {
@@ -602,6 +652,6 @@
   "timezone": "browser",
   "title": "Taker",
   "uid": "edmgolfu2nncwe",
-  "version": 50,
+  "version": 70,
   "weekStart": ""
 }
