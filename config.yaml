@@ -11,7 +11,9 @@ oracles:
       quote: USDC
       base: ETH
     onchain:
+      quoteAmount: 400000
       quote: USDC
+      baseAmount: 100
       base: WETH
 markets:
   WETH/USDC:
@@ -19,13 +21,15 @@ markets:
       quote: USDC
       base: WETH
     params:
-      balancePercentage: 20
+      balancePercentage: 1
+      minBalancePercentage: 0.3
+      minEntropy: 0.1
       defaultBidTickSpread: 20
       defaultAskTickSpread: 20
       orderGap: 1
       orderNum: 1
-      startQuoteAmount: 386300
+      startQuoteAmount: 350476
       startBaseAmount: 100
+      startPrice: 3504.76
       maxEpochDurationSeconds: 3600
-      minSpongeTick: 0
-      maxSpongeTick: 0
+      spongeTick: 3

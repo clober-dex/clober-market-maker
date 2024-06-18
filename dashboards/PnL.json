@@ -333,7 +333,23 @@
             ]
           }
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Profit"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "dark-purple",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
       },
       "gridPos": {
         "h": 11,
@@ -380,6 +396,10 @@
               {
                 "alias": "onHold",
                 "path": "onHold"
+              },
+              {
+                "alias": "onUniV2",
+                "path": "onUniV2"
               }
             ],
             "keepTime": true,
@@ -400,7 +420,23 @@
             "reduce": {
               "reducer": "sum"
             },
-            "replaceFields": true
+            "replaceFields": false
+          }
+        },
+        {
+          "id": "convertFieldType",
+          "options": {
+            "conversions": [
+              {
+                "destinationType": "number",
+                "targetField": "onUniV2"
+              },
+              {
+                "destinationType": "number",
+                "targetField": "Profit"
+              }
+            ],
+            "fields": {}
           }
         }
       ],
@@ -420,6 +456,6 @@
   "timezone": "browser",
   "title": "PnL",
   "uid": "fdmgoi36ppmo0c",
-  "version": 7,
+  "version": 9,
   "weekStart": ""
 }

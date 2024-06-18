@@ -8,24 +8,6 @@ import {
 
 import BigNumber from './bignumber.ts'
 
-export const calculateSpongeTick = ({
-  previousEpochDuration,
-  maxEpochDurationSeconds,
-  minSpongeTick,
-  maxSpongeTick,
-}: {
-  previousEpochDuration: number
-  maxEpochDurationSeconds: number
-  minSpongeTick: number
-  maxSpongeTick: number
-}): number => {
-  return Math.floor(
-    minSpongeTick +
-      (maxSpongeTick - minSpongeTick) *
-        Math.min(previousEpochDuration / maxEpochDurationSeconds, 1),
-  )
-}
-
 export const buildTickAndPriceArray = ({
   chainId,
   baseCurrency,

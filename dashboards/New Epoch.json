@@ -151,6 +151,10 @@
               {
                 "alias": "bidVolume",
                 "path": "bidVolume"
+              },
+              {
+                "alias": "entropy",
+                "path": "entropy"
               }
             ],
             "keepTime": true,
@@ -245,10 +249,6 @@
                 "path": "id"
               },
               {
-                "alias": "pnl",
-                "path": "pnl"
-              },
-              {
                 "alias": "askSpread",
                 "path": "askSpread"
               },
@@ -261,8 +261,8 @@
                 "path": "tickDiff"
               },
               {
-                "alias": "spongeTick",
-                "path": "spongeTick"
+                "alias": "entropy",
+                "path": "entropy"
               },
               {
                 "alias": "minPrice",
@@ -320,6 +320,6 @@
   "timezone": "browser",
   "title": "New Epoch",
   "uid": "edmyjl3nzicqof",
-  "version": 29,
+  "version": 33,
   "weekStart": ""
 }

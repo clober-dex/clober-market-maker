@@ -18,6 +18,7 @@ import { arbitrumSepolia, base } from 'viem/chains'
 import {
   approveERC20,
   marketOrder,
+  getExpectedInput,
   type Currency,
   CHAIN_IDS,
 } from '@clober/v2-sdk'
@@ -110,6 +111,7 @@ const fetchTradeFromHashes = async (
     quoteAmount: bigint
     poolAddress: `0x${string}`
     blockNumber: bigint
+    price: string
   }[]
 > => {
   const trades = (
@@ -141,6 +143,15 @@ const fetchTradeFromHashes = async (
       quoteAmount: abs(amount1),
       poolAddress: log.address,
       blockNumber: BigInt(log.blockNumber),
+      price: new BigNumber(log.args.sqrtPriceX96.toString())
+        .div(new BigNumber(2).pow(96))
+        .pow(2)
+        .times(
+          new BigNumber(10).pow(
+            BASE_CURRENCY.decimals - QUOTE_CURRENCY.decimals,
+          ),
+        )
+        .toFixed(),
     }
   })
 }
@@ -219,9 +230,24 @@ const fetchTradeFromHashes = async (
       for (const trade of trades) {
         const isBid = trade.type === 'bid'
         const actualAmountOut = isBid ? trade.baseAmount : trade.quoteAmount
-        const amountIn = isBid
+        const { spentAmount: maxAmountIn } = await getExpectedInput({
+          chainId: arbitrumSepolia.id,
+          inputToken: isBid ? QUOTE_CURRENCY.address : BASE_CURRENCY.address,
+          outputToken: isBid ? BASE_CURRENCY.address : QUOTE_CURRENCY.address,
+          amountOut: isBid
+            ? formatUnits(trade.baseAmount, BASE_CURRENCY.decimals)
+            : formatUnits(trade.quoteAmount, QUOTE_CURRENCY.decimals),
+          options: process.env.RPC_URL
+            ? {
+                rpcUrl: process.env.RPC_URL,
+                useSubgraph: false,
+              }
+            : {},
+        })
+        let amountIn = isBid
           ? formatUnits(trade.quoteAmount, QUOTE_CURRENCY.decimals)
           : formatUnits(trade.baseAmount, BASE_CURRENCY.decimals)
+        amountIn = Math.min(Number(amountIn), Number(maxAmountIn)).toString()
         const {
           transaction,
           result: { taken, spent },
@@ -242,18 +268,21 @@ const fetchTradeFromHashes = async (
           taken.amount,
           taken.currency.decimals,
         )
+        const uniswapPrice = new BigNumber(trade.price)
+        const cloberPrice = isBid
+          ? new BigNumber(spent.amount).div(taken.amount)
+          : new BigNumber(taken.amount).div(spent.amount)
+        const success =
+          (isBid && cloberPrice.lt(uniswapPrice)) ||
+          (!isBid && cloberPrice.gt(uniswapPrice))
 
         console.log(
-          `[${actualAmountOut < expectedAmountOut ? 'Succeed' : 'Failed'}][Trade] ${trade.type} ${amountIn} ${spent.currency.symbol}`,
+          `[${success ? 'Succeed' : 'Failed'}][Trade] market ${trade.type} ${amountIn} ${spent.currency.symbol}`,
         )
-        console.log(
-          `  Actual amount out: ${formatUnits(actualAmountOut, taken.currency.decimals)} ${taken.currency.symbol}`,
-        )
-        console.log(
-          `  Expected amount out: ${formatUnits(expectedAmountOut, taken.currency.decimals)} ${taken.currency.symbol}`,
-        )
+        console.log(`  Uniswap Price: ${uniswapPrice.toFixed(4)}`)
+        console.log(`  Clober Price: ${cloberPrice.toFixed(4)}`)
 
-        if (actualAmountOut < expectedAmountOut) {
+        if (success) {
           cloberTakenTrades.push(trade)
           numberOfMarketOrders += 1
           cloberBidVolume += expectedAmountOut
