@@ -308,9 +308,11 @@ const fetchTradeFromHashes = async (
             hash,
           )
           await sendSlackMessage({
-            message: `[Trade] ${trade.type} with ${amountIn}`,
+            message: `[Trade] market ${trade.type} with ${amountIn} ${spent.currency.symbol}`,
             actualAmountOut: `${formatUnits(actualAmountOut, taken.currency.decimals)} ${taken.currency.symbol}`,
             expectedAmountOut: `${formatUnits(expectedAmountOut, taken.currency.decimals)} ${taken.currency.symbol}`,
+            uniswapPrice: uniswapPrice.toFixed(4),
+            cloberPrice: cloberPrice.toFixed(4),
             hash,
           })
         }
