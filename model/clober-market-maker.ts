@@ -585,7 +585,12 @@ export class CloberMarketMaker {
 
     const currentEpoch: Epoch =
       this.epoch[market][this.epoch[market].length - 1]
-    const { askOrderSizeInBase, bidOrderSizeInQuote } = calculateOrderSize({
+    const {
+      askOrderSizeInBase,
+      minimumAskOrderSizeInBase,
+      bidOrderSizeInQuote,
+      minimumBidOrderSizeInQuote,
+    } = calculateOrderSize({
       totalBase,
       totalQuote,
       oraclePrice,
@@ -604,12 +609,12 @@ export class CloberMarketMaker {
         isBid: true,
         isETH: isAddressEqual(quoteCurrency.address, zeroAddress),
       }))
-      // filter out the tick that already has open orders
-      .filter(
-        (params) =>
-          openOrders
-            .filter((o) => o.isBid)
-            .find((o) => o.tick === params.tick) === undefined,
+      // filter out the open order is smaller than the minimum order size
+      .filter((params) =>
+        minimumBidOrderSizeInQuote.gt(
+          openOrders.filter((o) => o.isBid).find((o) => o.tick === params.tick)
+            ?.cancelable.value ?? '0',
+        ),
       )
 
     const askSize = askOrderSizeInBase.div(params.orderNum).toFixed()
@@ -622,12 +627,12 @@ export class CloberMarketMaker {
         isBid: false,
         isETH: isAddressEqual(baseCurrency.address, zeroAddress),
       }))
-      // filter out the tick that already has open orders
-      .filter(
-        (params) =>
-          openOrders
-            .filter((o) => !o.isBid)
-            .find((o) => o.tick === params.tick) === undefined,
+      // filter out the open order is smaller than the minimum order size
+      .filter((params) =>
+        minimumAskOrderSizeInBase.gt(
+          openOrders.filter((o) => !o.isBid).find((o) => o.tick === params.tick)
+            ?.cancelable.value ?? '0',
+        ),
       )
 
     const bidOrderIdsToClaim = openOrders
