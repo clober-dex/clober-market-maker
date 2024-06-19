@@ -288,6 +288,18 @@
               {
                 "destinationType": "number",
                 "targetField": "Total"
+              },
+              {
+                "destinationType": "number",
+                "targetField": "Free"
+              },
+              {
+                "destinationType": "number",
+                "targetField": "Open"
+              },
+              {
+                "destinationType": "number",
+                "targetField": "Claimable"
               }
             ],
             "fields": {}
@@ -310,6 +322,6 @@
   "timezone": "browser",
   "title": "Amount",
   "uid": "cdmgoxs5yxla8a",
-  "version": 5,
+  "version": 7,
   "weekStart": ""
 }

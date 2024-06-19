@@ -228,27 +228,6 @@ const fetchTradeFromHashes = async (
     const cloberTakenTrades = []
     if (trades.length > 0) {
       for (const trade of trades) {
-        if (trade.type === 'ask') {
-          logger(
-            chalk.redBright,
-            'UniSwap Sell Event',
-            {
-              price: trade.price,
-              volume: formatUnits(trade.baseAmount, BASE_CURRENCY.decimals),
-            },
-            false,
-          )
-        } else if (trade.type === 'bid') {
-          logger(
-            chalk.greenBright,
-            'UniSwap Buy Event',
-            {
-              price: trade.price,
-              volume: formatUnits(trade.baseAmount, BASE_CURRENCY.decimals),
-            },
-            false,
-          )
-        }
         const isBid = trade.type === 'bid'
         const actualAmountOut = isBid ? trade.baseAmount : trade.quoteAmount
         const { spentAmount: maxAmountIn } = await getExpectedInput({
@@ -335,6 +314,28 @@ const fetchTradeFromHashes = async (
             cloberPrice: cloberPrice.toFixed(4),
             hash,
           })
+        } else {
+          if (trade.type === 'ask') {
+            logger(
+              chalk.redBright,
+              'UniSwap Sell Event',
+              {
+                price: trade.price,
+                volume: formatUnits(trade.baseAmount, BASE_CURRENCY.decimals),
+              },
+              false,
+            )
+          } else if (trade.type === 'bid') {
+            logger(
+              chalk.greenBright,
+              'UniSwap Buy Event',
+              {
+                price: trade.price,
+                volume: formatUnits(trade.baseAmount, BASE_CURRENCY.decimals),
+              },
+              false,
+            )
+          }
         }
       }
     }
