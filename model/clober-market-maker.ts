@@ -756,13 +756,19 @@ export class CloberMarketMaker {
 
     if (!this.lock) {
       this.lock = true
-      await this.execute(
-        orderIdsToClaim.map(({ id }) => id),
-        orderIdsToCancel.map(({ id }) => id),
-        bidMakeParams,
-        askMakeParams,
-      )
-      this.lock = false
+      try {
+        await this.execute(
+          orderIdsToClaim.map(({ id }) => id),
+          orderIdsToCancel.map(({ id }) => id),
+          bidMakeParams,
+          askMakeParams,
+        )
+      } catch (e) {
+        console.error('Error in execute', e)
+        throw e
+      } finally {
+        this.lock = false
+      }
     }
   }
 
