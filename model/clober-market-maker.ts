@@ -78,6 +78,7 @@ export class CloberMarketMaker {
   // mutable state
   epoch: { [market: string]: Epoch[] } = {}
   private initialized = false
+  private lock = false
 
   constructor(configPath?: string) {
     configPath = configPath ?? path.join(__dirname, '../config.yaml')
@@ -753,12 +754,16 @@ export class CloberMarketMaker {
       bidOrderSizeInQuote,
     })
 
-    await this.execute(
-      orderIdsToClaim.map(({ id }) => id),
-      orderIdsToCancel.map(({ id }) => id),
-      bidMakeParams,
-      askMakeParams,
-    )
+    if (!this.lock) {
+      this.lock = true
+      await this.execute(
+        orderIdsToClaim.map(({ id }) => id),
+        orderIdsToCancel.map(({ id }) => id),
+        bidMakeParams,
+        askMakeParams,
+      )
+      this.lock = false
+    }
   }
 
   async execute(
