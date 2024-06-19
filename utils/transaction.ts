@@ -9,20 +9,31 @@ export const waitTransaction = async (
   value: any,
   publicClient: PublicClient,
   hash: `0x${string}` | undefined,
+  sendMessageToSlack = true,
 ) => {
   if (hash) {
     await publicClient.waitForTransactionReceipt({
       hash,
     })
-    await logger(chalk.green, `Success ${message}`, {
-      ...value,
-      hash,
-    })
+    await logger(
+      chalk.green,
+      `Success ${message}`,
+      {
+        ...value,
+        hash,
+      },
+      sendMessageToSlack,
+    )
   } else {
-    await logger(chalk.red, `Skip ${message}`, {
-      ...value,
-      hash: '',
-    })
+    await logger(
+      chalk.red,
+      `Skip ${message}`,
+      {
+        ...value,
+        hash: '',
+      },
+      sendMessageToSlack,
+    )
   }
 }
 
