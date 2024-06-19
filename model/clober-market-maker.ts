@@ -767,6 +767,7 @@ export class CloberMarketMaker {
         console.error('Error in execute', e)
         throw e
       } finally {
+        await this.sleep(5000)
         this.lock = false
       }
     }
@@ -844,7 +845,6 @@ export class CloberMarketMaker {
       this.publicClient,
       hash,
     )
-    await this.sleep(5000)
   }
 
   async sleep(ms: number) {
