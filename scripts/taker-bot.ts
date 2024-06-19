@@ -228,6 +228,27 @@ const fetchTradeFromHashes = async (
     const cloberTakenTrades = []
     if (trades.length > 0) {
       for (const trade of trades) {
+        if (trade.type === 'ask') {
+          logger(
+            chalk.redBright,
+            'UniSwap Sell Event',
+            {
+              price: trade.price,
+              volume: formatUnits(trade.baseAmount, BASE_CURRENCY.decimals),
+            },
+            false,
+          )
+        } else if (trade.type === 'bid') {
+          logger(
+            chalk.greenBright,
+            'UniSwap Buy Event',
+            {
+              price: trade.price,
+              volume: formatUnits(trade.baseAmount, BASE_CURRENCY.decimals),
+            },
+            false,
+          )
+        }
         const isBid = trade.type === 'bid'
         const actualAmountOut = isBid ? trade.baseAmount : trade.quoteAmount
         const { spentAmount: maxAmountIn } = await getExpectedInput({
@@ -297,15 +318,14 @@ const fetchTradeFromHashes = async (
             gas: transaction.gas,
           })
           await waitTransaction(
-            'Trade',
+            trade.type === 'ask' ? 'Clober Sell Event' : 'Clober Buy Event',
             {
-              type: isBid ? 'bid' : 'ask',
-              amount: isBid
-                ? `${formatUnits(trade.quoteAmount, QUOTE_CURRENCY.decimals)} ${QUOTE_CURRENCY.symbol}`
-                : `${formatUnits(trade.baseAmount, BASE_CURRENCY.decimals)} ${BASE_CURRENCY.symbol}`,
+              price: cloberPrice,
+              volume: formatUnits(expectedAmountOut, BASE_CURRENCY.decimals),
             },
             testnetPublicClient,
             hash,
+            false,
           )
           await sendSlackMessage({
             message: `[Trade] market ${trade.type} with ${amountIn} ${spent.currency.symbol}`,
@@ -319,47 +339,52 @@ const fetchTradeFromHashes = async (
       }
     }
 
-    logger(chalk.green, 'Swap Event', {
-      startBlock: Number(startBlock),
-      latestBlock: Number(latestBlock),
-      hashesLength: hashes.length,
-      tradesLength: trades.length,
-      uniswapHighestBidPrice:
-        trades
-          .filter((trade) => trade.type === 'ask')
-          .map((trade) =>
-            new BigNumber(
-              formatUnits(abs(trade.quoteAmount), QUOTE_CURRENCY.decimals),
+    logger(
+      chalk.green,
+      'Swap Event',
+      {
+        startBlock: Number(startBlock),
+        latestBlock: Number(latestBlock),
+        hashesLength: hashes.length,
+        tradesLength: trades.length,
+        uniswapHighestBidPrice:
+          trades
+            .filter((trade) => trade.type === 'ask')
+            .map((trade) =>
+              new BigNumber(
+                formatUnits(abs(trade.quoteAmount), QUOTE_CURRENCY.decimals),
+              )
+                .div(formatUnits(abs(trade.baseAmount), BASE_CURRENCY.decimals))
+                .toFixed(4),
             )
-              .div(formatUnits(abs(trade.baseAmount), BASE_CURRENCY.decimals))
-              .toFixed(4),
-          )
-          .sort((a, b) => Number(b) - Number(a))[0] ?? '-',
-      oraclePrice: binance.price('WETH/USDC').toString(),
-      onchainPrice: onchainOracle.price('WETH/USDC').toString(),
-      uniswapLowestAskPrice:
-        trades
-          .filter((trade) => trade.type === 'bid')
-          .map((trade) =>
-            new BigNumber(
-              formatUnits(abs(trade.quoteAmount), QUOTE_CURRENCY.decimals),
+            .sort((a, b) => Number(b) - Number(a))[0] ?? '-',
+        oraclePrice: binance.price('WETH/USDC').toString(),
+        onchainPrice: onchainOracle.price('WETH/USDC').toString(),
+        uniswapLowestAskPrice:
+          trades
+            .filter((trade) => trade.type === 'bid')
+            .map((trade) =>
+              new BigNumber(
+                formatUnits(abs(trade.quoteAmount), QUOTE_CURRENCY.decimals),
+              )
+                .div(formatUnits(abs(trade.baseAmount), BASE_CURRENCY.decimals))
+                .toFixed(4),
             )
-              .div(formatUnits(abs(trade.baseAmount), BASE_CURRENCY.decimals))
-              .toFixed(4),
-          )
-          .sort((a, b) => Number(a) - Number(b))[0] ?? '-',
-      uniswapBidVolume: formatUnits(uniswapBidVolume, BASE_CURRENCY.decimals),
-      uniswapAskVolume: formatUnits(uniswapAskVolume, BASE_CURRENCY.decimals),
-      uniswapVolume: formatUnits(uniswapVolume, BASE_CURRENCY.decimals),
-      cloberBidVolume: formatUnits(cloberBidVolume, BASE_CURRENCY.decimals),
-      cloberAskVolume: formatUnits(cloberAskVolume, BASE_CURRENCY.decimals),
-      cloberVolume: formatUnits(cloberVolume, BASE_CURRENCY.decimals),
-      cloberHighestBidPrice: clober.highestBid('WETH/USDC').toFixed(4) ?? '-',
-      cloberLowestAskPrice: clober.lowestAsk('WETH/USDC').toFixed(4) ?? '-',
-      askTradesLength: trades.filter((trade) => trade.type === 'ask').length,
-      bidTradesLength: trades.filter((trade) => trade.type === 'bid').length,
-      numberOfMarketOrders,
-    })
+            .sort((a, b) => Number(a) - Number(b))[0] ?? '-',
+        uniswapBidVolume: formatUnits(uniswapBidVolume, BASE_CURRENCY.decimals),
+        uniswapAskVolume: formatUnits(uniswapAskVolume, BASE_CURRENCY.decimals),
+        uniswapVolume: formatUnits(uniswapVolume, BASE_CURRENCY.decimals),
+        cloberBidVolume: formatUnits(cloberBidVolume, BASE_CURRENCY.decimals),
+        cloberAskVolume: formatUnits(cloberAskVolume, BASE_CURRENCY.decimals),
+        cloberVolume: formatUnits(cloberVolume, BASE_CURRENCY.decimals),
+        cloberHighestBidPrice: clober.highestBid('WETH/USDC').toFixed(4) ?? '-',
+        cloberLowestAskPrice: clober.lowestAsk('WETH/USDC').toFixed(4) ?? '-',
+        askTradesLength: trades.filter((trade) => trade.type === 'ask').length,
+        bidTradesLength: trades.filter((trade) => trade.type === 'bid').length,
+        numberOfMarketOrders,
+      },
+      false,
+    )
 
     startBlock = latestBlock + 1n
     await new Promise((resolve) => setTimeout(resolve, 2 * 1000))

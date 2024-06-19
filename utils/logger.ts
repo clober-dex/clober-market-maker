@@ -59,6 +59,7 @@ export const logger = async (
   color: ChalkInstance,
   message: string,
   value: any,
+  sendMessageToSlack = true,
 ) => {
   const lokiLogger = getLokiLogger()
   try {
@@ -77,7 +78,7 @@ export const logger = async (
       })
     }
 
-    if (slackClient) {
+    if (slackClient && sendMessageToSlack) {
       await slackClient.log({
         message,
         ...value,
