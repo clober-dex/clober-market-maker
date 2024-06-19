@@ -1,0 +1,337 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": 13,
+  "links": [],
+  "panels": [
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "bdmk67audh3b4a"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "cloberLowestAskPrice"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "text",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "cloberHighestBidPrice"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "text",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Uniswap Sell"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "dark-red",
+                  "mode": "fixed"
+                }
+              },
+              {
+                "id": "custom.drawStyle",
+                "value": "points"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Uniswap Buy"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "dark-green",
+                  "mode": "fixed"
+                }
+              },
+              {
+                "id": "custom.drawStyle",
+                "value": "points"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Clober Buy"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "super-light-green",
+                  "mode": "fixed"
+                }
+              },
+              {
+                "id": "custom.drawStyle",
+                "value": "points"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 18,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "bdmk67audh3b4a"
+          },
+          "editorMode": "code",
+          "expr": "{app=\"clober-mm-Arbitrum Sepolia\"} | json | message = `Swap Event`",
+          "queryType": "range",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "bdmk67audh3b4a"
+          },
+          "editorMode": "code",
+          "expr": "avg (\n  avg_over_time(\n    {app=\"clober-mm-Arbitrum Sepolia\"} | json | message = `UniSwap Sell Event` | unwrap price\n  [15s]) \n)",
+          "hide": false,
+          "legendFormat": "Uniswap Sell",
+          "queryType": "range",
+          "refId": "B",
+          "step": "15s"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "bdmk67audh3b4a"
+          },
+          "editorMode": "code",
+          "expr": "avg (\n  avg_over_time(\n    {app=\"clober-mm-Arbitrum Sepolia\"} | json | message = `UniSwap Buy Event` | unwrap price\n  [15s]) \n)",
+          "hide": false,
+          "legendFormat": "Uniswap Buy",
+          "queryType": "range",
+          "refId": "C",
+          "step": "15s"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "bdmk67audh3b4a"
+          },
+          "editorMode": "code",
+          "expr": "avg (\n  avg_over_time(\n    {app=\"clober-mm-Arbitrum Sepolia\"} | json | message = `Success Clober Sell Event` | unwrap price\n  [15s]) \n)",
+          "hide": false,
+          "legendFormat": "Clober Sell",
+          "queryType": "range",
+          "refId": "D",
+          "step": "15s"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "bdmk67audh3b4a"
+          },
+          "editorMode": "code",
+          "expr": "avg (\n  avg_over_time(\n    {app=\"clober-mm-Arbitrum Sepolia\"} | json | message = `Success Clober Buy Event` | unwrap price\n  [15s]) \n)",
+          "hide": false,
+          "legendFormat": "Clober Buy",
+          "queryType": "range",
+          "refId": "E",
+          "step": "15s"
+        }
+      ],
+      "title": "Uniswap vs Clober",
+      "transformations": [
+        {
+          "id": "extractFields",
+          "options": {
+            "format": "json",
+            "jsonPaths": [
+              {
+                "alias": "cloberLowestAskPrice",
+                "path": "cloberLowestAskPrice"
+              },
+              {
+                "alias": "cloberHighestBidPrice",
+                "path": "cloberHighestBidPrice"
+              }
+            ],
+            "keepTime": true,
+            "replace": true,
+            "source": "labels"
+          }
+        },
+        {
+          "id": "convertFieldType",
+          "options": {
+            "conversions": [
+              {
+                "destinationType": "number",
+                "targetField": "cloberLowestAskPrice"
+              },
+              {
+                "destinationType": "number",
+                "targetField": "cloberHighestBidPrice"
+              }
+            ],
+            "fields": {}
+          }
+        },
+        {
+          "id": "filterByValue",
+          "options": {
+            "filters": [
+              {
+                "config": {
+                  "id": "equal",
+                  "options": {
+                    "value": 0
+                  }
+                },
+                "fieldName": "cloberLowestAskPrice"
+              },
+              {
+                "config": {
+                  "id": "equal",
+                  "options": {
+                    "value": 0
+                  }
+                },
+                "fieldName": "cloberHighestBidPrice"
+              }
+            ],
+            "match": "any",
+            "type": "exclude"
+          }
+        }
+      ],
+      "type": "timeseries"
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": [],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Uniswap vs Clober",
+  "uid": "edp83wu7kham8c",
+  "version": 13,
+  "weekStart": ""
+}

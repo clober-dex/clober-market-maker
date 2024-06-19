@@ -71,8 +71,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               }
             ]
           }
@@ -435,7 +434,7 @@
                 "config": {
                   "id": "lower",
                   "options": {
-                    "value": 3500
+                    "value": 3000
                   }
                 },
                 "fieldName": "uniswapLowestAskPrice"
@@ -444,7 +443,7 @@
                 "config": {
                   "id": "lower",
                   "options": {
-                    "value": 3500
+                    "value": 3000
                   }
                 },
                 "fieldName": "uniswapHighestBidPrice"
@@ -588,11 +587,11 @@
             "uid": "admc3w818idc0e"
           },
           "editorMode": "code",
-          "expr": "sum (\n  sum_over_time(\n    {app=\"clober-mm-Arbitrum Sepolia\"} | json | message = `Swap Event` | unwrap uniswapAskVolume\n  [1h]) \n)",
+          "expr": "sum (\n  sum_over_time(\n    {app=\"clober-mm-Arbitrum Sepolia\"} | json | message = `Swap Event` | unwrap uniswapAskVolume\n  [1d]) \n)",
           "legendFormat": "Uni Volume(Ask)",
           "queryType": "range",
           "refId": "A",
-          "step": "1h"
+          "step": "1d"
         },
         {
           "datasource": {
@@ -600,12 +599,12 @@
             "uid": "bdmk67audh3b4a"
           },
           "editorMode": "code",
-          "expr": "sum (\n  sum_over_time(\n    {app=\"clober-mm-Arbitrum Sepolia\"} | json | message = `Swap Event` | unwrap uniswapBidVolume\n  [1h]) \n)",
+          "expr": "sum (\n  sum_over_time(\n    {app=\"clober-mm-Arbitrum Sepolia\"} | json | message = `Swap Event` | unwrap uniswapBidVolume\n  [1d]) \n)",
           "hide": false,
           "legendFormat": "Uni Volume(Bid)",
           "queryType": "range",
           "refId": "B",
-          "step": "1h"
+          "step": "1d"
         },
         {
           "datasource": {
@@ -613,12 +612,12 @@
             "uid": "bdmk67audh3b4a"
           },
           "editorMode": "code",
-          "expr": "sum (\n  sum_over_time(\n    {app=\"clober-mm-Arbitrum Sepolia\"} | json | message = `Swap Event` | unwrap cloberAskVolume\n  [1h]) \n)",
+          "expr": "sum (\n  sum_over_time(\n    {app=\"clober-mm-Arbitrum Sepolia\"} | json | message = `Swap Event` | unwrap cloberAskVolume\n  [1d]) \n)",
           "hide": false,
           "legendFormat": "Clober Volume(Ask)",
           "queryType": "range",
           "refId": "C",
-          "step": "1h"
+          "step": "1d"
         },
         {
           "datasource": {
@@ -626,12 +625,12 @@
             "uid": "bdmk67audh3b4a"
           },
           "editorMode": "code",
-          "expr": "sum (\n  sum_over_time(\n    {app=\"clober-mm-Arbitrum Sepolia\"} | json | message = `Swap Event` | unwrap cloberBidVolume\n  [1h]) \n)",
+          "expr": "sum (\n  sum_over_time(\n    {app=\"clober-mm-Arbitrum Sepolia\"} | json | message = `Swap Event` | unwrap cloberBidVolume\n  [1d]) \n)",
           "hide": false,
           "legendFormat": "Clober Volume(Bid)",
           "queryType": "range",
           "refId": "D",
-          "step": "1h"
+          "step": "1d"
         }
       ],
       "title": "Volume of Swap Event",
@@ -652,6 +651,6 @@
   "timezone": "browser",
   "title": "Taker",
   "uid": "edmgolfu2nncwe",
-  "version": 70,
+  "version": 80,
   "weekStart": ""
 }
