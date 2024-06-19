@@ -844,6 +844,7 @@ export class CloberMarketMaker {
       this.publicClient,
       hash,
     )
+    await this.sleep(5000)
   }
 
   async sleep(ms: number) {
