@@ -784,35 +784,45 @@ export class CloberMarketMaker {
       this.publicClient,
       this.config.gasMultiplier,
     )
-    const args = [
-      [
-        ...orderIdsToClaim.map(() => Action.CLAIM),
-        ...orderIdsToCancel.map(() => Action.CANCEL),
-        ...[...bidMakeParams, ...askMakeParams].map(() => Action.MAKE),
-      ],
-      [
-        ...orderIdsToClaim.map((id) =>
-          encodeAbiParameters(CLAIM_ORDER_PARAMS_ABI, [
-            { id, hookData: zeroHash },
-          ]),
-        ),
-        ...orderIdsToCancel.map((id) =>
-          encodeAbiParameters(CANCEL_ORDER_PARAMS_ABI, [
-            { id, leftQuoteAmount: 0n, hookData: zeroHash },
-          ]),
-        ),
-        ...[...bidMakeParams, ...askMakeParams].map(
-          ({ id, hookData, tick, quoteAmount }) =>
-            encodeAbiParameters(MAKE_ORDER_PARAMS_ABI, [
-              { id, tick, hookData, quoteAmount },
+    const args = {
+      address: getContractAddresses({ chainId: this.chainId })!.Controller,
+      abi: CONTROLLER_ABI,
+      account: this.walletClient.account!,
+      functionName: 'execute',
+      args: [
+        [
+          ...orderIdsToClaim.map(() => Action.CLAIM),
+          ...orderIdsToCancel.map(() => Action.CANCEL),
+          ...[...bidMakeParams, ...askMakeParams].map(() => Action.MAKE),
+        ],
+        [
+          ...orderIdsToClaim.map((id) =>
+            encodeAbiParameters(CLAIM_ORDER_PARAMS_ABI, [
+              { id, hookData: zeroHash },
             ]),
-        ),
+          ),
+          ...orderIdsToCancel.map((id) =>
+            encodeAbiParameters(CANCEL_ORDER_PARAMS_ABI, [
+              { id, leftQuoteAmount: 0n, hookData: zeroHash },
+            ]),
+          ),
+          ...[...bidMakeParams, ...askMakeParams].map(
+            ({ id, hookData, tick, quoteAmount }) =>
+              encodeAbiParameters(MAKE_ORDER_PARAMS_ABI, [
+                { id, tick, hookData, quoteAmount },
+              ]),
+          ),
+        ],
+        this.erc20Tokens,
+        [],
+        [],
+        getDeadlineTimestampInSeconds(),
       ],
-      this.erc20Tokens,
-      [],
-      [],
-      getDeadlineTimestampInSeconds(),
-    ] as any
+      value: [...bidMakeParams, ...askMakeParams]
+        .filter((p) => p.isETH)
+        .reduce((acc: bigint, { quoteAmount }) => acc + quoteAmount, 0n),
+      gasPrice,
+    } as any
     const calldata = encodeFunctionData(args)
     if (this.lock[calldata]) {
       return
@@ -820,18 +830,11 @@ export class CloberMarketMaker {
 
     this.lock[calldata] = true
     try {
-      const { request } = await this.publicClient.simulateContract({
-        address: getContractAddresses({ chainId: this.chainId })!.Controller,
-        abi: CONTROLLER_ABI,
+      const { request } = await this.publicClient.simulateContract(args)
+      const hash = await this.walletClient.writeContract({
         account: this.walletClient.account!,
-        functionName: 'execute',
-        args,
-        value: [...bidMakeParams, ...askMakeParams]
-          .filter((p) => p.isETH)
-          .reduce((acc: bigint, { quoteAmount }) => acc + quoteAmount, 0n),
-        gasPrice,
+        ...request,
       })
-      const hash = await this.walletClient.writeContract(request)
       await waitTransaction(
         'Execute Orders',
         {
