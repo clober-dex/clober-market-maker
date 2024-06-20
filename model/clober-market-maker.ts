@@ -820,7 +820,11 @@ export class CloberMarketMaker {
         .reduce((acc: bigint, { quoteAmount }) => acc + quoteAmount, 0n),
       gasPrice,
     } as any
-    const calldata = encodeFunctionData(args)
+    const calldata = encodeFunctionData({
+      abi: args.abi,
+      functionName: args.functionName,
+      args: args.args,
+    })
     if (this.lock[calldata]) {
       return
     }
