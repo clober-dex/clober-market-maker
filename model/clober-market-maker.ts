@@ -17,6 +17,7 @@ import {
   createPublicClient,
   createWalletClient,
   encodeAbiParameters,
+  encodeFunctionData,
   formatUnits,
   getAddress,
   http,
@@ -78,7 +79,7 @@ export class CloberMarketMaker {
   // mutable state
   epoch: { [market: string]: Epoch[] } = {}
   private initialized = false
-  private lock = false
+  private lock: { [calldata: string]: boolean } = {}
 
   constructor(configPath?: string) {
     configPath = configPath ?? path.join(__dirname, '../config.yaml')
@@ -754,23 +755,12 @@ export class CloberMarketMaker {
       bidOrderSizeInQuote,
     })
 
-    if (!this.lock) {
-      this.lock = true
-      try {
-        await this.execute(
-          orderIdsToClaim.map(({ id }) => id),
-          orderIdsToCancel.map(({ id }) => id),
-          bidMakeParams,
-          askMakeParams,
-        )
-      } catch (e) {
-        console.error('Error in execute', e)
-        throw e
-      } finally {
-        await this.sleep(5000)
-        this.lock = false
-      }
-    }
+    await this.execute(
+      orderIdsToClaim.map(({ id }) => id),
+      orderIdsToCancel.map(({ id }) => id),
+      bidMakeParams,
+      askMakeParams,
+    )
   }
 
   async execute(
@@ -794,57 +784,72 @@ export class CloberMarketMaker {
       this.publicClient,
       this.config.gasMultiplier,
     )
-    const { request } = await this.publicClient.simulateContract({
-      address: getContractAddresses({ chainId: this.chainId })!.Controller,
-      abi: CONTROLLER_ABI,
-      account: this.walletClient.account!,
-      functionName: 'execute',
-      args: [
-        [
-          ...orderIdsToClaim.map(() => Action.CLAIM),
-          ...orderIdsToCancel.map(() => Action.CANCEL),
-          ...[...bidMakeParams, ...askMakeParams].map(() => Action.MAKE),
-        ],
-        [
-          ...orderIdsToClaim.map((id) =>
-            encodeAbiParameters(CLAIM_ORDER_PARAMS_ABI, [
-              { id, hookData: zeroHash },
-            ]),
-          ),
-          ...orderIdsToCancel.map((id) =>
-            encodeAbiParameters(CANCEL_ORDER_PARAMS_ABI, [
-              { id, leftQuoteAmount: 0n, hookData: zeroHash },
-            ]),
-          ),
-          ...[...bidMakeParams, ...askMakeParams].map(
-            ({ id, hookData, tick, quoteAmount }) =>
-              encodeAbiParameters(MAKE_ORDER_PARAMS_ABI, [
-                { id, tick, hookData, quoteAmount },
-              ]),
-          ),
-        ],
-        this.erc20Tokens,
-        [],
-        [],
-        getDeadlineTimestampInSeconds(),
+    const args = [
+      [
+        ...orderIdsToClaim.map(() => Action.CLAIM),
+        ...orderIdsToCancel.map(() => Action.CANCEL),
+        ...[...bidMakeParams, ...askMakeParams].map(() => Action.MAKE),
       ],
-      value: [...bidMakeParams, ...askMakeParams]
-        .filter((p) => p.isETH)
-        .reduce((acc: bigint, { quoteAmount }) => acc + quoteAmount, 0n),
-      gasPrice,
-    })
-    const hash = await this.walletClient.writeContract(request)
-    await waitTransaction(
-      'Execute Orders',
-      {
-        claimed: orderIdsToClaim.length,
-        canceled: orderIdsToCancel.length,
-        bid: bidMakeParams.length,
-        ask: askMakeParams.length,
-      },
-      this.publicClient,
-      hash,
-    )
+      [
+        ...orderIdsToClaim.map((id) =>
+          encodeAbiParameters(CLAIM_ORDER_PARAMS_ABI, [
+            { id, hookData: zeroHash },
+          ]),
+        ),
+        ...orderIdsToCancel.map((id) =>
+          encodeAbiParameters(CANCEL_ORDER_PARAMS_ABI, [
+            { id, leftQuoteAmount: 0n, hookData: zeroHash },
+          ]),
+        ),
+        ...[...bidMakeParams, ...askMakeParams].map(
+          ({ id, hookData, tick, quoteAmount }) =>
+            encodeAbiParameters(MAKE_ORDER_PARAMS_ABI, [
+              { id, tick, hookData, quoteAmount },
+            ]),
+        ),
+      ],
+      this.erc20Tokens,
+      [],
+      [],
+      getDeadlineTimestampInSeconds(),
+    ] as any
+    const calldata = encodeFunctionData(args)
+    if (this.lock[calldata]) {
+      return
+    }
+
+    this.lock[calldata] = true
+    try {
+      const { request } = await this.publicClient.simulateContract({
+        address: getContractAddresses({ chainId: this.chainId })!.Controller,
+        abi: CONTROLLER_ABI,
+        account: this.walletClient.account!,
+        functionName: 'execute',
+        args,
+        value: [...bidMakeParams, ...askMakeParams]
+          .filter((p) => p.isETH)
+          .reduce((acc: bigint, { quoteAmount }) => acc + quoteAmount, 0n),
+        gasPrice,
+      })
+      const hash = await this.walletClient.writeContract(request)
+      await waitTransaction(
+        'Execute Orders',
+        {
+          claimed: orderIdsToClaim.length,
+          canceled: orderIdsToCancel.length,
+          bid: bidMakeParams.length,
+          ask: askMakeParams.length,
+        },
+        this.publicClient,
+        hash,
+      )
+    } catch (e) {
+      console.error('Error in execute', e)
+      throw e
+    } finally {
+      this.lock[calldata] = false
+      await this.sleep(5000)
+    }
   }
 
   async sleep(ms: number) {
