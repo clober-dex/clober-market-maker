@@ -35,10 +35,7 @@ import { CHAIN_MAP } from '../constants/chain.ts'
 import { ERC20_PERMIT_ABI } from '../abis/@openzeppelin/erc20-permit-abi.ts'
 import { findCurrencyBySymbol } from '../utils/currency.ts'
 import { getGasPrice, waitTransaction } from '../utils/transaction.ts'
-import {
-  convertTimestampToBlockNumber,
-  getDeadlineTimestampInSeconds,
-} from '../utils/time.ts'
+import { convertTimestampToBlockNumber } from '../utils/time.ts'
 import { Action } from '../constants/action.ts'
 import {
   CANCEL_ORDER_PARAMS_ABI,
@@ -816,7 +813,7 @@ export class CloberMarketMaker {
         this.erc20Tokens,
         [],
         [],
-        getDeadlineTimestampInSeconds(),
+        2n ** 64n - 1n,
       ],
       value: [...bidMakeParams, ...askMakeParams]
         .filter((p) => p.isETH)
