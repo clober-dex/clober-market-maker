@@ -1,7 +1,11 @@
-import { CHAIN_IDS, type Currency, getPriceNeighborhood } from '@clober/v2-sdk'
+import {
+  CHAIN_IDS,
+  type Currency,
+  getPriceNeighborhood,
+  getMarketPrice,
+} from '@clober/v2-sdk'
 
 import BigNumber from './bignumber.ts'
-import { getMarketPrice } from './tick.ts'
 
 export const calculateMinMaxPrice = ({
   chainId,

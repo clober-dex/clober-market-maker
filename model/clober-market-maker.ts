@@ -11,6 +11,7 @@ import {
   getOpenOrders,
   type OpenOrder,
   setApprovalOfOpenOrdersForAll,
+  getMarketPrice,
 } from '@clober/v2-sdk'
 import type { PublicClient, WalletClient } from 'viem'
 import {
@@ -43,7 +44,7 @@ import {
   MAKE_ORDER_PARAMS_ABI,
 } from '../abis/core/params-abi.ts'
 import { CONTROLLER_ABI } from '../abis/core/controller-abi.ts'
-import { buildTickAndPriceArray, getMarketPrice } from '../utils/tick.ts'
+import { buildTickAndPriceArray } from '../utils/tick.ts'
 import BigNumber from '../utils/bignumber.ts'
 import { calculateMinMaxPrice, getProposedPrice } from '../utils/price.ts'
 import { isNewEpoch } from '../utils/epoch.ts'
