@@ -28,8 +28,8 @@ markets:
       defaultAskTickSpread: 20
       orderGap: 1
       orderNum: 1
-      startQuoteAmount: 344768
-      startBaseAmount: 100
-      startPrice: 3447.68
+      startQuoteAmount: 3500
+      startBaseAmount: 1
+      startPrice: 3458.11
       maxEpochDurationSeconds: 3600
       spongeTick: 3
