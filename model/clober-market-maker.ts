@@ -50,6 +50,7 @@ import { calculateMinMaxPrice, getProposedPrice } from '../utils/price.ts'
 import { isNewEpoch } from '../utils/epoch.ts'
 import { calculateOrderSize } from '../utils/order.ts'
 import { calculateUniV2ImpermanentLoss } from '../utils/uni-v2.ts'
+import { getPrivateKey } from '../utils/wallet.ts'
 
 import { Clober } from './exchange/clober.ts'
 import type { Config, Params } from './config.ts'
@@ -92,9 +93,7 @@ export class CloberMarketMaker {
       transport: process.env.RPC_URL ? http(process.env.RPC_URL) : http(),
     })
 
-    const account = privateKeyToAccount(
-      process.env.PRIVATE_KEY as `0x${string}`,
-    )
+    const account = privateKeyToAccount(getPrivateKey() as `0x${string}`)
     this.walletClient = createWalletClient({
       account,
       chain: CHAIN_MAP[this.chainId],
