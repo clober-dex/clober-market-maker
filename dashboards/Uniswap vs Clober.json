@@ -165,6 +165,25 @@
                 "value": "points"
               }
             ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Clober Sell"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "super-light-red",
+                  "mode": "fixed"
+                }
+              },
+              {
+                "id": "custom.drawStyle",
+                "value": "points"
+              }
+            ]
           }
         ]
       },
@@ -332,6 +351,6 @@
   "timezone": "browser",
   "title": "Uniswap vs Clober",
   "uid": "edp83wu7kham8c",
-  "version": 13,
+  "version": 14,
   "weekStart": ""
 }
