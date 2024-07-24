@@ -20,9 +20,9 @@ import { arbitrumSepolia } from 'viem/chains'
 import * as yaml from 'yaml'
 import chalk from 'chalk'
 
-import { ERC20_PERMIT_ABI } from '../abis/@openzeppelin/erc20-permit-abi.ts'
-import { type Config } from '../model/config.ts'
-import { logger } from '../utils/logger.ts'
+import { ERC20_PERMIT_ABI } from '../../abis/@openzeppelin/erc20-permit-abi.ts'
+import { type Config } from '../../model/config.ts'
+import { logger } from '../../utils/logger.ts'
 
 const BASE_CURRENCY = {
   address: '0xF2e615A933825De4B39b497f6e6991418Fb31b78',
