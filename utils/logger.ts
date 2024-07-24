@@ -59,7 +59,7 @@ export const logger = async (
   color: ChalkInstance,
   message: string,
   value: any,
-  sendMessageToSlack = true,
+  sendMessageToSlack = false,
 ) => {
   const lokiLogger = getLokiLogger()
   try {

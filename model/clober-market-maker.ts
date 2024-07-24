@@ -50,7 +50,6 @@ import { calculateMinMaxPrice, getProposedPrice } from '../utils/price.ts'
 import { isNewEpoch } from '../utils/epoch.ts'
 import { calculateOrderSize } from '../utils/order.ts'
 import { calculateUniV2ImpermanentLoss } from '../utils/uni-v2.ts'
-import { getPrivateKey } from '../utils/wallet.ts'
 
 import { Clober } from './exchange/clober.ts'
 import type { Config, Params } from './config.ts'
@@ -750,6 +749,19 @@ export class CloberMarketMaker {
       askOrderSizeInBase,
       bidOrderSizeInQuote,
     })
+
+    await logger(
+      chalk.redBright,
+      'Health Check',
+      {
+        oraclePrice: oraclePrice.toString(),
+        askOrderSizeInBase: askOrderSizeInBase.toFixed(4),
+        lowestAskPrice: this.clober.lowestAsk(market).toFixed(4),
+        bidOrderSizeInQuote: bidOrderSizeInQuote.toFixed(4),
+        highestBidPrice: this.clober.highestBid(market).toFixed(4),
+      },
+      true,
+    )
 
     await this.execute(
       orderIdsToClaim.map(({ id }) => id),
