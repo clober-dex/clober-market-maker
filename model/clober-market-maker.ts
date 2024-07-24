@@ -80,7 +80,7 @@ export class CloberMarketMaker {
   private initialized = false
   private lock: { [calldata: string]: boolean } = {}
 
-  constructor(configPath?: string) {
+  constructor(privateKey: `0x${string}`, configPath?: string) {
     configPath = configPath ?? path.join(__dirname, '../config.yaml')
     this.config = yaml.parse(fs.readFileSync(configPath, 'utf8')) as Config
     this.chainId = Number(process.env.CHAIN_ID) as CHAIN_IDS
@@ -92,8 +92,7 @@ export class CloberMarketMaker {
       chain: CHAIN_MAP[this.chainId],
       transport: process.env.RPC_URL ? http(process.env.RPC_URL) : http(),
     })
-
-    const account = privateKeyToAccount(getPrivateKey() as `0x${string}`)
+    const account = privateKeyToAccount(privateKey as `0x${string}`)
     this.walletClient = createWalletClient({
       account,
       chain: CHAIN_MAP[this.chainId],

@@ -12,7 +12,8 @@ import { CHAIN_MAP } from './constants/chain.ts'
 
 const main = async () => {
   const chainId = Number(process.env.CHAIN_ID) as CHAIN_IDS
-  const account = privateKeyToAccount(getPrivateKey() as `0x${string}`)
+  const privateKey = await getPrivateKey()
+  const account = privateKeyToAccount(privateKey as `0x${string}`)
   const [publicClient, walletClient] = [
     createPublicClient({
       chain: CHAIN_MAP[chainId],
