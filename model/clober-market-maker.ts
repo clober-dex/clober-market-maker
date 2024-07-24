@@ -78,6 +78,7 @@ export class CloberMarketMaker {
   epoch: { [market: string]: Epoch[] } = {}
   private initialized = false
   private lock: { [calldata: string]: boolean } = {}
+  private latestSentTimestampInSecond: number = 0
 
   constructor(privateKey: `0x${string}`, configPath?: string) {
     configPath = configPath ?? path.join(__dirname, '../config.yaml')
@@ -750,18 +751,22 @@ export class CloberMarketMaker {
       bidOrderSizeInQuote,
     })
 
-    await logger(
-      chalk.redBright,
-      'Health Check',
-      {
-        oraclePrice: oraclePrice.toString(),
-        askOrderSizeInBase: askOrderSizeInBase.toFixed(4),
-        lowestAskPrice: this.clober.lowestAsk(market).toFixed(4),
-        bidOrderSizeInQuote: bidOrderSizeInQuote.toFixed(4),
-        highestBidPrice: this.clober.highestBid(market).toFixed(4),
-      },
-      true,
-    )
+    const timestampInSecond = Math.floor(Date.now() / 1000)
+    if (timestampInSecond - this.latestSentTimestampInSecond > 60 * 15) {
+      await logger(
+        chalk.redBright,
+        'Health Check',
+        {
+          oraclePrice: oraclePrice.toString(),
+          askOrderSizeInBase: askOrderSizeInBase.toFixed(4),
+          lowestAskPrice: this.clober.lowestAsk(market).toFixed(4),
+          bidOrderSizeInQuote: bidOrderSizeInQuote.toFixed(4),
+          highestBidPrice: this.clober.highestBid(market).toFixed(4),
+        },
+        true,
+      )
+      this.latestSentTimestampInSecond = timestampInSecond
+    }
 
     await this.execute(
       orderIdsToClaim.map(({ id }) => id),
