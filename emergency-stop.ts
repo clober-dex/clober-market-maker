@@ -6,7 +6,6 @@ import {
   claimOrders,
   getOpenOrders,
 } from '@clober/v2-sdk'
-import { arbitrumSepolia } from 'viem/chains'
 
 import { getPrivateKey } from './utils/wallet.ts'
 import { CHAIN_MAP } from './constants/chain.ts'
@@ -27,7 +26,7 @@ const main = async () => {
   ]
 
   const openOrders = await getOpenOrders({
-    chainId: arbitrumSepolia.id,
+    chainId: chainId,
     userAddress: walletClient.account!.address,
   })
   const orderIdsToClaim: string[] = openOrders
@@ -35,7 +34,7 @@ const main = async () => {
     .map((order) => order.id)
   if (orderIdsToClaim.length > 0) {
     const { transaction } = await claimOrders({
-      chainId: arbitrumSepolia.id,
+      chainId: chainId,
       userAddress: walletClient.account!.address,
       ids: orderIdsToClaim,
     })
@@ -56,7 +55,7 @@ const main = async () => {
     .map((order) => order.id)
   if (orderIdsToCancel.length > 0) {
     const { transaction } = await cancelOrders({
-      chainId: arbitrumSepolia.id,
+      chainId: chainId,
       userAddress: walletClient.account!.address,
       ids: orderIdsToCancel,
     })
