@@ -1,6 +1,7 @@
 import { isAddressEqual, type PublicClient } from 'viem'
-import { BOOK_MANAGER_ABI } from '@clober/v2-sdk/dist/types/abis/core/book-manager-abi'
 import { CHAIN_IDS, getContractAddresses } from '@clober/v2-sdk'
+
+import { BOOK_MANAGER_ABI } from '../abis/core/book-manager-abi.ts'
 
 import BigNumber from './bignumber.ts'
 
