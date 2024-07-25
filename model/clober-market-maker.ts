@@ -48,7 +48,7 @@ import { buildTickAndPriceArray } from '../utils/tick.ts'
 import BigNumber from '../utils/bignumber.ts'
 import { calculateMinMaxPrice, getProposedPrice } from '../utils/price.ts'
 import { isNewEpoch } from '../utils/epoch.ts'
-import { calculateOrderSize } from '../utils/order.ts'
+import { calculateOrderSize, filterValidOrders } from '../utils/order.ts'
 import { calculateUniV2ImpermanentLoss } from '../utils/uni-v2.ts'
 
 import { Clober } from './exchange/clober.ts'
@@ -768,9 +768,23 @@ export class CloberMarketMaker {
       this.latestSentTimestampInSecond = timestampInSecond
     }
 
+    const [validOrdersIdsToClaim, validOrdersIdsToCancel] = await Promise.all([
+      filterValidOrders({
+        chainId: this.chainId,
+        orderIds: orderIdsToClaim.map(({ id }) => id),
+        userAddress: this.userAddress,
+        publicClient: this.publicClient,
+      }),
+      filterValidOrders({
+        chainId: this.chainId,
+        orderIds: orderIdsToCancel.map(({ id }) => id),
+        userAddress: this.userAddress,
+        publicClient: this.publicClient,
+      }),
+    ])
     await this.execute(
-      orderIdsToClaim.map(({ id }) => id),
-      orderIdsToCancel.map(({ id }) => id),
+      validOrdersIdsToClaim,
+      validOrdersIdsToCancel,
       bidMakeParams,
       askMakeParams,
     )
