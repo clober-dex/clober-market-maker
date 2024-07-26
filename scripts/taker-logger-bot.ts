@@ -243,8 +243,8 @@ const main = async () => {
         await logger(
           chalk.green,
           uniswapTrade.isTakenBidSide
-            ? 'Uniswap Sell Event'
-            : 'Uniswap Buy Event',
+            ? 'UniSwap Sell Event'
+            : 'UniSwap Buy Event',
           {
             price: uniswapTrade.price,
             volume: uniswapTrade.baseVolume,
