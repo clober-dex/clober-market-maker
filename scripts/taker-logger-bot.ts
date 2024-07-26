@@ -225,6 +225,20 @@ const main = async () => {
     )
 
     if (uniswapTrades.length + cloberTrades.length > 0) {
+      for (const cloberTrade of cloberTrades) {
+        await logger(
+          chalk.green,
+          cloberTrade.isTakenBidSide
+            ? 'Success Clober Sell Event'
+            : 'Success Clober Buy Event',
+          {
+            price: cloberTrade.price,
+            volume: cloberTrade.baseVolume,
+          },
+          false,
+        )
+      }
+
       await logger(
         chalk.green,
         'Swap Event',
