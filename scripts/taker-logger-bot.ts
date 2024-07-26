@@ -239,6 +239,19 @@ const main = async () => {
         )
       }
 
+      for (const uniswapTrade of uniswapTrades) {
+        await logger(
+          chalk.green,
+          uniswapTrade.isTakenBidSide
+            ? 'Uniswap Sell Event'
+            : 'Uniswap Buy Event',
+          {
+            price: uniswapTrade.price,
+            volume: uniswapTrade.baseVolume,
+          },
+          false,
+        )
+
       await logger(
         chalk.green,
         'Swap Event',
