@@ -144,6 +144,12 @@ const fetchTradesFromClober = async (
       if (!bookId || !tick || !unit) {
         return null
       }
+      if (
+        bookId !== BigInt(market.bidBook.id) &&
+        bookId !== BigInt(market.askBook.id)
+      ) {
+        return null
+      }
 
       const price = Number(
         bookId === BigInt(market.bidBook.id)
