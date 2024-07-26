@@ -218,58 +218,63 @@ const main = async () => {
       `Fetched ${uniswapTrades.length} vs ${cloberTrades.length} trades from block ${startBlock} to ${latestBlock}`,
     )
 
-    await logger(
-      chalk.green,
-      'Swap Event',
-      {
-        startBlock: Number(startBlock),
-        latestBlock: Number(latestBlock),
-        hashesLength: hashes.length,
-        tradesLength: uniswapTrades.length,
-        uniswapHighestBidPrice:
-          uniswapTrades
-            .filter((trade) => !trade.isTakenBidSide)
-            .map(({ price }) => price)
-            .sort((a, b) => Number(b) - Number(a))[0] ?? '-',
-        oraclePrice: binance.price('WETH/USDC').toString(),
-        onchainPrice: onchainOracle.price('WETH/USDC').toString(),
-        uniswapLowestAskPrice:
-          uniswapTrades
-            .filter((trade) => trade.isTakenBidSide)
-            .map(({ price }) => price)
-            .sort((a, b) => Number(a) - Number(b))[0] ?? '-',
-        uniswapBidVolume: uniswapTrades.reduce(
-          (acc, trade) => acc + (!trade.isTakenBidSide ? trade.baseVolume : 0),
-          0,
-        ),
-        uniswapAskVolume: uniswapTrades.reduce(
-          (acc, trade) => acc + (trade.isTakenBidSide ? trade.baseVolume : 0),
-          0,
-        ),
-        uniswapVolume: uniswapTrades.reduce(
-          (acc, trade) => acc + trade.baseVolume,
-          0,
-        ),
-        cloberBidVolume: cloberTrades.reduce(
-          (acc, trade) => acc + (!trade.isTakenBidSide ? trade.baseVolume : 0),
-          0,
-        ),
-        cloberAskVolume: cloberTrades.reduce(
-          (acc, trade) => acc + (trade.isTakenBidSide ? trade.baseVolume : 0),
-          0,
-        ),
-        cloberVolume: cloberTrades.reduce(
-          (acc, trade) => acc + trade.baseVolume,
-          0,
-        ),
-        cloberHighestBidPrice: clober.highestBid('WETH/USDC').toFixed(4) ?? '-',
-        cloberLowestAskPrice: clober.lowestAsk('WETH/USDC').toFixed(4) ?? '-',
-      },
-      false,
-    )
+    if (uniswapTrades.length + cloberTrades.length > 0) {
+      await logger(
+        chalk.green,
+        'Swap Event',
+        {
+          startBlock: Number(startBlock),
+          latestBlock: Number(latestBlock),
+          hashesLength: hashes.length,
+          tradesLength: uniswapTrades.length,
+          uniswapHighestBidPrice:
+            uniswapTrades
+              .filter((trade) => !trade.isTakenBidSide)
+              .map(({ price }) => price)
+              .sort((a, b) => Number(b) - Number(a))[0] ?? '-',
+          oraclePrice: binance.price('WETH/USDC').toString(),
+          onchainPrice: onchainOracle.price('WETH/USDC').toString(),
+          uniswapLowestAskPrice:
+            uniswapTrades
+              .filter((trade) => trade.isTakenBidSide)
+              .map(({ price }) => price)
+              .sort((a, b) => Number(a) - Number(b))[0] ?? '-',
+          uniswapBidVolume: uniswapTrades.reduce(
+            (acc, trade) =>
+              acc + (!trade.isTakenBidSide ? trade.baseVolume : 0),
+            0,
+          ),
+          uniswapAskVolume: uniswapTrades.reduce(
+            (acc, trade) => acc + (trade.isTakenBidSide ? trade.baseVolume : 0),
+            0,
+          ),
+          uniswapVolume: uniswapTrades.reduce(
+            (acc, trade) => acc + trade.baseVolume,
+            0,
+          ),
+          cloberBidVolume: cloberTrades.reduce(
+            (acc, trade) =>
+              acc + (!trade.isTakenBidSide ? trade.baseVolume : 0),
+            0,
+          ),
+          cloberAskVolume: cloberTrades.reduce(
+            (acc, trade) => acc + (trade.isTakenBidSide ? trade.baseVolume : 0),
+            0,
+          ),
+          cloberVolume: cloberTrades.reduce(
+            (acc, trade) => acc + trade.baseVolume,
+            0,
+          ),
+          cloberHighestBidPrice:
+            clober.highestBid('WETH/USDC').toFixed(4) ?? '-',
+          cloberLowestAskPrice: clober.lowestAsk('WETH/USDC').toFixed(4) ?? '-',
+        },
+        false,
+      )
 
-    startBlock = latestBlock + 1n
-    await new Promise((resolve) => setTimeout(resolve, 2 * 1000))
+      startBlock = latestBlock + 1n
+      await new Promise((resolve) => setTimeout(resolve, 2 * 1000))
+    }
   }
 }
 
