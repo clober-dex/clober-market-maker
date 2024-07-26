@@ -2,7 +2,7 @@ import fs from 'fs'
 
 import _ from 'lodash'
 import * as YAML from 'yaml'
-import { arbitrumSepolia, base } from 'viem/chains'
+import { base } from 'viem/chains'
 import {
   createPublicClient,
   formatUnits,
@@ -184,7 +184,7 @@ const main = async () => {
     _.mapValues(config.oracles, (m) => m.binance as any),
   )
   const clober = new Clober(
-    arbitrumSepolia.id,
+    base.id,
     _.mapValues(config.markets, (m) => m.clober),
   )
   const market = await getMarket({
