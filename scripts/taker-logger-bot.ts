@@ -251,6 +251,7 @@ const main = async () => {
           },
           false,
         )
+      }
 
       await logger(
         chalk.green,
