@@ -103,13 +103,10 @@ const fetchUniswapTradesFromHashes = async (
     )
   return trades.map((log) => {
     const amount0 = BigInt(log.args.amount0) // weth
-    const price = new BigNumber(log.args.sqrtPriceX96.toString())
-      .div(new BigNumber(2).pow(96))
-      .pow(2)
-      .times(
-        new BigNumber(10).pow(BASE_CURRENCY.decimals - QUOTE_CURRENCY.decimals),
-      )
-      .toNumber()
+    const amount1 = BigInt(log.args.amount1) // usdc
+    const price =
+      Number(formatUnits(abs(amount1), QUOTE_CURRENCY.decimals)) /
+      Number(formatUnits(abs(amount0), BASE_CURRENCY.decimals))
     return {
       isTakenBidSide: amount0 > 0n,
       baseVolume: Number(formatUnits(abs(amount0), BASE_CURRENCY.decimals)),
