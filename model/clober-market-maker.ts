@@ -212,7 +212,7 @@ export class CloberMarketMaker {
       this.isEmergencyStop = true
       await this.sleep(30 * 1000)
       throw new Error(
-        `Off-chain block number ${offChainBlockNumber} is too ahead of on-chain block number ${onChainBlockNumber}`,
+        `Off-chain block number ${offChainBlockNumber} is too behind of on-chain block number ${onChainBlockNumber}`,
       )
     }
   }
