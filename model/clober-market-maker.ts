@@ -513,6 +513,7 @@ export class CloberMarketMaker {
         market,
         ...newEpoch,
       })
+      this.latestMakeBlockNumbers[market] = 0
     }
 
     // first epoch
