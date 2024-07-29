@@ -224,7 +224,7 @@ export class CloberMarketMaker {
 
     // eslint-disable-next-line no-constant-condition
     while (true) {
-      await this.emergencyStopCheck(this.config.makeBlockInterval)
+      await this.emergencyStopCheck(this.config.blockDelayThreshold)
 
       try {
         await Promise.all([

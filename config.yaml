@@ -1,4 +1,5 @@
 makeBlockInterval: 15
+blockDelayThreshold: 50
 fetchIntervalMilliSeconds: 1000
 gasMultiplier: 1.1
 oracles:
