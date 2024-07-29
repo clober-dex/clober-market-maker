@@ -193,7 +193,7 @@ export class CloberMarketMaker {
     this.initialized = true
   }
 
-  async emergencyStopCheck(makeBlockInterval: number) {
+  async emergencyStopCheck(blockDelayThreshold: number) {
     const [onChainBlockNumber, offChainBlockNumber] = await Promise.all([
       this.publicClient.getBlockNumber(),
       getSubgraphBlockNumber({
@@ -202,7 +202,7 @@ export class CloberMarketMaker {
     ])
     const blockNumberDiff =
       Number(onChainBlockNumber) - Number(offChainBlockNumber)
-    if (blockNumberDiff > makeBlockInterval) {
+    if (blockNumberDiff > blockDelayThreshold) {
       if (slackClient) {
         await slackClient.error({
           message: 'Error in market making',
