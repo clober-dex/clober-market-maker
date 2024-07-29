@@ -16,7 +16,7 @@ RPC_URL=
 To run:
 
 ```bash
-pm2 start --interpreter CHAIN_ID=421614 bun index.ts
+CHAIN_ID=421614 pm2 start --interpreter bun index.ts
 ```
 
 To run mock taker bot:
