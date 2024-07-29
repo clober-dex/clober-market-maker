@@ -192,7 +192,7 @@ export class CloberMarketMaker {
     this.initialized = true
   }
 
-  async emergencyStopCheck(toleranceOffChainBlockDiff: number) {
+  async emergencyStopCheck(makeBlockInterval: number) {
     const [onChainBlockNumber, offChainBlockNumber] = await Promise.all([
       this.publicClient.getBlockNumber(),
       getSubgraphBlockNumber({
@@ -201,11 +201,13 @@ export class CloberMarketMaker {
     ])
     const blockNumberDiff =
       Number(onChainBlockNumber) - Number(offChainBlockNumber)
-    if (blockNumberDiff > toleranceOffChainBlockDiff) {
-      await slackClient.error({
-        message: 'Error in market making',
-        error: `Off-chain block number ${offChainBlockNumber} is too behind of on-chain block number ${onChainBlockNumber}`,
-      })
+    if (blockNumberDiff > makeBlockInterval) {
+      if (slackClient) {
+        await slackClient.error({
+          message: 'Error in market making',
+          error: `Off-chain block number ${offChainBlockNumber} is too behind of on-chain block number ${onChainBlockNumber}`,
+        })
+      }
       this.isEmergencyStop = true
       await this.sleep(30 * 1000)
       throw new Error(
@@ -223,7 +225,7 @@ export class CloberMarketMaker {
     while (true) {
       try {
         await Promise.all([
-          this.emergencyStopCheck(this.config.toleranceOffChainBlockDiff),
+          this.emergencyStopCheck(this.config.makeBlockInterval),
           this.dexSimulator.update(),
           this.oracle.update(),
           this.clober.update(),
