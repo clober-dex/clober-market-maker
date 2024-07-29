@@ -513,6 +513,7 @@ export class CloberMarketMaker {
         market,
         ...newEpoch,
       })
+      // always make when new epoch
       this.latestMakeBlockNumbers[market] = 0
     }
 
