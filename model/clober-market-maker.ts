@@ -557,6 +557,7 @@ export class CloberMarketMaker {
         market,
         ...newEpoch,
       })
+      this.latestMakeBlockNumbers[market] = 0
     }
 
     await logger(chalk.redBright, 'Balance', {
