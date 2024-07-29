@@ -33,6 +33,7 @@ export type Params = {
 }
 
 export type Config = {
+  makeBlockInterval: number
   fetchIntervalMilliSeconds: number
   gasMultiplier: number
   oracles: {
