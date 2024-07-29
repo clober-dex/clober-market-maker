@@ -12,6 +12,7 @@ import {
   type OpenOrder,
   setApprovalOfOpenOrdersForAll,
   getMarketPrice,
+  getSubgraphBlockNumber,
 } from '@clober/v2-sdk'
 import type { PublicClient, WalletClient } from 'viem'
 import {
@@ -76,6 +77,7 @@ export class CloberMarketMaker {
   clober: Clober
   // mutable state
   epoch: { [market: string]: Epoch[] } = {}
+  private isEmergencyStop = false
   private initialized = false
   private lock: { [calldata: string]: boolean } = {}
   private latestSentTimestampInSecond: number = 0
@@ -190,6 +192,28 @@ export class CloberMarketMaker {
     this.initialized = true
   }
 
+  async emergencyStopCheck(toleranceOffChainBlockDiff: number) {
+    const [onChainBlockNumber, offChainBlockNumber] = await Promise.all([
+      this.publicClient.getBlockNumber(),
+      getSubgraphBlockNumber({
+        chainId: this.chainId,
+      }),
+    ])
+    const blockNumberDiff =
+      Number(onChainBlockNumber) - Number(offChainBlockNumber)
+    if (blockNumberDiff > toleranceOffChainBlockDiff) {
+      await slackClient.error({
+        message: 'Error in market making',
+        error: `Off-chain block number ${offChainBlockNumber} is too behind of on-chain block number ${onChainBlockNumber}`,
+      })
+      this.isEmergencyStop = true
+      await this.sleep(30 * 1000)
+      throw new Error(
+        `Off-chain block number ${offChainBlockNumber} is too ahead of on-chain block number ${onChainBlockNumber}`,
+      )
+    }
+  }
+
   async run() {
     if (!this.initialized) {
       throw new Error('MarketMaker is not initialized')
@@ -199,6 +223,7 @@ export class CloberMarketMaker {
     while (true) {
       try {
         await Promise.all([
+          this.emergencyStopCheck(this.config.toleranceOffChainBlockDiff),
           this.dexSimulator.update(),
           this.oracle.update(),
           this.clober.update(),
@@ -802,7 +827,8 @@ export class CloberMarketMaker {
         ...orderIdsToCancel,
         ...bidMakeParams,
         ...askMakeParams,
-      ].length === 0
+      ].length === 0 ||
+      this.isEmergencyStop
     ) {
       return
     }

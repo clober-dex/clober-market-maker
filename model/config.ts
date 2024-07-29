@@ -33,6 +33,7 @@ export type Params = {
 }
 
 export type Config = {
+  toleranceOffChainBlockDiff: number
   fetchIntervalMilliSeconds: number
   gasMultiplier: number
   oracles: {

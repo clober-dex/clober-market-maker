@@ -1,3 +1,4 @@
+toleranceOffChainBlockDiff: 15
 fetchIntervalMilliSeconds: 1000
 gasMultiplier: 1.1
 oracles:
