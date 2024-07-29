@@ -77,6 +77,7 @@ export class CloberMarketMaker {
   clober: Clober
   // mutable state
   epoch: { [market: string]: Epoch[] } = {}
+  latestMakeBlockNumbers: { [market: string]: number } = {}
   private isEmergencyStop = false
   private initialized = false
   private lock: { [calldata: string]: boolean } = {}
@@ -809,12 +810,19 @@ export class CloberMarketMaker {
         publicClient: this.publicClient,
       }),
     ])
-    await this.execute(
-      validOrdersIdsToClaim,
-      validOrdersIdsToCancel,
-      bidMakeParams,
-      askMakeParams,
-    )
+    const latestBlockNumber = Number(await this.publicClient.getBlockNumber())
+    if (
+      latestBlockNumber >=
+      this.latestMakeBlockNumbers[market] + this.config.makeBlockInterval
+    ) {
+      await this.execute(
+        validOrdersIdsToClaim,
+        validOrdersIdsToCancel,
+        bidMakeParams,
+        askMakeParams,
+      )
+      this.latestMakeBlockNumbers[market] = latestBlockNumber
+    }
   }
 
   async execute(
