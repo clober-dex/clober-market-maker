@@ -252,9 +252,6 @@ export class CloberMarketMaker {
             })
             .catch(() => {})
         }
-        if ((e as any).toString().includes('transaction is too low')) {
-          throw e
-        }
       }
 
       await this.sleep(this.config.fetchIntervalMilliSeconds)
