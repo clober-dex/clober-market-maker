@@ -211,9 +211,6 @@ export class CloberMarketMaker {
       }
       this.isEmergencyStop = true
       await this.sleep(30 * 1000)
-      throw new Error(
-        `Off-chain block number ${offChainBlockNumber} is too behind of on-chain block number ${onChainBlockNumber}`,
-      )
     }
   }
 
@@ -225,6 +222,9 @@ export class CloberMarketMaker {
     // eslint-disable-next-line no-constant-condition
     while (true) {
       await this.emergencyStopCheck(this.config.blockDelayThreshold)
+      if (this.isEmergencyStop) {
+        return
+      }
 
       try {
         await Promise.all([
