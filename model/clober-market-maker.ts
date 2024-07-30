@@ -898,10 +898,10 @@ export class CloberMarketMaker {
 
     this.lock[calldata] = true
     try {
-      const { request } = await this.publicClient.simulateContract(args)
       const hash = await this.walletClient.writeContract({
         account: this.walletClient.account!,
-        ...request,
+        ...args,
+        gas: 5_000_000n,
       })
       await waitTransaction(
         'Execute Orders',
