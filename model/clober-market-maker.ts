@@ -8,11 +8,11 @@ import {
   CHAIN_IDS,
   type Currency,
   getContractAddresses,
+  getMarketPrice,
   getOpenOrders,
+  getSubgraphBlockNumber,
   type OpenOrder,
   setApprovalOfOpenOrdersForAll,
-  getMarketPrice,
-  getSubgraphBlockNumber,
 } from '@clober/v2-sdk'
 import type { PublicClient, WalletClient } from 'viem'
 import {
@@ -77,7 +77,6 @@ export class CloberMarketMaker {
   clober: Clober
   // mutable state
   epoch: { [market: string]: Epoch[] } = {}
-  latestMakeBlockNumbers: { [market: string]: number } = {}
   private isEmergencyStop = false
   private initialized = false
   private lock: { [calldata: string]: boolean } = {}
@@ -403,6 +402,7 @@ export class CloberMarketMaker {
     const onCurrent = oraclePrice.times(totalBase).plus(totalQuote)
     const currentTimestamp = Math.floor(Date.now() / 1000)
 
+    let forceExecute = false
     if (
       this.epoch[market] &&
       isNewEpoch({
@@ -512,7 +512,7 @@ export class CloberMarketMaker {
         ...newEpoch,
       })
       // always make when new epoch
-      this.latestMakeBlockNumbers[market] = 0
+      forceExecute = true
     }
 
     // first epoch
@@ -555,7 +555,7 @@ export class CloberMarketMaker {
         market,
         ...newEpoch,
       })
-      this.latestMakeBlockNumbers[market] = 0
+      forceExecute = true
     }
 
     await logger(chalk.redBright, 'Balance', {
@@ -811,18 +811,13 @@ export class CloberMarketMaker {
         publicClient: this.publicClient,
       }),
     ])
-    const latestBlockNumber = Number(await this.publicClient.getBlockNumber())
-    if (
-      latestBlockNumber >=
-      this.latestMakeBlockNumbers[market] + this.config.makeBlockInterval
-    ) {
+    if (forceExecute || validOrdersIdsToCancel.length === 0) {
       await this.execute(
         validOrdersIdsToClaim,
         validOrdersIdsToCancel,
         bidMakeParams,
         askMakeParams,
       )
-      this.latestMakeBlockNumbers[market] = latestBlockNumber
     }
   }
 
