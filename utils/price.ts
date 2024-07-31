@@ -1,11 +1,12 @@
 import {
   CHAIN_IDS,
   type Currency,
-  getPriceNeighborhood,
   getMarketPrice,
+  getPriceNeighborhood,
 } from '@clober/v2-sdk'
 
 import BigNumber from './bignumber.ts'
+import { max, min } from './bigint.ts'
 
 export const calculateMinMaxPrice = ({
   chainId,
@@ -51,7 +52,9 @@ export const calculateMinMaxPrice = ({
         marketQuoteCurrency: quoteCurrency,
         marketBaseCurrency: baseCurrency,
         bidTick:
-          meanBidPriceBidBookTick + BigInt(tickDiff) - BigInt(spongeTick),
+          meanBidPriceBidBookTick +
+          min(BigInt(tickDiff), 0n) -
+          BigInt(spongeTick),
       }),
     ),
     maxPrice: BigNumber(
@@ -59,7 +62,9 @@ export const calculateMinMaxPrice = ({
         marketQuoteCurrency: quoteCurrency,
         marketBaseCurrency: baseCurrency,
         bidTick:
-          meanAskPriceBidBookTick + BigInt(tickDiff) + BigInt(spongeTick),
+          meanAskPriceBidBookTick +
+          max(BigInt(tickDiff), 0n) +
+          BigInt(spongeTick),
       }),
     ),
   }
