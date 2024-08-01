@@ -811,7 +811,18 @@ export class CloberMarketMaker {
         publicClient: this.publicClient,
       }),
     ])
-    if (forceExecute || validOrdersIdsToCancel.length === 0) {
+
+    const totalOpenOrderAmount = openOrders.reduce(
+      (acc, order) =>
+        acc + parseUnits(order.amount.value, order.amount.currency.decimals),
+      0n,
+    )
+    const totalFilledOrderAmount = openOrders.reduce(
+      (acc, order) =>
+        acc + parseUnits(order.filled.value, order.filled.currency.decimals),
+      0n,
+    )
+    if (forceExecute || totalOpenOrderAmount === totalFilledOrderAmount) {
       await this.execute(
         validOrdersIdsToClaim,
         validOrdersIdsToCancel,
