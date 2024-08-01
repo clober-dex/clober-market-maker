@@ -33,7 +33,6 @@ export type Params = {
 }
 
 export type Config = {
-  makeBlockInterval: number
   blockDelayThreshold: number
   fetchIntervalMilliSeconds: number
   gasMultiplier: number
