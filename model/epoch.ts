@@ -13,8 +13,10 @@ export type Epoch = {
   entropy: BigNumber
   askTicks: number[] // toTick(oraclePrice) + askSpread
   askPrices: BigNumber[]
+  askSpongeTick: number
   bidTicks: number[] // toTick(oraclePrice) - bidSpread
   bidPrices: BigNumber[]
+  bidSpongeTick: number
   onHold: BigNumber
   onCurrent: BigNumber
   pnl: BigNumber
