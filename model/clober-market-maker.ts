@@ -51,6 +51,7 @@ import { calculateMinMaxPrice, getProposedPrice } from '../utils/price.ts'
 import { isNewEpoch } from '../utils/epoch.ts'
 import { calculateOrderSize, filterValidOrders } from '../utils/order.ts'
 import { calculateUniV2ImpermanentLoss } from '../utils/uni-v2.ts'
+import { applyPercent } from '../utils/bigint.ts'
 
 import { Clober } from './exchange/clober.ts'
 import type { Config, Params } from './config.ts'
@@ -812,17 +813,7 @@ export class CloberMarketMaker {
       }),
     ])
 
-    const totalOpenOrderAmount = openOrders.reduce(
-      (acc, order) =>
-        acc + parseUnits(order.amount.value, order.amount.currency.decimals),
-      0n,
-    )
-    const totalFilledOrderAmount = openOrders.reduce(
-      (acc, order) =>
-        acc + parseUnits(order.filled.value, order.filled.currency.decimals),
-      0n,
-    )
-    if (forceExecute || totalOpenOrderAmount === totalFilledOrderAmount) {
+    if (forceExecute || this.checkRefillOrder(openOrders)) {
       await this.execute(
         validOrdersIdsToClaim,
         validOrdersIdsToCancel,
@@ -830,6 +821,43 @@ export class CloberMarketMaker {
         askMakeParams,
       )
     }
+  }
+
+  checkRefillOrder(openOrders: OpenOrder[]): boolean {
+    const totalBidOpenOrderAmount: bigint = openOrders
+      .filter((order) => order.isBid)
+      .reduce(
+        (acc, order) =>
+          acc + parseUnits(order.amount.value, order.amount.currency.decimals),
+        0n,
+      )
+    const totalAskOpenOrderAmount: bigint = openOrders
+      .filter((order) => !order.isBid)
+      .reduce(
+        (acc, order) =>
+          acc + parseUnits(order.amount.value, order.amount.currency.decimals),
+        0n,
+      )
+
+    const totalFilledBidOrderAmount = openOrders
+      .filter((order) => order.isBid)
+      .reduce(
+        (acc, order) =>
+          acc + parseUnits(order.filled.value, order.filled.currency.decimals),
+        0n,
+      )
+    const totalFilledAskOrderAmount = openOrders
+      .filter((order) => !order.isBid)
+      .reduce(
+        (acc, order) =>
+          acc + parseUnits(order.filled.value, order.filled.currency.decimals),
+        0n,
+      )
+
+    return (
+      applyPercent(totalBidOpenOrderAmount, 99) <= totalFilledBidOrderAmount &&
+      applyPercent(totalAskOpenOrderAmount, 99) <= totalFilledAskOrderAmount
+    )
   }
 
   async execute(
