@@ -88,7 +88,7 @@
             "uid": "bdmk67audh3b4a"
           },
           "editorMode": "builder",
-          "expr": "{app=\"clober-mm-Arbitrum Sepolia\"} | json | message = `Simulation`",
+          "expr": "{app=\"clober-mm-Base\"} | json | message = `Simulation`",
           "queryType": "range",
           "refId": "A"
         }
@@ -232,7 +232,7 @@
             "uid": "bdmk67audh3b4a"
           },
           "editorMode": "builder",
-          "expr": "{app=\"clober-mm-Arbitrum Sepolia\"} | json | message = `New Epoch`",
+          "expr": "{app=\"clober-mm-Base\"} | json | message = `New Epoch`",
           "queryType": "range",
           "refId": "A"
         }
@@ -320,6 +320,6 @@
   "timezone": "browser",
   "title": "New Epoch",
   "uid": "edmyjl3nzicqof",
-  "version": 33,
+  "version": 35,
   "weekStart": ""
 }

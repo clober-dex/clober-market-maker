@@ -29,14 +29,39 @@
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "thresholds"
+            "mode": "palette-classic"
           },
           "custom": {
-            "align": "auto",
-            "cellOptions": {
-              "type": "auto"
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
             },
-            "inspect": false
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
           },
           "mappings": [],
           "thresholds": {
@@ -53,41 +78,80 @@
             ]
           }
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Profit"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "dark-purple",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "__systemRef": "hideSeriesFrom",
+            "matcher": {
+              "id": "byNames",
+              "options": {
+                "mode": "exclude",
+                "names": [
+                  "Profit"
+                ],
+                "prefix": "All except:",
+                "readOnly": true
+              }
+            },
+            "properties": [
+              {
+                "id": "custom.hideFrom",
+                "value": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": true
+                }
+              }
+            ]
+          }
+        ]
       },
       "gridPos": {
-        "h": 5,
-        "w": 16,
+        "h": 11,
+        "w": 23,
         "x": 0,
         "y": 0
       },
-      "id": 4,
+      "id": 3,
       "options": {
-        "cellHeight": "sm",
-        "footer": {
-          "countRows": false,
-          "fields": "",
-          "reducer": [
-            "sum"
-          ],
-          "show": false
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
         },
-        "showHeader": true
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
       },
-      "pluginVersion": "10.4.3",
       "targets": [
         {
           "datasource": {
             "type": "loki",
-            "uid": "bdmk67audh3b4a"
+            "uid": "ddmgklxwgdipsb"
           },
-          "editorMode": "code",
-          "expr": "{app=\"clober-mm-Arbitrum Sepolia\"} | json | message = `Reset Event`",
+          "editorMode": "builder",
+          "expr": "{app=\"clober-mm-Base\"} | json | message = `PnL`",
           "queryType": "range",
           "refId": "A"
         }
       ],
-      "title": "Reset History",
+      "title": "Profit",
       "transformations": [
         {
           "id": "extractFields",
@@ -95,25 +159,57 @@
             "format": "json",
             "jsonPaths": [
               {
-                "alias": "initBaseBalance",
-                "path": "initBaseBalance"
+                "alias": "onCurrent",
+                "path": "onCurrent"
               },
               {
-                "alias": "initQuoteBalance",
-                "path": "initQuoteBalance"
+                "alias": "onHold",
+                "path": "onHold"
               },
               {
-                "alias": "gitHash",
-                "path": "gitHash"
+                "alias": "onUniV2",
+                "path": "onUniV2"
               }
             ],
             "keepTime": true,
             "replace": true,
-            "source": "Line"
+            "source": "labels"
+          }
+        },
+        {
+          "id": "calculateField",
+          "options": {
+            "alias": "Profit",
+            "binary": {
+              "left": "onCurrent",
+              "operator": "-",
+              "right": "onHold"
+            },
+            "mode": "binary",
+            "reduce": {
+              "reducer": "sum"
+            },
+            "replaceFields": false
+          }
+        },
+        {
+          "id": "convertFieldType",
+          "options": {
+            "conversions": [
+              {
+                "destinationType": "number",
+                "targetField": "onUniV2"
+              },
+              {
+                "destinationType": "number",
+                "targetField": "Profit"
+              }
+            ],
+            "fields": {}
           }
         }
       ],
-      "type": "table"
+      "type": "timeseries"
     },
     {
       "datasource": {
@@ -209,7 +305,7 @@
         "h": 12,
         "w": 23,
         "x": 0,
-        "y": 5
+        "y": 11
       },
       "id": 2,
       "options": {
@@ -230,8 +326,8 @@
             "type": "loki",
             "uid": "admc3w818idc0e"
           },
-          "editorMode": "code",
-          "expr": "{app=\"clober-mm-Arbitrum Sepolia\"} | json | message = `PnL`",
+          "editorMode": "builder",
+          "expr": "{app=\"clober-mm-Base\"} | json | message = `PnL`",
           "queryType": "range",
           "refId": "A"
         }
@@ -275,174 +371,9 @@
         }
       ],
       "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "loki",
-        "uid": "bdmk67audh3b4a"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "drawStyle": "line",
-            "fillOpacity": 0,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "insertNulls": false,
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "auto",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          }
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Profit"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "dark-purple",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          }
-        ]
-      },
-      "gridPos": {
-        "h": 11,
-        "w": 23,
-        "x": 0,
-        "y": 17
-      },
-      "id": 3,
-      "options": {
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "single",
-          "sort": "none"
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "loki",
-            "uid": "ddmgklxwgdipsb"
-          },
-          "editorMode": "code",
-          "expr": "{app=\"clober-mm-Arbitrum Sepolia\"} | json | message = `PnL`",
-          "queryType": "range",
-          "refId": "A"
-        }
-      ],
-      "title": "Profit",
-      "transformations": [
-        {
-          "id": "extractFields",
-          "options": {
-            "format": "json",
-            "jsonPaths": [
-              {
-                "alias": "onCurrent",
-                "path": "onCurrent"
-              },
-              {
-                "alias": "onHold",
-                "path": "onHold"
-              },
-              {
-                "alias": "onUniV2",
-                "path": "onUniV2"
-              }
-            ],
-            "keepTime": true,
-            "replace": true,
-            "source": "labels"
-          }
-        },
-        {
-          "id": "calculateField",
-          "options": {
-            "alias": "Profit",
-            "binary": {
-              "left": "onCurrent",
-              "operator": "-",
-              "right": "onHold"
-            },
-            "mode": "binary",
-            "reduce": {
-              "reducer": "sum"
-            },
-            "replaceFields": false
-          }
-        },
-        {
-          "id": "convertFieldType",
-          "options": {
-            "conversions": [
-              {
-                "destinationType": "number",
-                "targetField": "onUniV2"
-              },
-              {
-                "destinationType": "number",
-                "targetField": "Profit"
-              }
-            ],
-            "fields": {}
-          }
-        }
-      ],
-      "type": "timeseries"
     }
   ],
+  "refresh": "15m",
   "schemaVersion": 39,
   "tags": [],
   "templating": {
@@ -456,6 +387,6 @@
   "timezone": "browser",
   "title": "PnL",
   "uid": "fdmgoi36ppmo0c",
-  "version": 9,
+  "version": 13,
   "weekStart": ""
 }

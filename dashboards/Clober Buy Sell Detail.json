@@ -18,7 +18,7 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": 13,
+  "id": 15,
   "links": [],
   "panels": [
     {
@@ -184,21 +184,6 @@
                 "value": "points"
               }
             ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "onchainPrice"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "dark-purple",
-                  "mode": "fixed"
-                }
-              }
-            ]
           }
         ]
       },
@@ -208,7 +193,7 @@
         "x": 0,
         "y": 0
       },
-      "id": 1,
+      "id": 2,
       "options": {
         "legend": {
           "calcs": [],
@@ -238,32 +223,6 @@
             "uid": "bdmk67audh3b4a"
           },
           "editorMode": "builder",
-          "expr": "avg(avg_over_time({app=\"clober-mm-Base\"} | json | message = `UniSwap Sell Event` | unwrap price [15s]))",
-          "hide": false,
-          "legendFormat": "Uniswap Sell",
-          "queryType": "range",
-          "refId": "B",
-          "step": "15s"
-        },
-        {
-          "datasource": {
-            "type": "loki",
-            "uid": "bdmk67audh3b4a"
-          },
-          "editorMode": "builder",
-          "expr": "avg(avg_over_time({app=\"clober-mm-Base\"} | json | message = `UniSwap Buy Event` | unwrap price [15s]))",
-          "hide": false,
-          "legendFormat": "Uniswap Buy",
-          "queryType": "range",
-          "refId": "C",
-          "step": "15s"
-        },
-        {
-          "datasource": {
-            "type": "loki",
-            "uid": "bdmk67audh3b4a"
-          },
-          "editorMode": "builder",
           "expr": "avg(avg_over_time({app=\"clober-mm-Base\"} | json | message = `Success Clober Sell Event` | unwrap price [15s]))",
           "hide": false,
           "legendFormat": "Clober Sell",
@@ -285,7 +244,7 @@
           "step": "15s"
         }
       ],
-      "title": "Uniswap vs Clober",
+      "title": "Only Clober",
       "transformations": [
         {
           "id": "extractFields",
@@ -293,20 +252,8 @@
             "format": "json",
             "jsonPaths": [
               {
-                "alias": "cloberLowestAskPrice",
-                "path": "cloberLowestAskPrice"
-              },
-              {
-                "alias": "cloberHighestBidPrice",
-                "path": "cloberHighestBidPrice"
-              },
-              {
                 "alias": "oraclePrice",
                 "path": "oraclePrice"
-              },
-              {
-                "alias": "onchainPrice",
-                "path": "onchainPrice"
               }
             ],
             "keepTime": true,
@@ -320,49 +267,10 @@
             "conversions": [
               {
                 "destinationType": "number",
-                "targetField": "cloberLowestAskPrice"
-              },
-              {
-                "destinationType": "number",
-                "targetField": "cloberHighestBidPrice"
-              },
-              {
-                "destinationType": "number",
                 "targetField": "oraclePrice"
-              },
-              {
-                "destinationType": "number",
-                "targetField": "onchainPrice"
               }
             ],
             "fields": {}
-          }
-        },
-        {
-          "id": "filterByValue",
-          "options": {
-            "filters": [
-              {
-                "config": {
-                  "id": "equal",
-                  "options": {
-                    "value": 0
-                  }
-                },
-                "fieldName": "cloberLowestAskPrice"
-              },
-              {
-                "config": {
-                  "id": "equal",
-                  "options": {
-                    "value": 0
-                  }
-                },
-                "fieldName": "cloberHighestBidPrice"
-              }
-            ],
-            "match": "any",
-            "type": "exclude"
           }
         }
       ],
@@ -380,8 +288,8 @@
   },
   "timepicker": {},
   "timezone": "browser",
-  "title": "Uniswap vs Clober",
-  "uid": "edp83wu7kham8c",
-  "version": 21,
+  "title": "Clober Buy Sell Detail",
+  "uid": "adtgugzqplog0f",
+  "version": 4,
   "weekStart": ""
 }

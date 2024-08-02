@@ -106,8 +106,8 @@
             "type": "loki",
             "uid": "bdmk67audh3b4a"
           },
-          "editorMode": "code",
-          "expr": "avg(avg_over_time({app=\"clober-mm-Arbitrum Sepolia\"} | json | message = `Swap Event` | uniswapHighestBidPrice != `-` | uniswapLowestAskPrice != `-` | unwrap uniswapHighestBidPrice [1m]))",
+          "editorMode": "builder",
+          "expr": "avg(avg_over_time({app=\"clober-mm-Base\"} | json | message = `Swap Event` | uniswapHighestBidPrice != `-` | uniswapLowestAskPrice != `-` | unwrap uniswapHighestBidPrice [1m]))",
           "legendFormat": "bid",
           "queryType": "range",
           "refId": "A",
@@ -118,8 +118,8 @@
             "type": "loki",
             "uid": "bdmk67audh3b4a"
           },
-          "editorMode": "code",
-          "expr": "avg(avg_over_time({app=\"clober-mm-Arbitrum Sepolia\"} | json | message = `Swap Event` | uniswapHighestBidPrice != `-` | uniswapLowestAskPrice != `-` | unwrap uniswapLowestAskPrice [1m]))",
+          "editorMode": "builder",
+          "expr": "avg(avg_over_time({app=\"clober-mm-Base\"} | json | message = `Swap Event` | uniswapHighestBidPrice != `-` | uniswapLowestAskPrice != `-` | unwrap uniswapLowestAskPrice [1m]))",
           "hide": false,
           "legendFormat": "ask",
           "queryType": "range",
@@ -131,8 +131,8 @@
             "type": "loki",
             "uid": "bdmk67audh3b4a"
           },
-          "editorMode": "code",
-          "expr": "avg(avg_over_time({app=\"clober-mm-Arbitrum Sepolia\"} | json | message = `Swap Event` | uniswapHighestBidPrice != `-` | uniswapLowestAskPrice != `-` | unwrap oraclePrice [1m]))",
+          "editorMode": "builder",
+          "expr": "avg(avg_over_time({app=\"clober-mm-Base\"} | json | message = `Swap Event` | uniswapHighestBidPrice != `-` | uniswapLowestAskPrice != `-` | unwrap oraclePrice [1m]))",
           "hide": false,
           "legendFormat": "oracle",
           "queryType": "range",
@@ -203,6 +203,6 @@
   "timezone": "browser",
   "title": "mean of (oracle - uniswap)",
   "uid": "ddntjviqa20aod",
-  "version": 4,
+  "version": 5,
   "weekStart": ""
 }

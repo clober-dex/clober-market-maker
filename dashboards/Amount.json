@@ -102,7 +102,7 @@
             "uid": "admc3w818idc0e"
           },
           "editorMode": "builder",
-          "expr": "{app=\"clober-mm-Arbitrum Sepolia\"} | json | message = `Balance`",
+          "expr": "{app=\"clober-mm-Base\"} | json | message = `Balance`",
           "legendFormat": "",
           "queryType": "range",
           "refId": "A"
@@ -246,7 +246,7 @@
             "uid": "admc3w818idc0e"
           },
           "editorMode": "builder",
-          "expr": "{app=\"clober-mm-Arbitrum Sepolia\"} | json | message = `Balance`",
+          "expr": "{app=\"clober-mm-Base\"} | json | message = `Balance`",
           "legendFormat": "",
           "queryType": "range",
           "refId": "A"
@@ -322,6 +322,6 @@
   "timezone": "browser",
   "title": "Amount",
   "uid": "cdmgoxs5yxla8a",
-  "version": 7,
+  "version": 9,
   "weekStart": ""
 }
