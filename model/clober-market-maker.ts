@@ -431,6 +431,7 @@ export class CloberMarketMaker {
         tickDiff,
         fromEpochId,
         entropy,
+        centralPrice,
       } = await this.spreadSimulation(market)
 
       logger(chalk.green, 'Simulation', {
@@ -449,24 +450,33 @@ export class CloberMarketMaker {
         askVolume: askVolume.toString(),
         bidVolume: bidVolume.toString(),
         tickDiff: tickDiff.toString(),
+        centralPrice: centralPrice.toString(),
       })
 
-      const { askTicks, askPrices, bidTicks, bidPrices } =
-        buildTickAndPriceArray({
-          chainId: this.chainId,
-          baseCurrency,
-          quoteCurrency,
-          oraclePrice,
-          askSpread,
-          bidSpread,
-          orderNum: params.orderNum,
-          orderGap: params.orderGap,
-        })
+      const {
+        askTicks,
+        askPrices,
+        askSpongeTick,
+        bidTicks,
+        bidPrices,
+        bidSpongeTick,
+      } = buildTickAndPriceArray({
+        chainId: this.chainId,
+        baseCurrency,
+        quoteCurrency,
+        oraclePrice,
+        askSpread,
+        bidSpread,
+        orderNum: params.orderNum,
+        orderGap: params.orderGap,
+        centralPrice,
+      })
 
       const { minPrice, maxPrice } = calculateMinMaxPrice({
         chainId: this.chainId,
         tickDiff,
-        spongeTick: params.spongeTick,
+        bidSpongeTick,
+        askSpongeTick,
         quoteCurrency,
         baseCurrency,
         askPrices,
@@ -493,8 +503,10 @@ export class CloberMarketMaker {
         tickDiff,
         askTicks,
         askPrices,
+        askSpongeTick,
         bidTicks,
         bidPrices,
+        bidSpongeTick,
         onHold,
         onCurrent,
         pnl: onCurrent
@@ -528,6 +540,7 @@ export class CloberMarketMaker {
           bidSpread: params.defaultBidTickSpread,
           orderNum: params.orderNum,
           orderGap: params.orderGap,
+          centralPrice: oraclePrice,
         })
 
       const { askPrice, bidPrice } = getProposedPrice({ askPrices, bidPrices })
@@ -543,8 +556,10 @@ export class CloberMarketMaker {
         tickDiff: 0,
         askTicks,
         askPrices,
+        askSpongeTick: 0,
         bidTicks,
         bidPrices,
+        bidSpongeTick: 0,
         onHold,
         onCurrent,
         pnl: new BigNumber(0),
@@ -976,6 +991,7 @@ export class CloberMarketMaker {
     tickDiff: number
     fromEpochId: number
     entropy: BigNumber
+    centralPrice: BigNumber
   }> {
     const endTimestamp = Math.floor(Date.now() / 1000)
     for (let i = this.epoch[market].length - 1; i >= 0; i--) {
@@ -1001,6 +1017,7 @@ export class CloberMarketMaker {
         bidVolume,
         tickDiff,
         entropy,
+        centralPrice,
       } = this.dexSimulator.findSpread(
         market,
         startBlock,
@@ -1024,6 +1041,7 @@ export class CloberMarketMaker {
           tickDiff,
           fromEpochId: this.epoch[market][i].id,
           entropy,
+          centralPrice,
         }
       }
     }

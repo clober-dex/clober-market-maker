@@ -2,6 +2,7 @@ import type { CHAIN_IDS, Currency } from '@clober/v2-sdk'
 import { getMarketPrice, getPriceNeighborhood } from '@clober/v2-sdk'
 
 import BigNumber from './bignumber.ts'
+import { median } from './bigint.ts'
 
 export const buildTickAndPriceArray = ({
   chainId,
@@ -12,6 +13,7 @@ export const buildTickAndPriceArray = ({
   bidSpread,
   orderNum,
   orderGap,
+  centralPrice,
 }: {
   chainId: CHAIN_IDS
   baseCurrency: Currency
@@ -21,11 +23,14 @@ export const buildTickAndPriceArray = ({
   bidSpread: number
   orderNum: number
   orderGap: number
+  centralPrice: BigNumber
 }): {
   askTicks: number[]
   askPrices: BigNumber[]
+  askSpongeTick: number
   bidTicks: number[]
   bidPrices: BigNumber[]
+  bidSpongeTick: number
 } => {
   const {
     normal: {
@@ -37,6 +42,20 @@ export const buildTickAndPriceArray = ({
   } = getPriceNeighborhood({
     chainId,
     price: oraclePrice.toString(),
+    currency0: quoteCurrency,
+    currency1: baseCurrency,
+  })
+
+  const {
+    normal: {
+      now: { tick: centralPriceBidBookTick },
+    },
+    inverted: {
+      now: { tick: centralPriceAskBookTick },
+    },
+  } = getPriceNeighborhood({
+    chainId,
+    price: centralPrice.toString(),
     currency0: quoteCurrency,
     currency1: baseCurrency,
   })
@@ -72,7 +91,13 @@ export const buildTickAndPriceArray = ({
   return {
     askTicks: askTicks.map((tick) => Number(tick)),
     askPrices,
+    askSpongeTick: Number(
+      (median(askTicks) ?? centralPriceAskBookTick) - centralPriceAskBookTick,
+    ),
     bidTicks: bidTicks.map((tick) => Number(tick)),
     bidPrices,
+    bidSpongeTick: Number(
+      centralPriceBidBookTick - (median(bidTicks) ?? centralPriceBidBookTick),
+    ),
   }
 }
