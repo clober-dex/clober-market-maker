@@ -541,8 +541,16 @@ export class CloberMarketMaker {
         startTimestamp: currentTimestamp,
         askSpread: params.defaultAskTickSpread,
         bidSpread: params.defaultBidTickSpread,
-        minPrice: bidPrice,
-        maxPrice: askPrice,
+        minPrice: bidPrice.minus(
+          oraclePrice.times(
+            BigNumber(1.0001).pow(params.defaultBidTickSpread).minus(1),
+          ),
+        ),
+        maxPrice: askPrice.plus(
+          oraclePrice.times(
+            BigNumber(1.0001).pow(params.defaultAskTickSpread).minus(1),
+          ),
+        ),
         oraclePrice,
         entropy: new BigNumber(1),
         tickDiff: 0,
