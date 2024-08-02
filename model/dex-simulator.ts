@@ -99,6 +99,7 @@ export class DexSimulator {
     bidVolume: BigNumber
     tickDiff: number
     entropy: BigNumber
+    centralPrice: BigNumber
   } {
     const trades = this.trades[marketId]
       .filter(
@@ -324,6 +325,7 @@ export class DexSimulator {
         bidVolume: BigNumber(0),
         tickDiff: 0,
         entropy: BigNumber(this.params[marketId].minEntropy),
+        centralPrice: previousOraclePrice,
       }
     }
 
@@ -357,6 +359,7 @@ export class DexSimulator {
         previousOraclePriceBidBookTick - centralPriceBidBookTick,
       ),
       entropy: bestSpreadPair.entropy,
+      centralPrice: bestSpreadPair.centralPrice,
     }
   }
 }
