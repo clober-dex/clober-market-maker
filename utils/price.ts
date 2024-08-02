@@ -11,7 +11,6 @@ import { max, min } from './bigint.ts'
 export const calculateMinMaxPrice = ({
   chainId,
   tickDiff,
-  spongeTick,
   quoteCurrency,
   baseCurrency,
   askPrices,
@@ -19,7 +18,6 @@ export const calculateMinMaxPrice = ({
 }: {
   chainId: CHAIN_IDS
   tickDiff: number
-  spongeTick: number
   quoteCurrency: Currency
   baseCurrency: Currency
   askPrices: BigNumber[]
@@ -51,20 +49,14 @@ export const calculateMinMaxPrice = ({
       getMarketPrice({
         marketQuoteCurrency: quoteCurrency,
         marketBaseCurrency: baseCurrency,
-        bidTick:
-          meanBidPriceBidBookTick +
-          min(BigInt(tickDiff), 0n) -
-          BigInt(spongeTick),
+        bidTick: meanBidPriceBidBookTick + min(BigInt(tickDiff), 0n),
       }),
     ),
     maxPrice: BigNumber(
       getMarketPrice({
         marketQuoteCurrency: quoteCurrency,
         marketBaseCurrency: baseCurrency,
-        bidTick:
-          meanAskPriceBidBookTick +
-          max(BigInt(tickDiff), 0n) +
-          BigInt(spongeTick),
+        bidTick: meanAskPriceBidBookTick + max(BigInt(tickDiff), 0n),
       }),
     ),
   }
