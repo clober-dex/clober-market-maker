@@ -153,8 +153,12 @@
                 "path": "bidVolume"
               },
               {
-                "alias": "entropy",
-                "path": "entropy"
+                "alias": "askSpongeDiff",
+                "path": "askSpongeDiff"
+              },
+              {
+                "alias": "bidSpongeDiff",
+                "path": "bidSpongeDiff"
               }
             ],
             "keepTime": true,
@@ -320,6 +324,6 @@
   "timezone": "browser",
   "title": "New Epoch",
   "uid": "edmyjl3nzicqof",
-  "version": 35,
+  "version": 39,
   "weekStart": ""
 }
