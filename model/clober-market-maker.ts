@@ -466,6 +466,7 @@ export class CloberMarketMaker {
       const { minPrice, maxPrice } = calculateMinMaxPrice({
         chainId: this.chainId,
         tickDiff,
+        spongeTick: params.spongeTick,
         quoteCurrency,
         baseCurrency,
         askPrices,
