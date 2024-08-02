@@ -471,6 +471,7 @@ export class CloberMarketMaker {
         baseCurrency,
         askPrices,
         bidPrices,
+        oraclePrice,
       })
       if (
         oraclePrice.isLessThan(minPrice) ||
