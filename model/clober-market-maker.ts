@@ -423,7 +423,9 @@ export class CloberMarketMaker {
         bidSpread,
         profit,
         askProfit,
+        askSpongeDiff,
         bidProfit,
+        bidSpongeDiff,
         targetAskPrice,
         targetBidPrice,
         askVolume,
@@ -431,7 +433,7 @@ export class CloberMarketMaker {
         tickDiff,
         fromEpochId,
         entropy,
-      } = await this.spreadSimulation(market)
+      } = await this.spreadSimulation(market, oraclePrice)
 
       logger(chalk.green, 'Simulation', {
         market,
@@ -449,6 +451,8 @@ export class CloberMarketMaker {
         askVolume: askVolume.toString(),
         bidVolume: bidVolume.toString(),
         tickDiff: tickDiff.toString(),
+        askSpongeDiff: askSpongeDiff.toString(),
+        bidSpongeDiff: bidSpongeDiff.toString(),
       })
 
       const { askTicks, askPrices, bidTicks, bidPrices } =
@@ -469,7 +473,9 @@ export class CloberMarketMaker {
         quoteCurrency,
         baseCurrency,
         askPrices,
+        askSpongeDiff,
         bidPrices,
+        bidSpongeDiff,
       })
       if (
         oraclePrice.isLessThan(minPrice) ||
@@ -960,11 +966,16 @@ export class CloberMarketMaker {
     return new Promise((resolve) => setTimeout(resolve, ms))
   }
 
-  async spreadSimulation(market: string): Promise<{
+  async spreadSimulation(
+    market: string,
+    currentOraclePrice: BigNumber,
+  ): Promise<{
     startBlock: bigint
     endBlock: bigint
     askSpread: number
+    askSpongeDiff: BigNumber
     bidSpread: number
+    bidSpongeDiff: BigNumber
     profit: BigNumber
     askProfit: BigNumber
     bidProfit: BigNumber
@@ -990,7 +1001,9 @@ export class CloberMarketMaker {
       ])
       const {
         askSpread,
+        askSpongeDiff,
         bidSpread,
+        bidSpongeDiff,
         profit,
         askProfit,
         bidProfit,
@@ -1005,6 +1018,7 @@ export class CloberMarketMaker {
         startBlock,
         endBlock,
         this.epoch[market][i].oraclePrice,
+        currentOraclePrice,
       )
 
       if (profit.isGreaterThan(0) || i === 0) {
@@ -1012,7 +1026,9 @@ export class CloberMarketMaker {
           startBlock,
           endBlock,
           askSpread,
+          askSpongeDiff,
           bidSpread,
+          bidSpongeDiff,
           profit,
           askProfit,
           bidProfit,
