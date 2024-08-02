@@ -41,6 +41,7 @@ const main = async () => {
     0n,
     2n ** 256n - 1n,
     new BigNumber('3805.89145'),
+    new BigNumber('3805.89145'),
   )
   console.log(`ask spread: ${askSpread}`, `bid spread: ${bidSpread}`)
 }

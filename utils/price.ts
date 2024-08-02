@@ -14,16 +14,18 @@ export const calculateMinMaxPrice = ({
   quoteCurrency,
   baseCurrency,
   askPrices,
+  askSpongeDiff,
   bidPrices,
-  oraclePrice,
+  bidSpongeDiff,
 }: {
   chainId: CHAIN_IDS
   tickDiff: number
   quoteCurrency: Currency
   baseCurrency: Currency
   askPrices: BigNumber[]
+  askSpongeDiff: BigNumber
   bidPrices: BigNumber[]
-  oraclePrice: BigNumber
+  bidSpongeDiff: BigNumber
 }): {
   minPrice: BigNumber
   maxPrice: BigNumber
@@ -53,14 +55,14 @@ export const calculateMinMaxPrice = ({
         marketBaseCurrency: baseCurrency,
         bidTick: meanBidPriceBidBookTick + min(BigInt(tickDiff), 0n),
       }),
-    ).minus(oraclePrice.minus(bidPrice)),
+    ).minus(bidSpongeDiff),
     maxPrice: BigNumber(
       getMarketPrice({
         marketQuoteCurrency: quoteCurrency,
         marketBaseCurrency: baseCurrency,
         bidTick: meanAskPriceBidBookTick + max(BigInt(tickDiff), 0n),
       }),
-    ).plus(askPrice.minus(oraclePrice)),
+    ).plus(askSpongeDiff),
   }
 }
 

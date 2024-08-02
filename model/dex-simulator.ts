@@ -87,9 +87,12 @@ export class DexSimulator {
     startBlock: bigint,
     endBlock: bigint,
     previousOraclePrice: BigNumber,
+    currentOraclePrice: BigNumber,
   ): {
     askSpread: number
+    askSpongeDiff: BigNumber
     bidSpread: number
+    bidSpongeDiff: BigNumber
     profit: BigNumber
     askProfit: BigNumber
     bidProfit: BigNumber
@@ -314,7 +317,17 @@ export class DexSimulator {
     ) {
       return {
         askSpread: this.params[marketId].defaultAskTickSpread,
+        askSpongeDiff: currentOraclePrice.times(
+          BigNumber(1.0001)
+            .pow(this.params[marketId].defaultAskTickSpread)
+            .minus(1),
+        ),
         bidSpread: this.params[marketId].defaultBidTickSpread,
+        bidSpongeDiff: currentOraclePrice.times(
+          BigNumber(1.0001)
+            .pow(this.params[marketId].defaultBidTickSpread)
+            .minus(1),
+        ),
         profit: BigNumber(0),
         askProfit: BigNumber(0),
         bidProfit: BigNumber(0),
@@ -345,7 +358,13 @@ export class DexSimulator {
 
     return {
       askSpread: spreads.askSpread,
+      askSpongeDiff: BigNumber(bestSpreadPair.askPrice).minus(
+        bestSpreadPair.centralPrice,
+      ),
       bidSpread: spreads.bidSpread,
+      bidSpongeDiff: BigNumber(bestSpreadPair.centralPrice).minus(
+        bestSpreadPair.bidPrice,
+      ),
       profit: bestSpreadPair.profit,
       askProfit: bestSpreadPair.askSideProfit,
       bidProfit: bestSpreadPair.bidSideProfit,
