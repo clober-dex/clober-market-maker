@@ -91,13 +91,13 @@ export const buildTickAndPriceArray = ({
   return {
     askTicks: askTicks.map((tick) => Number(tick)),
     askPrices,
-    askSpongeTick: Number(
-      (median(askTicks) ?? centralPriceAskBookTick) - centralPriceAskBookTick,
-    ),
+    askSpongeTick: oraclePrice.eq(centralPrice)
+      ? 0
+      : Number(median(askTicks) - centralPriceAskBookTick),
     bidTicks: bidTicks.map((tick) => Number(tick)),
     bidPrices,
-    bidSpongeTick: Number(
-      centralPriceBidBookTick - (median(bidTicks) ?? centralPriceBidBookTick),
-    ),
+    bidSpongeTick: oraclePrice.eq(centralPrice)
+      ? 0
+      : Number(centralPriceBidBookTick - median(bidTicks)),
   }
 }
