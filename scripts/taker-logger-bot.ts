@@ -27,7 +27,6 @@ import { OnChain } from '../model/oracle/onchain.ts'
 import { Binance } from '../model/oracle/binance.ts'
 import { Clober } from '../model/exchange/clober.ts'
 import { WHITELIST_DEX } from '../constants/dex.ts'
-import BigNumber from '../utils/bignumber.ts'
 import { logger } from '../utils/logger.ts'
 
 const BASE_CURRENCY = {
@@ -42,8 +41,6 @@ const QUOTE_CURRENCY = {
   symbol: 'USDC',
   decimals: 6,
 } as Currency
-
-const ARBITRAGE_CONTRACT = '0xD4aD5Ed9E1436904624b6dB8B1BE31f36317C636'
 
 const BATCH_SIZE = 20n
 
@@ -132,7 +129,10 @@ const fetchTradesFromClober = async (
     fromBlock,
     toBlock,
     args: {
-      user: ARBITRAGE_CONTRACT,
+      bookId: [
+        3635527855256395834557663895503514098149724873652369924861n,
+        5768588446199258063507297122440121414468447696628377168219n,
+      ],
     },
   })
   const logs = await publicClient.getFilterLogs({ filter })
