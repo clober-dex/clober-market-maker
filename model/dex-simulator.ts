@@ -1,11 +1,5 @@
 import { CHAIN_IDS, getPriceNeighborhood } from '@clober/v2-sdk'
-import {
-  createPublicClient,
-  getAddress,
-  http,
-  parseAbiItem,
-  type PublicClient,
-} from 'viem'
+import { createPublicClient, getAddress, http, type PublicClient } from 'viem'
 
 import { CHAIN_MAP } from '../constants/chain.ts'
 import { WHITELIST_DEX } from '../constants/dex.ts'
@@ -58,9 +52,9 @@ export class DexSimulator {
       address: Object.values(WHITELIST_DEX[this.chainId])
         .flat()
         .map((dex) => getAddress(dex.address)),
-      event: parseAbiItem(
-        'event Swap(address indexed sender, address indexed recipient, int256 amount0, int256 amount1, uint160 sqrtPriceX96, uint128 liquidity, int24 tick)',
-      ),
+      events: Object.values(WHITELIST_DEX[this.chainId])
+        .flat()
+        .map((dex) => dex.swapEvent),
       fromBlock: this.startBlock,
       toBlock: this.latestBlock,
     })
