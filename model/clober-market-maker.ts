@@ -244,13 +244,11 @@ export class CloberMarketMaker {
         )
       } catch (e) {
         console.error('Error in market making', e)
-        if (slackClient && (e as any).toString().includes('Error')) {
-          slackClient
-            .error({
-              message: 'Error in market making',
-              error: (e as any).toString(),
-            })
-            .catch(() => {})
+        if (slackClient && (e as any).toString().includes('error')) {
+          await slackClient.error({
+            message: 'Error in market making',
+            error: (e as any).toString(),
+          })
         }
       }
 

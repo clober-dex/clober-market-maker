@@ -3,6 +3,8 @@ import readline from 'readline'
 
 import * as keythereum from 'keythereum'
 
+import { slackClient } from './logger.ts'
+
 function ask(query: string, hidden = false) {
   const rl = readline.createInterface({
     input: process.stdin,
@@ -29,6 +31,9 @@ function ask(query: string, hidden = false) {
 }
 
 export const getPrivateKey = async (): Promise<`0x${string}`> => {
+  if (slackClient) {
+    await slackClient.log({ message: 'Waiting for password' })
+  }
   const password = await ask('Password: ', true)
   const keyObject = JSON.parse(fs.readFileSync('./key.json').toString())
   return `0x${keythereum.recover(password as string, keyObject).toString('hex')}`
