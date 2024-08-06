@@ -79,7 +79,6 @@ export class CloberMarketMaker {
   // mutable state
   epoch: { [market: string]: Epoch[] } = {}
   private isEmergencyStop = false
-  private initialized = false
   private lock: { [calldata: string]: boolean } = {}
   private latestSentTimestampInSecond: number = 0
 
@@ -143,7 +142,7 @@ export class CloberMarketMaker {
     })
   }
 
-  async init() {
+  async init(): Promise<boolean> {
     try {
       // 1. approve all tokens
       for (const address of this.erc20Tokens) {
@@ -191,7 +190,7 @@ export class CloberMarketMaker {
       )
 
       await this.sleep(5000)
-      this.initialized = true
+      return true
     } catch (e) {
       if (slackClient) {
         await slackClient.error({
@@ -199,6 +198,7 @@ export class CloberMarketMaker {
           error: (e as any).toString(),
         })
       }
+      return false
     }
   }
 
@@ -224,10 +224,6 @@ export class CloberMarketMaker {
   }
 
   async run() {
-    if (!this.initialized) {
-      throw new Error('MarketMaker is not initialized')
-    }
-
     // eslint-disable-next-line no-constant-condition
     while (true) {
       await this.emergencyStopCheck(this.config.blockDelayThreshold)

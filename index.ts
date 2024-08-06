@@ -15,7 +15,9 @@ import { slackClient } from './utils/logger.ts'
       })
     }
     const mm = new CloberMarketMaker(privateKey, process.env.CONFIG)
-    await mm.init()
-    await mm.run()
+    const initialized = await mm.init()
+    if (initialized) {
+      await mm.run()
+    }
   }
 })()
