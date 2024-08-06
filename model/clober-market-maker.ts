@@ -144,53 +144,62 @@ export class CloberMarketMaker {
   }
 
   async init() {
-    // 1. approve all tokens
-    for (const address of this.erc20Tokens) {
-      const hash = await approveERC20({
+    try {
+      // 1. approve all tokens
+      for (const address of this.erc20Tokens) {
+        const hash = await approveERC20({
+          chainId: this.chainId,
+          walletClient: this.walletClient,
+          token: address,
+        })
+        await waitTransaction(
+          'Approve',
+          {
+            token: address,
+          },
+          this.publicClient,
+          hash,
+        )
+      }
+
+      // 2. setApprovalOfOpenOrdersForAll
+      const hash = await setApprovalOfOpenOrdersForAll({
         chainId: this.chainId,
         walletClient: this.walletClient,
-        token: address,
       })
       await waitTransaction(
-        'Approve',
-        {
-          token: address,
-        },
+        'setApprovalOfOpenOrdersForAll',
+        {},
         this.publicClient,
         hash,
       )
+
+      // 3. cancel all orders
+      const openOrders = await getOpenOrders({
+        chainId: this.chainId,
+        userAddress: this.userAddress,
+      })
+      await this.execute(
+        openOrders
+          .filter((order) => Number(order.claimable.value) > 0)
+          .map((order) => order.id),
+        openOrders
+          .filter((order) => order.amount.value !== order.filled.value)
+          .map((order) => order.id),
+        [],
+        [],
+      )
+
+      await this.sleep(5000)
+      this.initialized = true
+    } catch (e) {
+      if (slackClient) {
+        await slackClient.error({
+          message: 'Error in initialization',
+          error: (e as any).toString(),
+        })
+      }
     }
-
-    // 2. setApprovalOfOpenOrdersForAll
-    const hash = await setApprovalOfOpenOrdersForAll({
-      chainId: this.chainId,
-      walletClient: this.walletClient,
-    })
-    await waitTransaction(
-      'setApprovalOfOpenOrdersForAll',
-      {},
-      this.publicClient,
-      hash,
-    )
-
-    // 3. cancel all orders
-    const openOrders = await getOpenOrders({
-      chainId: this.chainId,
-      userAddress: this.userAddress,
-    })
-    await this.execute(
-      openOrders
-        .filter((order) => Number(order.claimable.value) > 0)
-        .map((order) => order.id),
-      openOrders
-        .filter((order) => order.amount.value !== order.filled.value)
-        .map((order) => order.id),
-      [],
-      [],
-    )
-
-    await this.sleep(5000)
-    this.initialized = true
   }
 
   async emergencyStopCheck(blockDelayThreshold: number) {
