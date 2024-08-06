@@ -1,8 +1,7 @@
 import { CHAIN_IDS, getPriceNeighborhood } from '@clober/v2-sdk'
-import { createPublicClient, http, parseAbiItem, type PublicClient } from 'viem'
+import { createPublicClient, getAddress, http, type PublicClient } from 'viem'
 
 import { CHAIN_MAP } from '../constants/chain.ts'
-import { ODOS_ROUTER_CONTRACT_ADDRESS } from '../constants/odos.ts'
 import { WHITELIST_DEX } from '../constants/dex.ts'
 import BigNumber from '../utils/bignumber.ts'
 import { findCurrencyBySymbol } from '../utils/currency.ts'
@@ -49,31 +48,20 @@ export class DexSimulator {
       return
     }
 
-    const transactions = (
-      await this.publicClient.getLogs({
-        address: ODOS_ROUTER_CONTRACT_ADDRESS[this.chainId],
-        event: parseAbiItem(
-          'event Swap(address sender, uint256 inputAmount, address inputToken, uint256 amountOut, address outputToken, int256 slippage, uint32 referralCode)',
-        ),
-        fromBlock: this.startBlock,
-        toBlock: this.latestBlock,
-      })
-    )
-      .map((log) => log.transactionHash)
-      .filter((value, index, self) => self.indexOf(value) === index)
-
-    const receipts = (
-      await Promise.all(
-        transactions.map((hash) =>
-          this.publicClient.getTransactionReceipt({ hash }),
-        ),
-      )
-    ).filter((r) => r.status === 'success')
-    const logs = receipts.map((r) => r.logs)
+    const logs = await this.publicClient.getLogs({
+      address: Object.values(WHITELIST_DEX[this.chainId])
+        .flat()
+        .map((dex) => getAddress(dex.address)),
+      events: Object.values(WHITELIST_DEX[this.chainId])
+        .flat()
+        .map((dex) => dex.swapEvent),
+      fromBlock: this.startBlock,
+      toBlock: this.latestBlock,
+    })
 
     for (const [id] of Object.entries(this.markets)) {
       const trades = WHITELIST_DEX[this.chainId][id].reduce(
-        (acc, dex) => acc.concat(dex.extract(logs.flat())),
+        (acc, dex) => acc.concat(dex.extract(logs)),
         [] as TakenTrade[],
       )
       this.trades[id] = [...(this.trades[id] || []), ...trades]

@@ -14,7 +14,7 @@ import { abs } from '../../utils/bigint.ts'
 
 import type { Dex } from './index.ts'
 
-export class UniSwapV3 implements Dex {
+export class Pool implements Dex {
   address: `0x${string}`
   swapEvent: AbiEvent
   currency0: Currency
@@ -29,7 +29,7 @@ export class UniSwapV3 implements Dex {
   ) {
     this.address = getAddress(address)
     this.swapEvent = parseAbiItem(
-      'event Swap(address indexed sender, address indexed recipient, int256 amount0, int256 amount1, uint160 sqrtPriceX96, uint128 liquidity, int24 tick)',
+      'event Swap(address indexed sender, address indexed to, uint256 amount0In, uint256 amount1In, uint256 amount0Out, uint256 amount1Out)',
     )
     this.currency0 = currency0
     this.currency1 = currency1
@@ -47,8 +47,8 @@ export class UniSwapV3 implements Dex {
     return parseLogs.map((log) => {
       const blockNumber = Number(log.blockNumber)
       const logIndex = Number(log.logIndex)
-      const amount0 = BigInt(log.args.amount0)
-      const amount1 = BigInt(log.args.amount1)
+      const amount0 = BigInt(log.args.amount0In) - BigInt(log.args.amount0Out)
+      const amount1 = BigInt(log.args.amount1In) - BigInt(log.args.amount1Out)
       const price = BigNumber(
         formatUnits(abs(amount1), this.currency1.decimals),
       ).div(formatUnits(abs(amount0), this.currency0.decimals))
