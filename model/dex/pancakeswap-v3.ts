@@ -14,7 +14,7 @@ import { abs } from '../../utils/bigint.ts'
 
 import type { Dex } from './index.ts'
 
-export class UniSwapV3 implements Dex {
+export class PancakeswapV3 implements Dex {
   address: `0x${string}`
   swapEvent: AbiEvent
   currency0: Currency
@@ -29,7 +29,7 @@ export class UniSwapV3 implements Dex {
   ) {
     this.address = getAddress(address)
     this.swapEvent = parseAbiItem(
-      'event Swap(address indexed sender, address indexed recipient, int256 amount0, int256 amount1, uint160 sqrtPriceX96, uint128 liquidity, int24 tick)',
+      'event Swap(address indexed sender, address indexed recipient, int256 amount0, int256 amount1, uint160 sqrtPriceX96, uint128 liquidity, int24 tick, uint128 protocolFeesToken0, uint128 protocolFeesToken1)',
     )
     this.currency0 = currency0
     this.currency1 = currency1
