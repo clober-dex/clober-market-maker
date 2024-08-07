@@ -8,19 +8,16 @@ import {
   getAddress,
   http,
   isAddressEqual,
-  parseAbi,
-  parseAbiItem,
-  parseEventLogs,
   parseUnits,
   zeroAddress,
 } from 'viem'
 import { arbitrumSepolia, base } from 'viem/chains'
 import {
   approveERC20,
-  marketOrder,
-  getExpectedInput,
-  type Currency,
   CHAIN_IDS,
+  type Currency,
+  getExpectedInput,
+  marketOrder,
 } from '@clober/v2-sdk'
 import { privateKeyToAccount } from 'viem/accounts'
 import * as YAML from 'yaml'
@@ -35,6 +32,7 @@ import { Binance } from '../../model/oracle/binance.ts'
 import { type Config } from '../../model/config.ts'
 import { Clober } from '../../model/exchange/clober.ts'
 import { OnChain } from '../../model/oracle/onchain.ts'
+import { TakenTrade } from '../../model/taken-trade.ts'
 
 const BASE_CURRENCY = {
   address: '0xF2e615A933825De4B39b497f6e6991418Fb31b78',
@@ -87,71 +85,44 @@ const sendSlackMessage = async (message: {}) => {
   })
 }
 
-const fetchHashesFromSwapEvent = async (fromBlock: bigint, toBlock: bigint) => {
-  if (fromBlock > toBlock) {
-    return []
-  }
-  const logs = await mainnetPublicClient.getLogs({
-    address: '0x19cEeAd7105607Cd444F5ad10dd51356436095a1', // odos router contract
-    event: parseAbiItem(
-      'event Swap(address sender, uint256 inputAmount, address inputToken, uint256 amountOut, address outputToken, int256 slippage, uint32 referralCode)',
-    ),
-    fromBlock,
-    toBlock,
-  })
-  return logs.map((log) => log.transactionHash)
-}
-
 const fetchTradeFromHashes = async (
-  hashes: `0x${string}`[],
+  fromBlock: bigint,
+  toBlock: bigint,
 ): Promise<
   {
     type: 'bid' | 'ask'
     baseAmount: bigint
     quoteAmount: bigint
-    poolAddress: `0x${string}`
     blockNumber: bigint
     price: string
   }[]
 > => {
-  const trades = (
-    await Promise.all(
-      hashes.map((hash) => mainnetPublicClient.getTransactionReceipt({ hash })),
+  const whitelistDexes = WHITELIST_DEX[CHAIN_IDS.BASE]['WETH/USDC']
+  const logs = await mainnetPublicClient.getLogs({
+    address: whitelistDexes.map((dex) => getAddress(dex.address)),
+    events: whitelistDexes.map((dex) => dex.swapEvent),
+    fromBlock,
+    toBlock,
+  })
+
+  const trades = whitelistDexes
+    .reduce((acc, dex) => acc.concat(dex.extract(logs)), [] as TakenTrade[])
+    .sort((a, b) =>
+      a.blockNumber === b.blockNumber
+        ? a.logIndex - b.logIndex
+        : Number(a.blockNumber) - Number(b.blockNumber),
     )
-  )
-    .filter((r) => r.status === 'success')
-    .map((r) =>
-      parseEventLogs({
-        abi: parseAbi([
-          'event Swap(address indexed sender, address indexed recipient, int256 amount0, int256 amount1, uint160 sqrtPriceX96, uint128 liquidity, int24 tick)',
-        ]),
-        logs: r.logs,
-      }),
-    )
-    .flat()
-    .filter((log) =>
-      WHITELIST_DEX[CHAIN_IDS.BASE]['WETH/USDC']
-        .map((dex) => getAddress(dex.address))
-        .includes(getAddress(log.address)),
-    )
-  return trades.map((log) => {
-    const amount0 = BigInt(log.args.amount0) // weth
-    const amount1 = BigInt(log.args.amount1) // usdc
+  return trades.map((takenTrade) => {
     return {
-      type: amount0 > 0n ? 'ask' : 'bid',
-      baseAmount: abs(amount0),
-      quoteAmount: abs(amount1),
-      poolAddress: log.address,
-      blockNumber: BigInt(log.blockNumber),
-      price: new BigNumber(log.args.sqrtPriceX96.toString())
-        .div(new BigNumber(2).pow(96))
-        .pow(2)
-        .times(
-          new BigNumber(10).pow(
-            BASE_CURRENCY.decimals - QUOTE_CURRENCY.decimals,
-          ),
-        )
-        .toFixed(),
+      type: takenTrade.isTakingBidSide ? 'ask' : 'bid',
+      baseAmount: BigInt(
+        takenTrade.isTakingBidSide ? takenTrade.amountIn : takenTrade.amountOut,
+      ),
+      quoteAmount: BigInt(
+        takenTrade.isTakingBidSide ? takenTrade.amountOut : takenTrade.amountIn,
+      ),
+      blockNumber: BigInt(takenTrade.blockNumber),
+      price: takenTrade.price,
     }
   })
 }
@@ -203,8 +174,7 @@ const fetchTradeFromHashes = async (
       binance.update(),
       clober.update(),
     ])
-    const hashes = await fetchHashesFromSwapEvent(startBlock, latestBlock)
-    const trades = await fetchTradeFromHashes(hashes)
+    const trades = await fetchTradeFromHashes(startBlock, latestBlock)
     const uniswapVolume = trades.reduce(
       (acc, trade) => acc + trade.baseAmount,
       0n,
@@ -346,7 +316,6 @@ const fetchTradeFromHashes = async (
       {
         startBlock: Number(startBlock),
         latestBlock: Number(latestBlock),
-        hashesLength: hashes.length,
         tradesLength: trades.length,
         uniswapHighestBidPrice:
           trades
