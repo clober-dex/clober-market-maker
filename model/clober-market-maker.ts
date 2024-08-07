@@ -239,6 +239,13 @@ export class CloberMarketMaker {
         ])
       } catch (e) {
         console.error('Error in update', e)
+        if (slackClient && (e as any).toString().includes('error')) {
+          await slackClient.error({
+            message: 'Error in update',
+            error: (e as any).toString(),
+          })
+        }
+        return
       }
 
       try {
@@ -255,6 +262,7 @@ export class CloberMarketMaker {
             error: (e as any).toString(),
           })
         }
+        return
       }
 
       await this.sleep(this.config.fetchIntervalMilliSeconds)
