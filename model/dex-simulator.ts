@@ -6,13 +6,14 @@ import { CHAIN_MAP } from '../constants/chain.ts'
 import { WHITELIST_DEX } from '../constants/dex.ts'
 import BigNumber from '../utils/bignumber.ts'
 import { findCurrencyBySymbol } from '../utils/currency.ts'
+import { min } from '../utils/bigint.ts'
 
 import type { Market } from './market.ts'
 import type { TakenTrade } from './taken-trade.ts'
 import type { Params } from './config.ts'
 
 export class DexSimulator {
-  private readonly BATCH_SIZE = 5000
+  private readonly BATCH_SIZE: bigint = 5000n
   markets: { [id: string]: Market }
   params: { [id: string]: Params }
   chainId: CHAIN_IDS
@@ -61,10 +62,8 @@ export class DexSimulator {
           const me = Symbol()
           await queue.wait(me, 0)
           try {
-            const fromBlock = BigInt(i === this.startBlock ? i : i + 1)
-            const toBlock = BigInt(
-              Math.min(i + this.BATCH_SIZE, this.latestBlock),
-            )
+            const fromBlock = BigInt(i === this.startBlock ? i : i + 1n)
+            const toBlock = BigInt(min(i + this.BATCH_SIZE, this.latestBlock))
             const logs = await this.publicClient.getLogs({
               address: Object.values(WHITELIST_DEX[this.chainId])
                 .flat()
