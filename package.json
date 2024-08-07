@@ -20,6 +20,7 @@
   "dependencies": {
     "@clober/v2-sdk": "^0.0.59",
     "@types/keythereum": "^1.2.5",
+    "async-await-queue": "^2.1.4",
     "bignumber.js": "^9.1.2",
     "ccxt": "^4.3.17",
     "chalk": "^5.3.0",

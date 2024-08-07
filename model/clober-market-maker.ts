@@ -239,6 +239,13 @@ export class CloberMarketMaker {
         ])
       } catch (e) {
         console.error('Error in update', e)
+        if (slackClient) {
+          await slackClient.error({
+            message: 'Error in update',
+            error: (e as any).toString(),
+          })
+        }
+        return
       }
 
       try {
@@ -249,12 +256,13 @@ export class CloberMarketMaker {
         )
       } catch (e) {
         console.error('Error in market making', e)
-        if (slackClient && (e as any).toString().includes('error')) {
+        if (slackClient) {
           await slackClient.error({
             message: 'Error in market making',
             error: (e as any).toString(),
           })
         }
+        return
       }
 
       await this.sleep(this.config.fetchIntervalMilliSeconds)
@@ -1010,6 +1018,14 @@ export class CloberMarketMaker {
           endTimestamp,
         ),
       ])
+      logger(chalk.redBright, 'Try find spread', {
+        market,
+        startBlock: Number(startBlock),
+        endBlock: Number(endBlock),
+        epoch: this.epoch[market][i].id,
+        tradesLength: this.dexSimulator.getTrades(market, startBlock, endBlock)
+          .length,
+      })
       const {
         askSpread,
         askSpongeDiff,
@@ -1028,8 +1044,8 @@ export class CloberMarketMaker {
         market,
         startBlock,
         endBlock,
-        this.epoch[market][i].oraclePrice,
-        currentOraclePrice,
+        this.epoch[market][i].oraclePrice.toNumber(),
+        currentOraclePrice.toNumber(),
       )
 
       if (profit.isGreaterThan(0) || i === 0) {

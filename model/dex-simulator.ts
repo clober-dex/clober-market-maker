@@ -5,12 +5,15 @@ import { CHAIN_MAP } from '../constants/chain.ts'
 import { WHITELIST_DEX } from '../constants/dex.ts'
 import BigNumber from '../utils/bignumber.ts'
 import { findCurrencyBySymbol } from '../utils/currency.ts'
+import { isZero } from '../utils/number.ts'
+import { getLogs } from '../utils/event.ts'
 
 import type { Market } from './market.ts'
 import type { TakenTrade } from './taken-trade.ts'
 import type { Params } from './config.ts'
 
 export class DexSimulator {
+  private readonly MAX_BLOCK_WINDOW: bigint = 43200n // (86400n / 2n)
   markets: { [id: string]: Market }
   params: { [id: string]: Params }
   chainId: CHAIN_IDS
@@ -48,34 +51,49 @@ export class DexSimulator {
       return
     }
 
-    const logs = await this.publicClient.getLogs({
-      address: Object.values(WHITELIST_DEX[this.chainId])
+    const logs = await getLogs(
+      this.publicClient,
+      this.startBlock,
+      this.latestBlock,
+      Object.values(WHITELIST_DEX[this.chainId])
         .flat()
         .map((dex) => getAddress(dex.address)),
-      events: Object.values(WHITELIST_DEX[this.chainId])
+      Object.values(WHITELIST_DEX[this.chainId])
         .flat()
         .map((dex) => dex.swapEvent),
-      fromBlock: this.startBlock,
-      toBlock: this.latestBlock,
-    })
+    )
 
     for (const [id] of Object.entries(this.markets)) {
       const trades = WHITELIST_DEX[this.chainId][id].reduce(
         (acc, dex) => acc.concat(dex.extract(logs)),
         [] as TakenTrade[],
       )
-      this.trades[id] = [...(this.trades[id] || []), ...trades]
+      this.trades[id] = [...(this.trades[id] || []), ...trades].filter(
+        (trade) =>
+          this.latestBlock - this.MAX_BLOCK_WINDOW <= trade.blockNumber,
+      )
     }
 
     this.startBlock = this.latestBlock + 1n
+  }
+
+  getTrades(
+    marketId: string,
+    startBlock: bigint,
+    endBlock: bigint,
+  ): TakenTrade[] {
+    return this.trades[marketId].filter(
+      (trade) =>
+        startBlock <= trade.blockNumber && trade.blockNumber <= endBlock,
+    )
   }
 
   findSpread(
     marketId: string,
     startBlock: bigint,
     endBlock: bigint,
-    previousOraclePrice: BigNumber,
-    currentOraclePrice: BigNumber,
+    previousOraclePrice: number,
+    currentOraclePrice: number,
   ): {
     askSpread: number
     askSpongeDiff: BigNumber
@@ -104,39 +122,39 @@ export class DexSimulator {
             : Number(a.blockNumber) - Number(b.blockNumber),
       )
 
-    const bidPrices = [
-      ...trades.map((trade) => trade.price),
-      previousOraclePrice.toString(),
-    ].sort((a, b) => new BigNumber(a).comparedTo(new BigNumber(b)))
+    const bidPrices: number[] = [
+      ...trades.map((trade) => Number(trade.price)),
+      previousOraclePrice,
+    ].sort()
 
-    const askPirces = [
-      ...trades.map((trade) => trade.price),
-      previousOraclePrice.toString(),
-    ].sort((a, b) => new BigNumber(a).comparedTo(new BigNumber(b)))
+    const askPirces: number[] = [
+      ...trades.map((trade) => Number(trade.price)),
+      previousOraclePrice,
+    ].sort()
 
     const askProfits: {
-      targetAskPrice: string
-      baseDelta: BigNumber
-      quoteDelta: BigNumber
+      targetAskPrice: number
+      baseDelta: number
+      quoteDelta: number
     }[] = []
     const bidProfits: {
-      targetBidPrice: string
-      baseDelta: BigNumber
-      quoteDelta: BigNumber
+      targetBidPrice: number
+      baseDelta: number
+      quoteDelta: number
     }[] = []
     for (const targetAskPrice of askPirces) {
-      let baseAmount = new BigNumber(0)
-      let quoteAmount = new BigNumber(0)
+      let baseAmount = 0
+      let quoteAmount = 0
 
       for (const { isTakingBidSide, amountIn, price: takenPrice } of trades) {
         // simulate trade
         if (
           !isTakingBidSide &&
-          new BigNumber(takenPrice).comparedTo(targetAskPrice) >= 0 // not considering taker fee in Clober
+          Number(takenPrice) >= targetAskPrice // not considering taker fee in Clober
         ) {
-          const cloberAmountOut = new BigNumber(amountIn).div(targetAskPrice)
-          baseAmount = baseAmount.minus(cloberAmountOut)
-          quoteAmount = quoteAmount.plus(amountIn)
+          const cloberAmountOut = Number(amountIn) / targetAskPrice
+          baseAmount = baseAmount - cloberAmountOut
+          quoteAmount = quoteAmount + Number(amountIn)
         }
       }
 
@@ -147,18 +165,18 @@ export class DexSimulator {
       })
     }
     for (const targetBidPrice of bidPrices) {
-      let baseAmount = new BigNumber(0)
-      let quoteAmount = new BigNumber(0)
+      let baseAmount = 0
+      let quoteAmount = 0
 
       for (const { isTakingBidSide, amountIn, price: takenPrice } of trades) {
         // simulate trade
         if (
           isTakingBidSide &&
-          new BigNumber(targetBidPrice).comparedTo(takenPrice) >= 0 // not considering taker fee in Clober
+          targetBidPrice >= Number(takenPrice) // not considering taker fee in Clober
         ) {
-          const cloberAmountOut = new BigNumber(amountIn).times(targetBidPrice)
-          baseAmount = baseAmount.plus(amountIn)
-          quoteAmount = quoteAmount.minus(cloberAmountOut)
+          const cloberAmountOut = Number(amountIn) * targetBidPrice
+          baseAmount = baseAmount + Number(amountIn)
+          quoteAmount = quoteAmount - cloberAmountOut
         }
       }
 
@@ -170,15 +188,15 @@ export class DexSimulator {
     }
 
     const bestSpreadPair = {
-      profit: new BigNumber(0),
-      askSideProfit: new BigNumber(0),
-      bidSideProfit: new BigNumber(0),
-      entropy: new BigNumber(0),
-      score: new BigNumber(0), // entropy * profit
-      askPrice: previousOraclePrice.toString(),
-      bidPrice: previousOraclePrice.toString(),
-      askBaseVolume: new BigNumber(0),
-      bidBaseVolume: new BigNumber(0),
+      profit: 0,
+      askSideProfit: 0,
+      bidSideProfit: 0,
+      entropy: 0,
+      score: 0, // entropy * profit
+      askPrice: previousOraclePrice,
+      bidPrice: previousOraclePrice,
+      askBaseVolume: 0,
+      bidBaseVolume: 0,
       centralPrice: previousOraclePrice,
     }
     for (const askProfit of askProfits) {
@@ -191,55 +209,50 @@ export class DexSimulator {
           continue
         }
 
-        const askBaseVolume = askProfit.baseDelta.abs()
-        const bidBaseVolume = bidProfit.baseDelta.abs()
+        const askBaseVolume = Math.abs(askProfit.baseDelta)
+        const bidBaseVolume = Math.abs(bidProfit.baseDelta)
 
-        const centralPrice = askBaseVolume.plus(bidBaseVolume).isZero()
+        const centralPrice = isZero(askBaseVolume + bidBaseVolume)
           ? previousOraclePrice
-          : BigNumber(askProfit.targetAskPrice)
-              .times(askBaseVolume)
-              .plus(BigNumber(bidProfit.targetBidPrice).times(bidBaseVolume))
-              .div(askBaseVolume.plus(bidBaseVolume))
-        const totalBaseDelta = askProfit.baseDelta.plus(bidProfit.baseDelta)
-        const totalQuoteDelta = askProfit.quoteDelta.plus(bidProfit.quoteDelta)
-        const totalQuoteProfit = totalQuoteDelta.plus(
-          totalBaseDelta.times(centralPrice),
-        )
+          : (askProfit.targetAskPrice * askBaseVolume +
+              bidProfit.targetBidPrice * bidBaseVolume) /
+            (askBaseVolume + bidBaseVolume)
+        const totalBaseDelta = askProfit.baseDelta + bidProfit.baseDelta
+        const totalQuoteDelta = askProfit.quoteDelta + bidProfit.quoteDelta
+        const totalQuoteProfit = totalQuoteDelta + totalBaseDelta * centralPrice
 
-        const askSideQuoteProfit = askProfit.quoteDelta.plus(
-          askProfit.baseDelta.times(centralPrice),
-        )
-        const bidSideQuoteProfit = bidProfit.quoteDelta.plus(
-          bidProfit.baseDelta.times(centralPrice),
-        )
+        const askSideQuoteProfit =
+          askProfit.quoteDelta + askProfit.baseDelta * centralPrice
+        const bidSideQuoteProfit =
+          bidProfit.quoteDelta + bidProfit.baseDelta * centralPrice
 
         // calculate entropy
-        const totalBaseVolume = askBaseVolume.plus(bidBaseVolume)
-        const askBaseVolumeRatio = totalBaseVolume.isZero()
-          ? new BigNumber(0)
-          : askBaseVolume.div(totalBaseVolume)
-        const bidBaseVolumeRatio = totalBaseVolume.isZero()
-          ? new BigNumber(0)
-          : bidBaseVolume.div(totalBaseVolume)
-        const askBaseVolumeRatioLog2 = askBaseVolumeRatio.isZero()
-          ? new BigNumber(0)
-          : Math.log2(askBaseVolumeRatio.toNumber())
-        const bidBaseVolumeRatioLog2 = bidBaseVolumeRatio.isZero()
-          ? new BigNumber(0)
-          : Math.log2(bidBaseVolumeRatio.toNumber())
+        const totalBaseVolume = askBaseVolume + bidBaseVolume
+        const askBaseVolumeRatio = isZero(totalBaseVolume)
+          ? 0
+          : askBaseVolume / totalBaseVolume
+        const bidBaseVolumeRatio = isZero(totalBaseVolume)
+          ? 0
+          : bidBaseVolume / totalBaseVolume
+        const askBaseVolumeRatioLog2 = isZero(askBaseVolumeRatio)
+          ? 0
+          : Math.log2(askBaseVolumeRatio)
+        const bidBaseVolumeRatioLog2 = isZero(bidBaseVolumeRatio)
+          ? 0
+          : Math.log2(bidBaseVolumeRatio)
 
-        const entropy = askBaseVolumeRatio
-          .times(askBaseVolumeRatioLog2)
-          .plus(bidBaseVolumeRatio.times(bidBaseVolumeRatioLog2))
-          .negated()
+        const entropy = -(
+          askBaseVolumeRatio * askBaseVolumeRatioLog2 +
+          bidBaseVolumeRatio * bidBaseVolumeRatioLog2
+        )
 
         // calculate score
-        const score = entropy.times(totalQuoteProfit)
+        const score = entropy * totalQuoteProfit
 
         if (
-          score.comparedTo(bestSpreadPair.score) > 0 ||
-          (score.eq(bestSpreadPair.score) &&
-            totalQuoteProfit.comparedTo(bestSpreadPair.profit) > 0)
+          score > bestSpreadPair.score ||
+          (isZero(score - bestSpreadPair.score) &&
+            totalQuoteProfit > bestSpreadPair.profit)
         ) {
           bestSpreadPair.profit = totalQuoteProfit
           bestSpreadPair.askSideProfit = askSideQuoteProfit
@@ -300,18 +313,18 @@ export class DexSimulator {
     })
 
     if (
-      bestSpreadPair.askSideProfit.isZero() ||
-      bestSpreadPair.bidSideProfit.isZero()
+      BigNumber(bestSpreadPair.askSideProfit).isZero() ||
+      BigNumber(bestSpreadPair.bidSideProfit).isZero()
     ) {
       return {
         askSpread: this.params[marketId].defaultAskTickSpread,
-        askSpongeDiff: currentOraclePrice.times(
+        askSpongeDiff: BigNumber(currentOraclePrice).times(
           BigNumber(1.0001)
             .pow(this.params[marketId].defaultAskTickSpread)
             .minus(1),
         ),
         bidSpread: this.params[marketId].defaultBidTickSpread,
-        bidSpongeDiff: currentOraclePrice.times(
+        bidSpongeDiff: BigNumber(currentOraclePrice).times(
           BigNumber(1.0001)
             .pow(this.params[marketId].defaultBidTickSpread)
             .minus(1),
@@ -319,8 +332,8 @@ export class DexSimulator {
         profit: BigNumber(0),
         askProfit: BigNumber(0),
         bidProfit: BigNumber(0),
-        targetAskPrice: previousOraclePrice,
-        targetBidPrice: previousOraclePrice,
+        targetAskPrice: BigNumber(previousOraclePrice),
+        targetBidPrice: BigNumber(previousOraclePrice),
         askVolume: BigNumber(0),
         bidVolume: BigNumber(0),
         tickDiff: 0,
@@ -353,17 +366,17 @@ export class DexSimulator {
       bidSpongeDiff: BigNumber(bestSpreadPair.centralPrice).minus(
         bestSpreadPair.bidPrice,
       ),
-      profit: bestSpreadPair.profit,
-      askProfit: bestSpreadPair.askSideProfit,
-      bidProfit: bestSpreadPair.bidSideProfit,
+      profit: BigNumber(bestSpreadPair.profit),
+      askProfit: BigNumber(bestSpreadPair.askSideProfit),
+      bidProfit: BigNumber(bestSpreadPair.bidSideProfit),
       targetAskPrice: BigNumber(bestSpreadPair.askPrice),
       targetBidPrice: BigNumber(bestSpreadPair.bidPrice),
-      askVolume: bestSpreadPair.askBaseVolume,
-      bidVolume: bestSpreadPair.bidBaseVolume,
+      askVolume: BigNumber(bestSpreadPair.askBaseVolume),
+      bidVolume: BigNumber(bestSpreadPair.bidBaseVolume),
       tickDiff: Number(
         previousOraclePriceBidBookTick - centralPriceBidBookTick,
       ),
-      entropy: bestSpreadPair.entropy,
+      entropy: BigNumber(bestSpreadPair.entropy),
     }
   }
 }
