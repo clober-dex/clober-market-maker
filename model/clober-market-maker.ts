@@ -1018,6 +1018,14 @@ export class CloberMarketMaker {
           endTimestamp,
         ),
       ])
+      logger(chalk.redBright, 'Try find spread', {
+        market,
+        startBlock: Number(startBlock),
+        endBlock: Number(endBlock),
+        epoch: this.epoch[market][i].id,
+        tradesLength: this.dexSimulator.getTrades(market, startBlock, endBlock)
+          .length,
+      })
       const {
         askSpread,
         askSpongeDiff,

@@ -96,6 +96,17 @@ export class DexSimulator {
     this.startBlock = this.latestBlock + 1n
   }
 
+  getTrades(
+    marketId: string,
+    startBlock: bigint,
+    endBlock: bigint,
+  ): TakenTrade[] {
+    return this.trades[marketId].filter(
+      (trade) =>
+        startBlock <= trade.blockNumber && trade.blockNumber <= endBlock,
+    )
+  }
+
   findSpread(
     marketId: string,
     startBlock: bigint,
