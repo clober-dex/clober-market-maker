@@ -1044,8 +1044,8 @@ export class CloberMarketMaker {
         market,
         startBlock,
         endBlock,
-        this.epoch[market][i].oraclePrice,
-        currentOraclePrice,
+        this.epoch[market][i].oraclePrice.toNumber(),
+        currentOraclePrice.toNumber(),
       )
 
       if (profit.isGreaterThan(0) || i === 0) {

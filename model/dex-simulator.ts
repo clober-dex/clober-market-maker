@@ -171,9 +171,9 @@ export class DexSimulator {
           !isTakingBidSide &&
           Number(takenPrice) >= targetAskPrice // not considering taker fee in Clober
         ) {
-          const cloberAmountOut = amountIn / targetAskPrice
+          const cloberAmountOut = Number(amountIn) / targetAskPrice
           baseAmount = baseAmount - cloberAmountOut
-          quoteAmount = quoteAmount + amountIn
+          quoteAmount = quoteAmount + Number(amountIn)
         }
       }
 
@@ -191,10 +191,10 @@ export class DexSimulator {
         // simulate trade
         if (
           isTakingBidSide &&
-          targetBidPrice >= takenPrice // not considering taker fee in Clober
+          targetBidPrice >= Number(takenPrice) // not considering taker fee in Clober
         ) {
-          const cloberAmountOut = amountIn * targetBidPrice
-          baseAmount = baseAmount + amountIn
+          const cloberAmountOut = Number(amountIn) * targetBidPrice
+          baseAmount = baseAmount + Number(amountIn)
           quoteAmount = quoteAmount - cloberAmountOut
         }
       }
@@ -332,8 +332,8 @@ export class DexSimulator {
     })
 
     if (
-      bestSpreadPair.askSideProfit.isZero() ||
-      bestSpreadPair.bidSideProfit.isZero()
+      BigNumber(bestSpreadPair.askSideProfit).isZero() ||
+      BigNumber(bestSpreadPair.bidSideProfit).isZero()
     ) {
       return {
         askSpread: this.params[marketId].defaultAskTickSpread,
@@ -385,17 +385,17 @@ export class DexSimulator {
       bidSpongeDiff: BigNumber(bestSpreadPair.centralPrice).minus(
         bestSpreadPair.bidPrice,
       ),
-      profit: bestSpreadPair.profit,
-      askProfit: bestSpreadPair.askSideProfit,
-      bidProfit: bestSpreadPair.bidSideProfit,
+      profit: BigNumber(bestSpreadPair.profit),
+      askProfit: BigNumber(bestSpreadPair.askSideProfit),
+      bidProfit: BigNumber(bestSpreadPair.bidSideProfit),
       targetAskPrice: BigNumber(bestSpreadPair.askPrice),
       targetBidPrice: BigNumber(bestSpreadPair.bidPrice),
-      askVolume: bestSpreadPair.askBaseVolume,
-      bidVolume: bestSpreadPair.bidBaseVolume,
+      askVolume: BigNumber(bestSpreadPair.askBaseVolume),
+      bidVolume: BigNumber(bestSpreadPair.bidBaseVolume),
       tickDiff: Number(
         previousOraclePriceBidBookTick - centralPriceBidBookTick,
       ),
-      entropy: bestSpreadPair.entropy,
+      entropy: BigNumber(bestSpreadPair.entropy),
     }
   }
 }
