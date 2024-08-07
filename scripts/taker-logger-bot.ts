@@ -9,6 +9,7 @@ import {
   getAddress,
   http,
   parseAbiItem,
+  type PublicClient,
 } from 'viem'
 import {
   CHAIN_IDS,
@@ -27,6 +28,7 @@ import { Clober } from '../model/exchange/clober.ts'
 import { WHITELIST_DEX } from '../constants/dex.ts'
 import { logger } from '../utils/logger.ts'
 import type { TakenTrade } from '../model/taken-trade.ts'
+import { getLogs } from '../utils/event.ts'
 
 const BASE_CURRENCY = {
   address: '0x4200000000000000000000000000000000000006',
@@ -40,8 +42,6 @@ const QUOTE_CURRENCY = {
   symbol: 'USDC',
   decimals: 6,
 } as Currency
-
-const BATCH_SIZE = 20n
 
 const publicClient = createPublicClient({
   chain: base,
@@ -62,12 +62,13 @@ const fetchUniswapTrades = async (
     return []
   }
   const whitelistDexes = WHITELIST_DEX[CHAIN_IDS.BASE]['WETH/USDC']
-  const logs = await publicClient.getLogs({
-    address: whitelistDexes.map((dex) => getAddress(dex.address)),
-    events: whitelistDexes.map((dex) => dex.swapEvent),
+  const logs = await getLogs(
+    publicClient as PublicClient,
     fromBlock,
     toBlock,
-  })
+    whitelistDexes.map((dex) => getAddress(dex.address)),
+    whitelistDexes.map((dex) => dex.swapEvent),
+  )
 
   const trades = whitelistDexes
     .reduce((acc, dex) => acc.concat(dex.extract(logs)), [] as TakenTrade[])
@@ -158,10 +159,10 @@ const main = async () => {
   const config = YAML.parse(fs.readFileSync('config.yaml', 'utf8')) as Config
   const onchainOracle = new OnChain(
     base.id,
-    _.mapValues(config.oracles, (m: { onchain: any }) => m.onchain as any),
+    _.mapValues(config.oracles, (m) => m.onchain as any),
   )
   const binance = new Binance(
-    _.mapValues(config.oracles, (m: { binance: any }) => m.binance as any),
+    _.mapValues(config.oracles, (m) => m.binance as any),
   )
   const clober = new Clober(
     base.id,
@@ -176,7 +177,7 @@ const main = async () => {
     },
   })
 
-  let startBlock = (await publicClient.getBlockNumber()) - BATCH_SIZE
+  let startBlock = await publicClient.getBlockNumber()
 
   // eslint-disable-next-line no-constant-condition
   while (true) {

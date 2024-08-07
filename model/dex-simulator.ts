@@ -1,13 +1,12 @@
 import { CHAIN_IDS, getPriceNeighborhood } from '@clober/v2-sdk'
 import { createPublicClient, getAddress, http, type PublicClient } from 'viem'
-import { Queue } from 'async-await-queue'
 
 import { CHAIN_MAP } from '../constants/chain.ts'
 import { WHITELIST_DEX } from '../constants/dex.ts'
 import BigNumber from '../utils/bignumber.ts'
 import { findCurrencyBySymbol } from '../utils/currency.ts'
-import { min } from '../utils/bigint.ts'
 import { isZero } from '../utils/number.ts'
+import { getLogs } from '../utils/event.ts'
 
 import type { Market } from './market.ts'
 import type { TakenTrade } from './taken-trade.ts'
@@ -15,7 +14,6 @@ import type { Params } from './config.ts'
 
 export class DexSimulator {
   private readonly MAX_BLOCK_WINDOW: bigint = 43200n // (86400n / 2n)
-  private readonly BATCH_SIZE: bigint = 2000n
   markets: { [id: string]: Market }
   params: { [id: string]: Params }
   chainId: CHAIN_IDS
@@ -53,42 +51,21 @@ export class DexSimulator {
       return
     }
 
-    const queue = new Queue(10, 1000)
-
-    const p = []
-    const allLogs: any[] = []
-    for (let i = this.startBlock; i < this.latestBlock; i += this.BATCH_SIZE) {
-      /* Each iteration is an anonymous async function */
-      p.push(
-        (async () => {
-          const me = Symbol()
-          await queue.wait(me, 0)
-          try {
-            const fromBlock = BigInt(i === this.startBlock ? i : i + 1n)
-            const toBlock = BigInt(min(i + this.BATCH_SIZE, this.latestBlock))
-            const logs = await this.publicClient.getLogs({
-              address: Object.values(WHITELIST_DEX[this.chainId])
-                .flat()
-                .map((dex) => getAddress(dex.address)),
-              events: Object.values(WHITELIST_DEX[this.chainId])
-                .flat()
-                .map((dex) => dex.swapEvent),
-              fromBlock,
-              toBlock,
-            })
-            allLogs.push(...logs)
-          } catch (e) {
-            console.error(`Error in block ${i}: ${e}`)
-          } finally {
-            queue.end(me)
-          }
-        })(),
-      )
-    }
+    const logs = await getLogs(
+      this.publicClient,
+      this.startBlock,
+      this.latestBlock,
+      Object.values(WHITELIST_DEX[this.chainId])
+        .flat()
+        .map((dex) => getAddress(dex.address)),
+      Object.values(WHITELIST_DEX[this.chainId])
+        .flat()
+        .map((dex) => dex.swapEvent),
+    )
 
     for (const [id] of Object.entries(this.markets)) {
       const trades = WHITELIST_DEX[this.chainId][id].reduce(
-        (acc, dex) => acc.concat(dex.extract(allLogs)),
+        (acc, dex) => acc.concat(dex.extract(logs)),
         [] as TakenTrade[],
       )
       this.trades[id] = [...(this.trades[id] || []), ...trades].filter(
