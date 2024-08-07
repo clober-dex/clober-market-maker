@@ -14,6 +14,7 @@ import type { TakenTrade } from './taken-trade.ts'
 import type { Params } from './config.ts'
 
 export class DexSimulator {
+  private readonly MAX_BLOCK_WINDOW: bigint = 43200n // (86400n / 2n)
   private readonly BATCH_SIZE: bigint = 2000n
   markets: { [id: string]: Market }
   params: { [id: string]: Params }
@@ -90,7 +91,10 @@ export class DexSimulator {
         (acc, dex) => acc.concat(dex.extract(allLogs)),
         [] as TakenTrade[],
       )
-      this.trades[id] = [...(this.trades[id] || []), ...trades]
+      this.trades[id] = [...(this.trades[id] || []), ...trades].filter(
+        (trade) =>
+          this.latestBlock - this.MAX_BLOCK_WINDOW <= trade.blockNumber,
+      )
     }
 
     this.startBlock = this.latestBlock + 1n
