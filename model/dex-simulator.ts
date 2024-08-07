@@ -13,7 +13,7 @@ import type { TakenTrade } from './taken-trade.ts'
 import type { Params } from './config.ts'
 
 export class DexSimulator {
-  private readonly BATCH_SIZE: bigint = 5000n
+  private readonly BATCH_SIZE: bigint = 2000n
   markets: { [id: string]: Market }
   params: { [id: string]: Params }
   chainId: CHAIN_IDS
@@ -51,7 +51,7 @@ export class DexSimulator {
       return
     }
 
-    const queue = new Queue(10, 100)
+    const queue = new Queue(10, 1000)
 
     const p = []
     const allLogs: any[] = []
