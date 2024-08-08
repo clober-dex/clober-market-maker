@@ -32,7 +32,7 @@ function ask(query: string, hidden = false) {
 
 export const getPrivateKey = async (): Promise<`0x${string}`> => {
   if (slackClient) {
-    await slackClient.log({ message: 'Waiting for password' })
+    await slackClient.error({ message: 'Waiting for password' })
   }
   const password = await ask('Password: ', true)
   const keyObject = JSON.parse(fs.readFileSync('./key.json').toString())
