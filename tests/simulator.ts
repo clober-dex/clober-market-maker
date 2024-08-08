@@ -5,7 +5,6 @@ import { CHAIN_IDS } from '@clober/v2-sdk'
 import { arbitrumSepolia } from 'viem/chains'
 import * as yaml from 'yaml'
 
-import BigNumber from '../utils/bignumber.ts'
 import { DexSimulator } from '../model/dex-simulator.ts'
 import { type Market } from '../model/market.ts'
 import type { Config, Params } from '../model/config.ts'
@@ -40,8 +39,8 @@ const main = async () => {
     'WETH/USDC',
     0n,
     2n ** 256n - 1n,
-    new BigNumber('3805.89145'),
-    new BigNumber('3805.89145'),
+    3805.89145,
+    3805.89145,
   )
   console.log(`ask spread: ${askSpread}`, `bid spread: ${bidSpread}`)
 }

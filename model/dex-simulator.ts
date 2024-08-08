@@ -13,15 +13,14 @@ import type { TakenTrade } from './taken-trade.ts'
 import type { Params } from './config.ts'
 
 export class DexSimulator {
-  private readonly MAX_BLOCK_WINDOW: bigint = 43200n // (86400n / 2n)
   markets: { [id: string]: Market }
   params: { [id: string]: Params }
   chainId: CHAIN_IDS
   publicClient: PublicClient
-
   trades: { [id: string]: TakenTrade[] } = {}
   startBlock: bigint = 0n
   latestBlock: bigint = 0n
+  private readonly MAX_BLOCK_WINDOW: bigint = 43200n // (86400n / 2n)
 
   constructor(
     chainId: CHAIN_IDS,
@@ -293,7 +292,7 @@ export class DexSimulator {
 
     const {
       inverted: {
-        now: { tick: lowestAskBidBookTick },
+        now: { tick: lowestAskAskBookTick },
       },
     } = getPriceNeighborhood({
       chainId: this.chainId,
@@ -342,7 +341,7 @@ export class DexSimulator {
     }
 
     const spreads = {
-      askSpread: Number(previousOraclePriceAskBookTick - lowestAskBidBookTick),
+      askSpread: Number(previousOraclePriceAskBookTick - lowestAskAskBookTick),
       bidSpread: Number(previousOraclePriceBidBookTick - highestBidBidBookTick),
     }
 

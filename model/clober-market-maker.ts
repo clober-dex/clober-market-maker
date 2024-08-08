@@ -10,6 +10,7 @@ import {
   getContractAddresses,
   getMarketPrice,
   getOpenOrders,
+  getPriceNeighborhood,
   getSubgraphBlockNumber,
   type OpenOrder,
   setApprovalOfOpenOrdersForAll,
@@ -444,7 +445,14 @@ export class CloberMarketMaker {
         tickDiff,
         fromEpochId,
         entropy,
-      } = await this.spreadSimulation(market, oraclePrice)
+      } = await this.spreadSimulation(
+        market,
+        oraclePrice,
+        totalBase,
+        totalQuote,
+        baseCurrency,
+        quoteCurrency,
+      )
 
       logger(chalk.green, 'Simulation', {
         market,
@@ -534,7 +542,7 @@ export class CloberMarketMaker {
 
     // first epoch
     else if (!this.epoch[market]) {
-      const { askTicks, askPrices, bidTicks, bidPrices } =
+      const { askPrices: askPricesOrigin, bidPrices: bidPricesOrigin } =
         buildTickAndPriceArray({
           chainId: this.chainId,
           baseCurrency,
@@ -546,22 +554,83 @@ export class CloberMarketMaker {
           orderGap: params.orderGap,
         })
 
-      const { askPrice, bidPrice } = getProposedPrice({ askPrices, bidPrices })
+      const { askPrice: askPriceOrigin, bidPrice: bidPriceOrigin } =
+        getProposedPrice({
+          askPrices: askPricesOrigin,
+          bidPrices: bidPricesOrigin,
+        })
+
+      const {
+        normal: {
+          now: { tick: currentOraclePriceBidBookTick },
+        },
+        inverted: {
+          now: { tick: currentOraclePriceAskBookTick },
+        },
+      } = getPriceNeighborhood({
+        chainId: this.chainId,
+        price: oraclePrice.toFixed(),
+        currency0: quoteCurrency,
+        currency1: baseCurrency,
+      })
+
+      const ethSkew = totalBase.times(oraclePrice).div(totalQuote)
+      const weightedAskPrice = oraclePrice.plus(
+        askPriceOrigin.minus(oraclePrice).div(ethSkew),
+      )
+      const weightedBidPrice = oraclePrice.minus(
+        oraclePrice.minus(bidPriceOrigin).times(ethSkew),
+      )
+      const weightedAskSpongeDiff = weightedAskPrice.minus(oraclePrice)
+      const weightedBidSpongeDiff = oraclePrice.minus(weightedBidPrice)
+
+      const {
+        inverted: {
+          now: { tick: weightedAskPriceAskBookTick },
+        },
+      } = getPriceNeighborhood({
+        chainId: this.chainId,
+        price: weightedAskPrice.toFixed(),
+        currency0: quoteCurrency,
+        currency1: baseCurrency,
+      })
+      const {
+        normal: {
+          now: { tick: weightedBidPriceBidBookTick },
+        },
+      } = getPriceNeighborhood({
+        chainId: this.chainId,
+        price: weightedBidPrice.toFixed(),
+        currency0: quoteCurrency,
+        currency1: baseCurrency,
+      })
+
+      const weightedAskSpread = Number(
+        currentOraclePriceAskBookTick - weightedAskPriceAskBookTick,
+      )
+      const weightedBidSpread = Number(
+        currentOraclePriceBidBookTick - weightedBidPriceBidBookTick,
+      )
+
+      const { askTicks, askPrices, bidTicks, bidPrices } =
+        buildTickAndPriceArray({
+          chainId: this.chainId,
+          baseCurrency,
+          quoteCurrency,
+          oraclePrice,
+          askSpread: weightedAskSpread,
+          bidSpread: weightedBidSpread,
+          orderNum: params.orderNum,
+          orderGap: params.orderGap,
+        })
+
       const newEpoch: Epoch = {
         id: 0,
         startTimestamp: currentTimestamp,
-        askSpread: params.defaultAskTickSpread,
-        bidSpread: params.defaultBidTickSpread,
-        minPrice: bidPrice.minus(
-          oraclePrice.times(
-            BigNumber(1.0001).pow(params.defaultBidTickSpread).minus(1),
-          ),
-        ),
-        maxPrice: askPrice.plus(
-          oraclePrice.times(
-            BigNumber(1.0001).pow(params.defaultAskTickSpread).minus(1),
-          ),
-        ),
+        askSpread: weightedAskSpread,
+        bidSpread: weightedBidSpread,
+        minPrice: weightedBidPrice.minus(weightedBidSpongeDiff),
+        maxPrice: weightedAskPrice.plus(weightedAskSpongeDiff),
         oraclePrice,
         entropy: new BigNumber(1),
         tickDiff: 0,
@@ -988,6 +1057,10 @@ export class CloberMarketMaker {
   async spreadSimulation(
     market: string,
     currentOraclePrice: BigNumber,
+    totalBase: BigNumber,
+    totalQuote: BigNumber,
+    baseCurrency: Currency,
+    quoteCurrency: Currency,
   ): Promise<{
     startBlock: bigint
     endBlock: bigint
@@ -1028,9 +1101,7 @@ export class CloberMarketMaker {
       })
       const {
         askSpread,
-        askSpongeDiff,
         bidSpread,
-        bidSpongeDiff,
         profit,
         askProfit,
         bidProfit,
@@ -1049,13 +1120,88 @@ export class CloberMarketMaker {
       )
 
       if (profit.isGreaterThan(0) || i === 0) {
+        const {
+          normal: {
+            now: { tick: currentOraclePriceBidBookTick },
+          },
+          inverted: {
+            now: { tick: currentOraclePriceAskBookTick },
+          },
+        } = getPriceNeighborhood({
+          chainId: this.chainId,
+          price: currentOraclePrice.toFixed(),
+          currency0: quoteCurrency,
+          currency1: baseCurrency,
+        })
+
+        const currentAskPrice = BigNumber(
+          getMarketPrice({
+            marketQuoteCurrency: quoteCurrency,
+            marketBaseCurrency: baseCurrency,
+            askTick: currentOraclePriceAskBookTick - BigInt(askSpread),
+          }),
+        )
+        const currentBidPrice = BigNumber(
+          getMarketPrice({
+            marketQuoteCurrency: quoteCurrency,
+            marketBaseCurrency: baseCurrency,
+            bidTick: currentOraclePriceBidBookTick - BigInt(bidSpread),
+          }),
+        )
+        const currentCentralPrice = BigNumber(
+          getMarketPrice({
+            marketQuoteCurrency: quoteCurrency,
+            marketBaseCurrency: baseCurrency,
+            bidTick: currentOraclePriceBidBookTick - BigInt(tickDiff),
+          }),
+        )
+        const ethSkew = totalBase.times(currentOraclePrice).div(totalQuote)
+        const weightedAskPrice = currentCentralPrice.plus(
+          currentAskPrice.minus(currentCentralPrice).div(ethSkew),
+        )
+        const weightedBidPrice = currentCentralPrice.minus(
+          currentCentralPrice.minus(currentBidPrice).times(ethSkew),
+        )
+        const weightedAskSpongeDiff =
+          weightedAskPrice.minus(currentCentralPrice)
+        const weightedBidSpongeDiff =
+          currentCentralPrice.minus(weightedBidPrice)
+
+        const {
+          inverted: {
+            now: { tick: weightedAskPriceAskBookTick },
+          },
+        } = getPriceNeighborhood({
+          chainId: this.chainId,
+          price: weightedAskPrice.toFixed(),
+          currency0: quoteCurrency,
+          currency1: baseCurrency,
+        })
+        const {
+          normal: {
+            now: { tick: weightedBidPriceBidBookTick },
+          },
+        } = getPriceNeighborhood({
+          chainId: this.chainId,
+          price: weightedBidPrice.toFixed(),
+          currency0: quoteCurrency,
+          currency1: baseCurrency,
+        })
+
+        const weightedAskSpread = Number(
+          currentOraclePriceAskBookTick - weightedAskPriceAskBookTick,
+        )
+        const weightedBidSpread = Number(
+          currentOraclePriceBidBookTick - weightedBidPriceBidBookTick,
+        )
+
         return {
           startBlock,
           endBlock,
-          askSpread,
-          askSpongeDiff,
-          bidSpread,
-          bidSpongeDiff,
+          askSpread: weightedAskSpread,
+          askSpongeDiff: weightedAskSpongeDiff,
+          bidSpread: weightedBidSpread,
+          bidSpongeDiff: weightedBidSpongeDiff,
           profit,
           askProfit,
           bidProfit,
