@@ -8,6 +8,7 @@ export const buildTickAndPriceArray = ({
   baseCurrency,
   quoteCurrency,
   oraclePrice,
+  onchainOraclePrice,
   askSpread,
   bidSpread,
   orderNum,
@@ -17,6 +18,7 @@ export const buildTickAndPriceArray = ({
   baseCurrency: Currency
   quoteCurrency: Currency
   oraclePrice: BigNumber
+  onchainOraclePrice: BigNumber
   askSpread: number
   bidSpread: number
   orderNum: number
@@ -40,11 +42,27 @@ export const buildTickAndPriceArray = ({
     currency0: quoteCurrency,
     currency1: baseCurrency,
   })
+  const {
+    normal: {
+      now: { tick: onchainOraclePriceBidBookTick },
+    },
+    inverted: {
+      now: { tick: onchainOraclePriceAskBookTick },
+    },
+  } = getPriceNeighborhood({
+    chainId,
+    price: onchainOraclePrice.toString(),
+    currency0: quoteCurrency,
+    currency1: baseCurrency,
+  })
 
-  const askTicks = Array.from(
-    { length: orderNum },
-    (_, i) => oraclePriceAskBookTick - BigInt(askSpread + orderGap * i),
-  )
+  const askTicks = [
+    ...Array.from(
+      { length: orderNum },
+      (_, i) => oraclePriceAskBookTick - BigInt(askSpread + orderGap * i),
+    ),
+    onchainOraclePriceAskBookTick,
+  ].filter((tick) => tick >= onchainOraclePriceAskBookTick)
   const askPrices = askTicks
     .map((tick) =>
       getMarketPrice({
@@ -55,10 +73,13 @@ export const buildTickAndPriceArray = ({
     )
     .map((price) => new BigNumber(price))
 
-  const bidTicks = Array.from(
-    { length: orderNum },
-    (_, i) => oraclePriceBidBookTick - BigInt(bidSpread + orderGap * i),
-  )
+  const bidTicks = [
+    ...Array.from(
+      { length: orderNum },
+      (_, i) => oraclePriceBidBookTick - BigInt(bidSpread + orderGap * i),
+    ),
+    onchainOraclePriceBidBookTick,
+  ].filter((tick) => tick <= onchainOraclePriceBidBookTick)
   const bidPrices = bidTicks
     .map((tick) =>
       getMarketPrice({

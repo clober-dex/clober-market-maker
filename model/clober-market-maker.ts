@@ -61,6 +61,7 @@ import type { Epoch } from './epoch.ts'
 import { DexSimulator } from './dex-simulator.ts'
 import { Binance } from './oracle/binance.ts'
 import type { Oracle } from './oracle'
+import { OnChain } from './oracle/onchain.ts'
 
 const BID = 0
 const ASK = 1
@@ -77,6 +78,7 @@ export class CloberMarketMaker {
   // define exchanges
   oracle: Oracle
   clober: Clober
+  onchainOracle: OnChain
   // mutable state
   epoch: { [market: string]: Epoch[] } = {}
   private isEmergencyStop = false
@@ -114,6 +116,10 @@ export class CloberMarketMaker {
     // set up exchanges
     this.oracle = new Binance(
       _.mapValues(this.config.oracles, (m) => m.binance as any),
+    )
+    this.onchainOracle = new OnChain(
+      this.chainId === arbitrumSepolia.id ? base.id : this.chainId,
+      _.mapValues(this.config.oracles, (m) => m.onchain as any),
     )
     this.clober = new Clober(
       this.chainId,
@@ -235,6 +241,7 @@ export class CloberMarketMaker {
       try {
         await Promise.all([
           this.dexSimulator.update(),
+          this.onchainOracle.update(),
           this.oracle.update(),
           this.clober.update(),
         ])
@@ -409,6 +416,7 @@ export class CloberMarketMaker {
       cancelableQuote,
     } = await this.getBalances(baseCurrency, quoteCurrency, openOrders)
     const oraclePrice = this.oracle.price(market)
+    const onchainOraclePrice = this.onchainOracle.price(market)
     const onHold = oraclePrice
       .times(params.startBaseAmount)
       .plus(params.startQuoteAmount)
@@ -480,6 +488,7 @@ export class CloberMarketMaker {
           baseCurrency,
           quoteCurrency,
           oraclePrice,
+          onchainOraclePrice,
           askSpread,
           bidSpread,
           orderNum: params.orderNum,
@@ -548,6 +557,7 @@ export class CloberMarketMaker {
           baseCurrency,
           quoteCurrency,
           oraclePrice,
+          onchainOraclePrice,
           askSpread: params.defaultAskTickSpread,
           bidSpread: params.defaultBidTickSpread,
           orderNum: params.orderNum,
@@ -618,6 +628,7 @@ export class CloberMarketMaker {
           baseCurrency,
           quoteCurrency,
           oraclePrice,
+          onchainOraclePrice,
           askSpread: weightedAskSpread,
           bidSpread: weightedBidSpread,
           orderNum: params.orderNum,
