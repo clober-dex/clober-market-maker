@@ -486,6 +486,8 @@ export class CloberMarketMaker {
           orderGap: params.orderGap,
         })
 
+      // do something
+
       const { minPrice, maxPrice } = calculateMinMaxPrice({
         chainId: this.chainId,
         tickDiff,
@@ -623,6 +625,8 @@ export class CloberMarketMaker {
           orderNum: params.orderNum,
           orderGap: params.orderGap,
         })
+
+      // do something
 
       const newEpoch: Epoch = {
         id: 0,
