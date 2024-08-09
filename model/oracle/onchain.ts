@@ -72,9 +72,11 @@ export class OnChain implements Oracle {
               },
           )
           .then(({ outAmounts }) => {
-            price[id][0] = new BigNumber(
-              formatUnits(BigInt(outAmounts[0]), quoteCurrency.decimals),
-            ).div(this.markets[id].baseAmount)
+            if (outAmounts && outAmounts.length > 0) {
+              price[id][0] = new BigNumber(
+                formatUnits(BigInt(outAmounts[0]), quoteCurrency.decimals),
+              ).div(this.markets[id].baseAmount)
+            }
           }),
       )
       fetchQueue.push(
@@ -112,9 +114,11 @@ export class OnChain implements Oracle {
               },
           )
           .then(({ outAmounts }) => {
-            price[id][1] = new BigNumber(this.markets[id].quoteAmount).div(
-              formatUnits(BigInt(outAmounts[0]), baseCurrency.decimals),
-            )
+            if (outAmounts && outAmounts.length > 0) {
+              price[id][1] = new BigNumber(this.markets[id].quoteAmount).div(
+                formatUnits(BigInt(outAmounts[0]), baseCurrency.decimals),
+              )
+            }
           }),
       )
     }
