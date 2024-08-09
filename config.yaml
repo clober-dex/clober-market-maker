@@ -32,4 +32,4 @@ markets:
       startQuoteAmount: 125584.667513
       startBaseAmount: 51.1981062248491304
       startPrice: 2442.84
-      maxEpochDurationSeconds: 3600
+      maxEpochDurationSeconds: 300
