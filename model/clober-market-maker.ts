@@ -498,8 +498,6 @@ export class CloberMarketMaker {
           orderGap: params.orderGap,
         })
 
-      // do something
-
       const { minPrice, maxPrice } = calculateMinMaxPrice({
         chainId: this.chainId,
         tickDiff,
@@ -638,14 +636,18 @@ export class CloberMarketMaker {
           orderNum: params.orderNum,
           orderGap: params.orderGap,
         })
+      const { askPrice, bidPrice } = getProposedPrice({
+        askPrices,
+        bidPrices,
+      })
 
       const newEpoch: Epoch = {
         id: 0,
         startTimestamp: currentTimestamp,
         askSpread: weightedAskSpread,
         bidSpread: weightedBidSpread,
-        minPrice: weightedBidPrice.minus(weightedBidSpongeDiff),
-        maxPrice: weightedAskPrice.plus(weightedAskSpongeDiff),
+        minPrice: bidPrice.minus(weightedBidSpongeDiff),
+        maxPrice: askPrice.plus(weightedAskSpongeDiff),
         oraclePrice,
         entropy: new BigNumber(1),
         tickDiff: 0,
