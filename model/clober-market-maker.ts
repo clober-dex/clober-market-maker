@@ -521,6 +521,7 @@ export class CloberMarketMaker {
         minPrice,
         maxPrice,
         oraclePrice,
+        onChainOraclePrice,
         entropy,
         correctionFactor,
         askTicks,
@@ -592,6 +593,7 @@ export class CloberMarketMaker {
         minPrice: bidPrice.minus(weightedBidSpongeDiff),
         maxPrice: askPrice.plus(weightedAskSpongeDiff),
         oraclePrice,
+        onChainOraclePrice,
         entropy: new BigNumber(1),
         correctionFactor: new BigNumber(1),
         askTicks,
@@ -649,8 +651,7 @@ export class CloberMarketMaker {
         .toString(),
     })
 
-    const currentEpoch: Epoch =
-      this.epoch[market][this.epoch[market].length - 1]
+    const currentEpoch = this.epoch[market][this.epoch[market].length - 1]
     const { askOrderSizeInBase, bidOrderSizeInQuote } = calculateOrderSize({
       totalBase,
       totalQuote,

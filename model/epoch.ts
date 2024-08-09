@@ -10,6 +10,7 @@ export type Epoch = {
   minPrice: BigNumber // toTick(oraclePrice) + askSpread + tickDiff
   maxPrice: BigNumber // toTick(oraclePrice) - bidSpread + tickDiff
   oraclePrice: BigNumber
+  onChainOraclePrice: BigNumber
   entropy: BigNumber
   askTicks: number[] // toTick(oraclePrice) + askSpread
   askPrices: BigNumber[]
