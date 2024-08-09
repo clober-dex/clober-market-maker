@@ -105,7 +105,7 @@ export class DexSimulator {
     targetBidPrice: BigNumber
     askVolume: BigNumber
     bidVolume: BigNumber
-    tickDiff: number
+    correctionFactor: BigNumber
     entropy: BigNumber
   } {
     const trades = this.trades[marketId]
@@ -335,7 +335,7 @@ export class DexSimulator {
         targetBidPrice: BigNumber(previousOraclePrice),
         askVolume: BigNumber(0),
         bidVolume: BigNumber(0),
-        tickDiff: 0,
+        correctionFactor: BigNumber(1),
         entropy: BigNumber(this.params[marketId].minEntropy),
       }
     }
@@ -344,17 +344,6 @@ export class DexSimulator {
       askSpread: Number(previousOraclePriceAskBookTick - lowestAskAskBookTick),
       bidSpread: Number(previousOraclePriceBidBookTick - highestBidBidBookTick),
     }
-
-    const {
-      normal: {
-        now: { tick: centralPriceBidBookTick },
-      },
-    } = getPriceNeighborhood({
-      chainId: this.chainId,
-      price: bestSpreadPair.centralPrice.toString(),
-      currency0: findCurrencyBySymbol(this.chainId, quote),
-      currency1: findCurrencyBySymbol(this.chainId, base),
-    })
 
     return {
       askSpread: spreads.askSpread,
@@ -372,8 +361,8 @@ export class DexSimulator {
       targetBidPrice: BigNumber(bestSpreadPair.bidPrice),
       askVolume: BigNumber(bestSpreadPair.askBaseVolume),
       bidVolume: BigNumber(bestSpreadPair.bidBaseVolume),
-      tickDiff: Number(
-        previousOraclePriceBidBookTick - centralPriceBidBookTick,
+      correctionFactor: BigNumber(previousOraclePrice).div(
+        new BigNumber(bestSpreadPair.centralPrice),
       ),
       entropy: BigNumber(bestSpreadPair.entropy),
     }

@@ -1,27 +1,13 @@
-import {
-  CHAIN_IDS,
-  type Currency,
-  getMarketPrice,
-  getPriceNeighborhood,
-} from '@clober/v2-sdk'
-
 import BigNumber from './bignumber.ts'
-import { max, min } from './bigint.ts'
 
 export const calculateMinMaxPrice = ({
-  chainId,
-  tickDiff,
-  quoteCurrency,
-  baseCurrency,
+  correctionFactor,
   askPrices,
   askSpongeDiff,
   bidPrices,
   bidSpongeDiff,
 }: {
-  chainId: CHAIN_IDS
-  tickDiff: number
-  quoteCurrency: Currency
-  baseCurrency: Currency
+  correctionFactor: BigNumber
   askPrices: BigNumber[]
   askSpongeDiff: BigNumber
   bidPrices: BigNumber[]
@@ -31,38 +17,14 @@ export const calculateMinMaxPrice = ({
   maxPrice: BigNumber
 } => {
   const { askPrice, bidPrice } = getProposedPrice({ askPrices, bidPrices })
-  const [meanAskPriceBidBookTick, meanBidPriceBidBookTick] = [
-    askPrice,
-    bidPrice,
-  ].map((price) => {
-    const {
-      normal: {
-        now: { tick: bidBookTick },
-      },
-    } = getPriceNeighborhood({
-      chainId,
-      price: price.toString(),
-      currency0: quoteCurrency,
-      currency1: baseCurrency,
-    })
-    return bidBookTick
-  })
+  const minPrice1 = bidPrice.times(correctionFactor).minus(bidSpongeDiff)
+  const maxPrice1 = askPrice.times(correctionFactor).plus(askSpongeDiff)
+  const minPrice2 = bidPrice.minus(bidSpongeDiff)
+  const maxPrice2 = askPrice.plus(askSpongeDiff)
 
   return {
-    minPrice: BigNumber(
-      getMarketPrice({
-        marketQuoteCurrency: quoteCurrency,
-        marketBaseCurrency: baseCurrency,
-        bidTick: meanBidPriceBidBookTick + min(BigInt(tickDiff), 0n),
-      }),
-    ).minus(bidSpongeDiff),
-    maxPrice: BigNumber(
-      getMarketPrice({
-        marketQuoteCurrency: quoteCurrency,
-        marketBaseCurrency: baseCurrency,
-        bidTick: meanAskPriceBidBookTick + max(BigInt(tickDiff), 0n),
-      }),
-    ).plus(askSpongeDiff),
+    minPrice: minPrice1.isLessThan(minPrice2) ? minPrice1 : minPrice2,
+    maxPrice: maxPrice1.isGreaterThan(maxPrice2) ? maxPrice1 : maxPrice2,
   }
 }
 

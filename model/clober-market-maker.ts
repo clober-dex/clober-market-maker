@@ -453,7 +453,7 @@ export class CloberMarketMaker {
         targetBidPrice,
         askVolume,
         bidVolume,
-        tickDiff,
+        correctionFactor,
         fromEpochId,
         entropy,
       } = await this.spreadSimulation(
@@ -480,7 +480,7 @@ export class CloberMarketMaker {
         bidSpread,
         askVolume: askVolume.toString(),
         bidVolume: bidVolume.toString(),
-        tickDiff: tickDiff.toString(),
+        correctionFactor: correctionFactor.toString(),
         askSpongeDiff: askSpongeDiff.toString(),
         bidSpongeDiff: bidSpongeDiff.toString(),
       })
@@ -499,10 +499,7 @@ export class CloberMarketMaker {
         })
 
       const { minPrice, maxPrice } = calculateMinMaxPrice({
-        chainId: this.chainId,
-        tickDiff,
-        quoteCurrency,
-        baseCurrency,
+        correctionFactor,
         askPrices,
         askSpongeDiff,
         bidPrices,
@@ -526,7 +523,7 @@ export class CloberMarketMaker {
         maxPrice,
         oraclePrice,
         entropy,
-        tickDiff,
+        correctionFactor,
         askTicks,
         askPrices,
         bidTicks,
@@ -650,7 +647,7 @@ export class CloberMarketMaker {
         maxPrice: askPrice.plus(weightedAskSpongeDiff),
         oraclePrice,
         entropy: new BigNumber(1),
-        tickDiff: 0,
+        correctionFactor: new BigNumber(1),
         askTicks,
         askPrices,
         bidTicks,
@@ -1092,7 +1089,7 @@ export class CloberMarketMaker {
     targetBidPrice: BigNumber
     askVolume: BigNumber
     bidVolume: BigNumber
-    tickDiff: number
+    correctionFactor: BigNumber
     fromEpochId: number
     entropy: BigNumber
   }> {
@@ -1126,7 +1123,7 @@ export class CloberMarketMaker {
         targetBidPrice,
         askVolume,
         bidVolume,
-        tickDiff,
+        correctionFactor,
         entropy,
       } = this.dexSimulator.findSpread(
         market,
@@ -1165,13 +1162,7 @@ export class CloberMarketMaker {
             bidTick: currentOraclePriceBidBookTick - BigInt(bidSpread),
           }),
         )
-        const currentCentralPrice = BigNumber(
-          getMarketPrice({
-            marketQuoteCurrency: quoteCurrency,
-            marketBaseCurrency: baseCurrency,
-            bidTick: currentOraclePriceBidBookTick - BigInt(tickDiff),
-          }),
-        )
+        const currentCentralPrice = currentOraclePrice.div(correctionFactor)
         const ethSkew = totalBase.times(currentOraclePrice).div(totalQuote)
         const weightedAskPrice = currentCentralPrice.plus(
           currentAskPrice.minus(currentCentralPrice).div(ethSkew),
@@ -1226,7 +1217,7 @@ export class CloberMarketMaker {
           targetBidPrice,
           askVolume,
           bidVolume,
-          tickDiff,
+          correctionFactor,
           fromEpochId: this.epoch[market][i].id,
           entropy,
         }

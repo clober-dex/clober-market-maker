@@ -5,7 +5,7 @@ export type Epoch = {
   id: number
   askSpread: number
   bidSpread: number
-  tickDiff: number
+  correctionFactor: BigNumber
   startTimestamp: number
   minPrice: BigNumber // toTick(oraclePrice) + askSpread + tickDiff
   maxPrice: BigNumber // toTick(oraclePrice) - bidSpread + tickDiff
