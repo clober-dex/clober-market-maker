@@ -485,20 +485,16 @@ export class CloberMarketMaker {
         bidSpongeDiff: bidSpongeDiff.toString(),
       })
 
-      const { askTicks, askPrices, bidTicks, bidPrices } =
-        buildProtectedTickAndPriceArray({
-          chainId: this.chainId,
-          baseCurrency,
-          quoteCurrency,
-          oraclePrice,
-          protectedPrice: onChainOraclePrice,
-          askSpread,
-          bidSpread,
-          orderNum: params.orderNum,
-          orderGap: params.orderGap,
-        })
-
-      // do something
+      const { askPrices, bidPrices } = buildTickAndPriceArray({
+        chainId: this.chainId,
+        baseCurrency,
+        quoteCurrency,
+        oraclePrice,
+        askSpread,
+        bidSpread,
+        orderNum: params.orderNum,
+        orderGap: params.orderGap,
+      })
 
       const { minPrice, maxPrice } = calculateMinMaxPrice({
         chainId: this.chainId,
@@ -518,6 +514,18 @@ export class CloberMarketMaker {
           `Oracle price ${oraclePrice.toString()} is not in the range of minPrice ${minPrice.toString()} and maxPrice ${maxPrice.toString()}`,
         )
       }
+
+      const { askTicks, bidTicks } = buildProtectedTickAndPriceArray({
+        chainId: this.chainId,
+        baseCurrency,
+        quoteCurrency,
+        oraclePrice,
+        protectedPrice: onChainOraclePrice,
+        askSpread,
+        bidSpread,
+        orderNum: params.orderNum,
+        orderGap: params.orderGap,
+      })
 
       const newEpoch: Epoch = {
         id: this.epoch[market][this.epoch[market].length - 1].id + 1,
